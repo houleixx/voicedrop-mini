@@ -1,0 +1,9 @@
+<view class="page-header" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx; background: {{bgColor}}; padding-left: {{paddingLeft}}rpx;">
+  <view class="header-back" bindtap="goBack" aria-label="返回">
+    <text class="header-back-icon header-back-icon-arrow"></text>
+  </view>
+  <text class="header-title" style="color: {{textColor}};">{{title}}</text>
+  <view class="header-right">
+    <slot name="right" />
+  </view>
+</view>

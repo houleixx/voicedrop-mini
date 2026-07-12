@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# WeChat DevTools config (contains sensitive info)
+project.private.config.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Credentials and signing material
+*.pem
+*.key
+*.p8
+*.p12
+*.cer
+*.mobileprovision
+secrets/
+.secrets/
+
+# Test coverage
+coverage/
+
+# Isolated feature worktrees
+.worktrees/
+
+# Superpowers execution scratch data
+.superpowers/
+
+# Local implementation plans (may contain machine-specific context)
+/docs/superpowers/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Local Codex project context (contains machine-specific paths)
+/AGENTS.md

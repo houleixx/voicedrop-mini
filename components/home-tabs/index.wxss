@@ -1,0 +1,145 @@
+@import '../../styles/remixicon.wxss';
+
+.home-head {
+  position: relative;
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: 32rpx;
+  padding-right: 32rpx;
+  align-items: flex-start;
+  justify-content: flex-start;
+  background: #faf6ef;
+}
+
+.brand-row {
+  display: flex;
+  min-height: 60px;
+  align-items: center;
+  flex: 1;
+}
+
+.brand-wave {
+  display: flex;
+  width: 48rpx;
+  height: 48rpx;
+  margin-right: 18rpx;
+  align-items: center;
+  justify-content: center;
+}
+
+.wave-line {
+  width: 8rpx;
+  margin-right: 8rpx;
+  border-radius: 999rpx;
+  background: #e9332c;
+}
+
+.wave-line-last {
+  margin-right: 0;
+}
+
+.wave-line-short {
+  height: 28rpx;
+}
+
+.wave-line-mid {
+  height: 38rpx;
+}
+
+.wave-line-tall {
+  height: 54rpx;
+}
+
+.brand-name {
+  color: #8d8578;
+  font-size: 36rpx;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.settings-button {
+  position: absolute;
+  right: 105px;
+  display: flex;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  min-height: 32px;
+  max-height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid #eee7dd;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 4rpx 12rpx rgba(54, 46, 38, 0.1);
+}
+
+.settings-icon {
+  width: 44rpx;
+  height: 44rpx;
+  color: #2a2521;
+  font-family: 'remixicon' !important;
+  font-size: 42rpx;
+  font-weight: 700;
+  line-height: 44rpx;
+  text-align: center;
+}
+
+.settings-icon-gear::before {
+  content: "\f0e8";
+}
+
+.section-tabs {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 28rpx;
+  padding-left: 32rpx;
+  padding-right: 32rpx;
+  background: #faf6ef;
+  white-space: nowrap;
+}
+
+.section-tabs-inner {
+  display: inline-flex;
+  min-width: 100%;
+  align-items: flex-start;
+  gap: 48rpx;
+  justify-content: flex-start;
+}
+
+.section-tab {
+  display: flex;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  padding: 0 0 10rpx;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  color: #2a2521;
+  line-height: 1;
+  text-align: left;
+}
+
+.section-tab-text {
+  display: block;
+  font-size: 42rpx;
+  font-weight: 900;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.section-tab-line {
+  width: calc(100% + 8rpx);
+  height: 8rpx;
+  margin-top: 14rpx;
+  border-radius: 999rpx;
+  background: #e9332c;
+}
+
+.muted-tab {
+  color: #beb7ac;
+}

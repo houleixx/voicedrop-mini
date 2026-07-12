@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "公众号草稿",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "page-header": "../../components/page-header/index"
+  }
+}

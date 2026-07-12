@@ -1,0 +1,26 @@
+<view class="config-menu" wx:if="{{open && groups.length}}">
+  <view class="config-menu-scrim" bindtap="close"></view>
+  <view class="config-menu-anchor {{anchorType}}" style="top:{{anchor.top}}px;left:{{anchor.left}}px;width:{{anchor.width}}px;">
+    <image wx:if="{{anchorType === 'image'}}" src="{{anchor.url}}" mode="widthFix" />
+    <text wx:else>{{anchor.text}}</text>
+  </view>
+  <view class="config-menu-card" style="top:{{anchor.menuTop}}px;left:{{anchor.menuLeft}}px;max-height:{{anchor.menuMaxHeight}}px;" catchtap="stop">
+    <block wx:if="{{openNode}}">
+      <view class="config-menu-back" bindtap="back"><text>‹</text><text>{{openNode.label}}</text></view>
+      <view class="config-menu-row" wx:for="{{openNode.children}}" wx:key="id" data-index="{{index}}" bindtap="pickChild"><text>{{item.label}}</text></view>
+    </block>
+    <block wx:else>
+      <block wx:for="{{groups}}" wx:key="index" wx:for-item="group" wx:for-index="groupIndex">
+        <view class="config-menu-group-separator" wx:if="{{groupIndex}}"></view>
+        <block wx:for="{{group}}" wx:key="id">
+          <view wx:if="{{item.type === 'submenu'}}" class="config-menu-row" data-group="{{groupIndex}}" data-index="{{index}}" bindtap="openSubmenu">
+            <text>{{item.label}}</text><text class="config-menu-preview">{{item.children[0].label}} · {{item.children[1].label || ''}} ›</text>
+          </view>
+          <view wx:else class="config-menu-row" data-group="{{groupIndex}}" data-index="{{index}}" bindtap="pickRoot"><text>{{item.label}}</text></view>
+        </block>
+      </block>
+      <view class="config-menu-group-separator" wx:if="{{localRows.length}}"></view>
+      <view class="config-menu-row" wx:for="{{localRows}}" wx:key="id" data-index="{{index}}" bindtap="pickLocal"><text>{{item.label}}</text></view>
+    </block>
+  </view>
+</view>

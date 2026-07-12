@@ -1,0 +1,15 @@
+<view class="screen">
+  <page-header title="提示词" />
+  <view class="prompt-page">
+    <text class="prompt-intro">长按菜单里每个动作的名字和提示词都可以改成你自己的说法。留空即恢复默认；不想要的可以从菜单里隐藏。</text>
+    <view class="prompt-state" wx:if="{{loading}}">正在加载...</view>
+    <view class="prompt-state" wx:elif="{{error}}"><text>{{error}}</text><button bindtap="loadItems">重试</button></view>
+    <view class="prompt-state" wx:elif="{{empty}}">暂无可自定义提示词</view>
+    <view class="prompt-card" wx:else>
+      <view class="prompt-row {{item.hidden ? 'hidden' : ''}}" wx:for="{{rows}}" wx:key="id" data-id="{{item.id}}" bindtap="openItem">
+        <view class="prompt-copy"><text class="prompt-title">{{item.title}}</text><text class="prompt-preview">{{item.status || item.preview}}</text></view>
+        <text class="prompt-badge" wx:if="{{item.status}}">{{item.status}}</text><text class="prompt-arrow">›</text>
+      </view>
+    </view>
+  </view>
+</view>

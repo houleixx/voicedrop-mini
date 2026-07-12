@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "写作风格",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "page-header": "../../components/page-header/index"
+  }
+}

@@ -1,0 +1,525 @@
+@import '../../styles/remixicon.wxss';
+
+.recording-screen {
+  position: relative;
+  height: 100vh;
+  background: #faf6ef;
+}
+
+.recording-screen home-tabs {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: #faf6ef;
+}
+
+.scroll-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.scroll-inner {
+  padding: 0 32rpx 48rpx;
+}
+
+.scroll-inner.with-record-dock {
+  padding-bottom: 230rpx;
+}
+
+.notice,
+.empty {
+  margin-top: 38rpx;
+  padding: 42rpx;
+  color: #8d8578;
+  font-size: 28rpx;
+  text-align: center;
+  justify-content: center;
+}
+
+.empty {
+  display: flex;
+  min-height: 360rpx;
+  margin-top: 76rpx;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+}
+
+.empty-title {
+  display: block;
+  color: #2a2521;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.empty-sub {
+  display: block;
+  margin-top: 12rpx;
+  color: #a7a095;
+  font-size: 26rpx;
+  line-height: 1.45;
+}
+
+.tag-tabs {
+  width: 100%;
+  margin-top: 28rpx;
+  white-space: nowrap;
+}
+
+.tag-tab {
+  display: inline-flex;
+  width: auto;
+  min-width: 108rpx;
+  height: 58rpx;
+  margin-right: 12rpx;
+  padding: 0 24rpx;
+  border: 1rpx solid #eee5da;
+  border-radius: 999rpx;
+  align-items: center;
+  justify-content: center;
+  color: #8d8578;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 24rpx;
+  line-height: 56rpx;
+}
+
+.tag-tab.active {
+  border-color: #e9332c;
+  color: #e9332c;
+  background: #fff1ef;
+  font-weight: 800;
+}
+
+.list {
+  margin-top: 34rpx;
+}
+
+/* Swipe-to-delete row container */
+.record-row {
+  position: relative;
+  margin-bottom: 24rpx;
+  overflow: hidden;
+  border-radius: 34rpx;
+}
+
+.record-card {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.2s ease-out;
+  display: flex;
+  min-height: 148rpx;
+  padding: 30rpx 28rpx 30rpx 32rpx;
+  border-radius: 34rpx;
+  align-items: center;
+  background: #ffffff;
+  box-shadow: 0 8rpx 20rpx rgba(65, 52, 41, 0.03);
+  touch-action: pan-y;
+}
+
+/* Delete button revealed by swipe */
+.delete-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 160rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e9332c;
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 800;
+  border-radius: 0 34rpx 34rpx 0;
+  z-index: 0;
+}
+
+.record-icon-wrapper {
+  position: relative;
+  width: 88rpx;
+  height: 88rpx;
+  margin-right: 30rpx;
+  flex: 0 0 auto;
+}
+
+.record-icon {
+  display: flex;
+  width: 88rpx;
+  height: 88rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28rpx;
+  background: #fbeae7;
+}
+
+/* Command reference badge (Android: commandNumberBadge) */
+.command-badge {
+  position: absolute;
+  top: -8rpx;
+  left: -8rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  padding: 0 6rpx;
+  border-radius: 999rpx;
+  background: #ffffff;
+  border: 2rpx solid #d8d8d8;
+  color: #2a2521;
+  font-size: 22rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
+}
+
+.record-wave {
+  display: flex;
+  width: 44rpx;
+  height: 44rpx;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-wave-line {
+  display: block;
+  width: 6rpx;
+  margin-right: 8rpx;
+  border-radius: 999rpx;
+  background: #e9332c;
+}
+
+.record-wave-line-last {
+  margin-right: 0;
+}
+
+.record-wave-line-short {
+  height: 22rpx;
+}
+
+.record-wave-line-mid {
+  height: 28rpx;
+}
+
+.record-wave-line-tall {
+  height: 38rpx;
+}
+
+.record-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.record-name {
+  display: block;
+  overflow: hidden;
+  color: #27231f;
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-meta {
+  display: flex;
+  min-width: 0;
+  margin-top: 18rpx;
+  align-items: center;
+  color: #a9a297;
+  font-size: 26rpx;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.record-meta text:first-child {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.duration {
+  margin-left: 24rpx;
+}
+
+.status-dot {
+  width: 10rpx;
+  height: 10rpx;
+  margin: 0 14rpx 0 22rpx;
+  border-radius: 50%;
+  background: #4e886c;
+}
+
+.status {
+  overflow: hidden;
+  max-width: 142rpx;
+  color: #5f9278;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  margin-left: 20rpx;
+  flex: 0 0 30rpx;
+  width: 30rpx;
+  color: #cec8bd;
+  font-size: 58rpx;
+  font-weight: 300;
+  line-height: 1;
+  text-align: right;
+}
+
+/* Silent (no voice) recording -- muted colors like Android */
+.record-card.silent .record-icon {
+  background: #f4f0eb;
+}
+
+.record-card.silent .record-wave-line {
+  background: #d1c8bd;
+}
+
+.record-card.silent .record-name {
+  color: #6f6a63;
+}
+
+.record-card.silent .record-meta {
+  color: #b9b2a8;
+}
+
+.record-card.silent .status-dot {
+  background: #b9b2a8;
+}
+
+.record-card.silent .status {
+  color: #b9b2a8;
+}
+
+.record-card.silent .chevron {
+  color: #d8d0c5;
+}
+
+.record-dock {
+  position: fixed;
+  right: 0;
+  bottom: 42rpx;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.mic-button {
+  display: flex;
+  width: 128rpx;
+  height: 128rpx;
+  min-width: 128rpx;
+  max-width: 128rpx;
+  min-height: 128rpx;
+  max-height: 128rpx;
+  padding: 0;
+  flex: 0 0 128rpx;
+  align-items: center;
+  justify-content: center;
+  border: 10rpx solid #ffffff;
+  border-radius: 9999rpx;
+  background: #ef332d;
+  box-shadow: 0 10rpx 32rpx rgba(54, 46, 38, 0.18);
+  line-height: 1;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.mic-button.recording {
+  background: #2a2521;
+}
+
+.mic-icon {
+  position: relative;
+  width: 34rpx;
+  height: 46rpx;
+}
+
+.mic-head {
+  position: absolute;
+  top: 0;
+  left: 9rpx;
+  width: 16rpx;
+  height: 28rpx;
+  border-radius: 12rpx;
+  background: #ffffff;
+}
+
+.mic-head::after {
+  position: absolute;
+  right: -8rpx;
+  bottom: -7rpx;
+  left: -8rpx;
+  height: 17rpx;
+  border-right: 4rpx solid #ffffff;
+  border-bottom: 4rpx solid #ffffff;
+  border-left: 4rpx solid #ffffff;
+  border-radius: 0 0 17rpx 17rpx;
+  content: "";
+}
+
+.mic-stand {
+  position: absolute;
+  top: 33rpx;
+  left: 15rpx;
+  width: 5rpx;
+  height: 10rpx;
+  border-radius: 999rpx;
+  background: #ffffff;
+}
+
+.mic-base {
+  position: absolute;
+  right: 6rpx;
+  bottom: 0;
+  left: 6rpx;
+  height: 5rpx;
+  border-radius: 999rpx;
+  background: #ffffff;
+}
+
+.dock-hint {
+  margin-top: 18rpx;
+  color: #8d8578;
+  font-size: 25rpx;
+  font-weight: 500;
+  line-height: 1;
+  text-shadow: 0 2rpx 6rpx rgba(250, 246, 239, 0.9), 0 0 2rpx #faf6ef;
+  transition: color 0.2s;
+}
+
+.dock-hint.talking {
+  color: #e9332c;
+}
+
+.dock-hint.canceled {
+  color: #e9332c;
+}
+
+/* Mic button wrapper for talk mode */
+.mic-button-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mic-button-wrapper.talking .mic-button {
+  background: #2a2521;
+}
+
+.mic-button-wrapper.canceled .mic-button {
+  background: #2a2521;
+  opacity: 0.5;
+}
+
+/* Transcript text above button (Android: fabStatus) */
+.fab-status {
+  padding: 14rpx 32rpx;
+  margin: 0 32rpx 16rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.72);
+  color: #2a2521;
+  font-size: 26rpx;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.4;
+  min-height: 24rpx;
+}
+
+.fab-status.error {
+  background: #fff1ef;
+  color: #e9332c;
+}
+
+.post-list {
+  margin-top: 34rpx;
+}
+
+.post {
+  display: flex;
+  min-height: 148rpx;
+  margin-bottom: 24rpx;
+  padding: 30rpx 28rpx 30rpx 32rpx;
+  border-radius: 34rpx;
+  align-items: flex-start;
+  background: #ffffff;
+  box-shadow: 0 8rpx 20rpx rgba(65, 52, 41, 0.03);
+}
+
+.post-icon {
+  display: flex;
+  width: 88rpx;
+  height: 88rpx;
+  margin-right: 30rpx;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28rpx;
+  background: #f6e4dc;
+}
+
+.doc-icon-img {
+  width: 48rpx;
+  height: 48rpx;
+  color: #d8593b;
+  font-size: 48rpx;
+  line-height: 48rpx;
+  text-align: center;
+}
+
+.post-main {
+  top: 35rpx;
+  width: 20rpx;
+}
+
+.post-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.post-title {
+  display: block;
+  overflow: hidden;
+  color: #27231f;
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-meta {
+  display: flex;
+  min-width: 0;
+  margin-top: 18rpx;
+  align-items: center;
+  color: #a9a297;
+  font-size: 26rpx;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.post-meta text:first-child {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.post-time {
+  margin-left: 24rpx;
+}

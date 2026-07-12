@@ -1,0 +1,9 @@
+.community-redirect {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  color: #8d8578;
+  background: #faf6ef;
+  font-size: 28rpx;
+}

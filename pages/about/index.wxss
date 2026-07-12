@@ -1,0 +1,52 @@
+.about-card {
+  margin-top: 24rpx;
+  padding: 36rpx;
+}
+
+.logo {
+  display: block;
+  color: #2a2521;
+  font-size: 38rpx;
+  font-weight: 900;
+}
+
+.desc {
+  display: block;
+  margin-top: 12rpx;
+  color: #8a8175;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+.menu {
+  margin-top: 24rpx;
+  overflow: hidden;
+}
+
+.blocked {
+  margin-top: 24rpx;
+  overflow: hidden;
+}
+
+.empty-line {
+  padding: 28rpx;
+  color: #b8ae9e;
+  font-size: 26rpx;
+}
+
+.blocked-row {
+  display: flex;
+  min-height: 92rpx;
+  padding: 0 28rpx;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1rpx solid #f0e5d7;
+  color: #2a2521;
+  font-size: 28rpx;
+}
+
+.unblock {
+  color: #d8593b;
+  font-size: 26rpx;
+  font-weight: 700;
+}

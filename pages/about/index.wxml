@@ -1,0 +1,38 @@
+<view class="screen">
+  <page-header title="关于" />
+  <view class="page-body">
+    <view class="about-card card">
+      <text class="logo">VoiceDrop 口述</text>
+      <text class="desc">把口述录音自动变成文章的小程序客户端。</text>
+    </view>
+
+    <view class="card menu">
+      <view class="row" bindtap="privacy">
+        <text>隐私说明</text>
+        <text class="muted">查看</text>
+      </view>
+      <view class="row" bindtap="communityTerms">
+        <text>社区公约</text>
+        <text class="muted">查看</text>
+      </view>
+      <view class="row" bindtap="copyEmail">
+        <text>支持与投诉</text>
+        <text class="muted">{{supportEmail}}</text>
+      </view>
+    </view>
+
+    <view class="card blocked">
+      <view class="row">
+        <text>已屏蔽用户</text>
+        <text class="muted">{{blockedAuthors.length}}</text>
+      </view>
+      <view wx:if="{{blockedAuthors.length === 0}}" class="empty-line">还没有屏蔽任何人</view>
+      <block wx:else>
+        <view class="blocked-row" wx:for="{{blockedAuthors}}" wx:key="*this">
+          <text>{{item}}</text>
+          <button class="unblock" data-author="{{item}}" bindtap="unblock">取消屏蔽</button>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>

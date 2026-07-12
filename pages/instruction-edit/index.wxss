@@ -1,0 +1,27 @@
+@import '../../styles/remixicon.wxss';
+.screen{min-height:100vh;background:#faf6ef;color:#2a2521}
+.edit-page{padding:0 32rpx 80rpx;padding-top:232rpx}
+.save-button{box-sizing:border-box;width:100%;height:88rpx;line-height:88rpx;margin-top:36rpx;background:#c7432f;color:#fff;border-radius:20rpx;font-size:30rpx}
+.save-button::after,.restore-row button::after,.share-details button::after{border:0}
+.save-button[disabled]{background:#b8ae9e;color:#fff}
+.field-label{display:block;font-size:26rpx;font-weight:600;color:#756d63;margin-bottom:12rpx}
+.section-gap{margin-top:30rpx}
+.field{box-sizing:border-box;width:100%;height:88rpx;background:#fff;border-radius:20rpx;padding:0 24rpx;font-size:30rpx}
+.prompt-field{height:300rpx;padding:22rpx;line-height:1.55}
+.hint{display:block;font-size:23rpx;color:#a79f93;margin-top:10rpx;line-height:1.4}
+.restore-row{display:flex;align-items:center;justify-content:space-between}
+.restore-row button,.share-details button{margin:0;padding:0;background:transparent;color:#c7432f;font-size:25rpx}
+.hide-card,.share-card{display:flex;align-items:center;justify-content:space-between;gap:20rpx;background:#fff;border-radius:20rpx;padding:22rpx 24rpx;margin-top:30rpx}
+.setting-copy{min-width:0;flex:1}
+.share-error{display:block;color:#c7432f;font-size:24rpx;margin:12rpx 8rpx 0}
+.share-details{background:#fff;border-radius:20rpx;padding:8rpx 24rpx 24rpx;margin-top:16rpx}
+.share-value-row{display:flex;align-items:center;justify-content:space-between;gap:20rpx;padding:18rpx 0;border-bottom:1rpx solid #eee7dc}
+.share-label{display:block;color:#9a9082;font-size:22rpx}
+.share-value,.share-link{display:block;margin-top:4rpx;font-size:29rpx;word-break:break-all}
+.share-link{font-size:25rpx}
+.wechat-share{width:100%;height:76rpx!important;line-height:76rpx!important;margin-top:22rpx!important;background:#c7432f!important;color:#fff!important;border-radius:18rpx!important}
+.share-warning{display:block;color:#c7432f;font-size:23rpx;margin-top:14rpx;line-height:1.4}
+.default-prompt{display:block;background:#f1ebe0;border-radius:20rpx;padding:24rpx;color:#756d63;font-size:27rpx;line-height:1.55}
+.default-note{display:block;color:#a79f93;font-size:23rpx;line-height:1.45;margin-top:14rpx}
+.error{display:block;color:#c7432f;margin-bottom:18rpx}
+.loading{text-align:center;padding-top:260rpx;color:#9a9082}

@@ -1,0 +1,57 @@
+<view class="screen">
+  <page-header title="写作风格" bgColor="#f9f2eb" textColor="#151210">
+    <button slot="right" class="nav-action nav-action-strong" loading="{{saving}}" bindtap="done">完成</button>
+  </page-header>
+
+  <view class="style-page">
+    <view class="dropdown-wrap">
+      <view class="mode-picker" bindtap="toggleStyleHistory">
+        <view class="mode-chip">
+          <text>对比</text>
+          <text class="chip-caret">{{styleHistoryOpen ? '⌃' : '⌄'}}</text>
+        </view>
+        <text class="mode-summary">{{styleSummary}}</text>
+        <text class="mode-count">{{selectedStyles.length}} / 3</text>
+      </view>
+
+      <view wx:if="{{styleHistoryOpen}}" class="compare-panel">
+        <view class="compare-head">
+          <view class="compare-copy">
+            <text class="compare-title">多风格对比</text>
+            <text class="compare-subtitle">勾选多个版本，成文时各生成一篇并排挑</text>
+          </view>
+          <switch class="compare-switch" checked="{{compareMode}}" color="#d9533f" bindchange="onCompareModeChange" />
+        </view>
+
+        <view class="version-list">
+          <view class="version-row {{item.selected ? 'selected' : ''}}" wx:for="{{styleRows}}" wx:key="v" data-version="{{item.v}}" bindtap="toggleStyleSelection">
+            <text class="version-title">v{{item.v}}</text>
+            <text class="version-preview">{{item.preview}}</text>
+            <text class="version-meta">{{item.words}} 字 · {{item.date}}</text>
+            <!-- Checkbox for multi-select mode -->
+            <view wx:if="{{compareMode}}" class="check-box {{item.selected ? 'checked' : ''}}">
+              <text wx:if="{{item.selected}}" class="check-mark">✓</text>
+            </view>
+            <!-- Flat checkmark for single-select mode -->
+            <view wx:else class="check-indicator {{item.selected ? 'selected' : ''}}">
+              <text wx:if="{{item.selected}}" class="check-icon">✓</text>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{!styleHistory.versions || styleHistory.versions.length === 0}}" class="version-empty">暂无文风历史</view>
+
+        <text wx:if="{{compareMode}}" class="compare-foot">完成后将分别用 {{styleSummary}}，成文时各生成一篇，在阅读页顶部切换对比。最多选 3 个。</text>
+        <text wx:else class="compare-foot">选择一个版本，将自动填充到下方编辑器。</text>
+
+        <button class="panel-save-button" loading="{{saving}}" bindtap="saveStyleSelection">保存</button>
+      </view>
+    </view>
+
+    <view class="style-editor">
+      <text class="editor-label">当前写作风格</text>
+      <textarea class="field textarea" value="{{style}}" bindinput="onStyleInput" placeholder="例如：胸有成竹地下断言，不绕弯；语气自然，可以添加 emoji" />
+      <button class="primary save-button" loading="{{saving}}" bindtap="saveStyle">保存文风</button>
+    </view>
+  </view>
+</view>

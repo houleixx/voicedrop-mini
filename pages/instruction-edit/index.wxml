@@ -1,0 +1,31 @@
+<view class="screen">
+  <page-header title="{{pageTitle}}" />
+  <view class="edit-page" wx:if="{{!loading && item}}">
+    <text class="error" wx:if="{{error}}">{{error}}</text>
+    <text class="field-label">菜单里的名字</text>
+    <input class="field" maxlength="20" value="{{nameDraft}}" placeholder="{{item.defaultName}}" bindinput="onNameInput" />
+    <text class="hint">留空 = 使用默认名“{{item.defaultName}}”</text>
+    <text class="field-label section-gap">我的提示词</text>
+    <textarea class="field prompt-field" value="{{instructionDraft}}" bindinput="onInstructionInput" placeholder="留空即使用默认提示词" />
+    <view class="restore-row"><text class="hint">留空 = 使用默认提示词</text><button bindtap="restoreDefault">恢复默认</button></view>
+    <view class="hide-card"><view><text>在菜单中隐藏</text><text class="hint">长按菜单里不再出现，可随时恢复</text></view><switch checked="{{hiddenDraft}}" bindchange="onHiddenChange" color="#c7432f" /></view>
+    <view class="share-card">
+      <view class="setting-copy">
+        <text>分享这条提示词</text>
+        <text class="hint">开启后，其他人输入分享码或打开链接，就能查看并一次性使用这条提示词</text>
+      </view>
+      <switch checked="{{sharing}}" disabled="{{shareToggling}}" bindchange="toggleSharing" color="#c7432f" />
+    </view>
+    <text class="share-error" wx:if="{{shareError}}">{{shareError}}</text>
+    <view class="share-details" wx:if="{{sharing && shareCode}}">
+      <view class="share-value-row"><view><text class="share-label">分享码</text><text class="share-value">{{shareCode}}</text></view><button bindtap="copyShareCode">复制</button></view>
+      <view class="share-value-row"><view><text class="share-label">分享链接</text><text class="share-link">voicedrop.cn/{{shareCode}}</text></view><button bindtap="copyShareLink">复制</button></view>
+      <button class="wechat-share" open-type="share">微信分享</button>
+      <text class="share-warning" wx:if="{{dirty}}">分享的始终是已保存的版本，请先保存当前修改。</text>
+    </view>
+    <text class="field-label section-gap">默认提示词</text><text class="default-prompt" user-select>{{item.defaultText}}</text>
+    <text class="default-note">当前生效的是{{instructionDraft ? '我的提示词' : '默认提示词'}}。想微调可以长按上方文本框，把默认提示词粘贴进去再改。</text>
+    <button class="save-button" disabled="{{!dirty || saving}}" loading="{{saving}}" bindtap="save">保存</button>
+  </view>
+  <view class="loading" wx:else>{{error || '正在加载...'}}</view>
+</view>

@@ -1,0 +1,51 @@
+<view class="recording-screen">
+  <!-- Status bar area -->
+  <view class="status-bar" style="padding-top: {{statusBarHeight}}px;">
+    <view class="recording-status">
+      <view class="status-dot"></view>
+      <text class="status-text">{{interviewActive ? 'AI 采访中' : '正在录音'}}</text>
+    </view>
+    <text wx:if="{{interviewActive}}" class="interview-status {{interviewState}}">{{interviewStateText}}</text>
+  </view>
+
+  <!-- Center content: timer + waveform -->
+  <view class="center-content">
+    <text class="timer">{{timerDisplay}}</text>
+    <view class="waveform">
+      <view class="wave-bar" wx:for="{{waveBars}}" wx:key="index" style="height: {{item}}rpx; background-color: {{waveColors[index]}};"></view>
+    </view>
+  </view>
+
+  <!-- Bottom controls -->
+  <view class="bottom-controls">
+    <!-- Interview button -->
+    <view class="interview-button-column" bindtap="toggleInterview">
+      <view class="interview-button {{interviewActive ? 'active' : ''}}" aria-label="{{interviewActive ? '结束采访' : '开始采访'}}">
+        <view class="interview-wave" aria-hidden="true">
+          <view class="interview-wave-bar short"></view>
+          <view class="interview-wave-bar tall"></view>
+          <view class="interview-wave-bar medium"></view>
+        </view>
+      </view>
+      <text class="interview-label {{interviewActive ? 'active' : ''}}">采访</text>
+    </view>
+
+    <!-- Stop button -->
+    <view class="stop-button-column">
+      <view class="stop-button" bindtap="stopRecording">
+        <view class="stop-icon"></view>
+      </view>
+      <text class="stop-label">点击停止</text>
+    </view>
+
+    <!-- Camera button -->
+    <view class="camera-button-column" bindtap="takePhoto">
+      <view class="camera-button">
+        <view class="camera-body">
+          <view class="camera-lens"></view>
+        </view>
+      </view>
+      <text class="camera-label">拍照</text>
+    </view>
+  </view>
+</view>

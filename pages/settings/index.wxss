@@ -1,0 +1,223 @@
+@import '../../styles/remixicon.wxss';
+
+/* 分组卡片 */
+.menu-card {
+  margin-top: 28rpx;
+  overflow: hidden;
+}
+
+/* 分组标题 */
+.section-header {
+  margin-top: 36rpx;
+  margin-bottom: 12rpx;
+  padding-left: 12rpx;
+  color: #b8ae9e;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+/* 单个菜单项 */
+.menu-item {
+  display: flex;
+  min-height: 120rpx;
+  align-items: center;
+  padding: 20rpx 28rpx;
+  border-bottom: 1rpx solid #efe4d4;
+}
+
+.menu-item:last-child,
+.menu-item.no-bottom-border {
+  border-bottom: 0;
+}
+
+/* 图标方块 */
+.menu-icon {
+  display: flex;
+  width: 72rpx;
+  height: 72rpx;
+  min-width: 72rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  margin-right: 24rpx;
+  flex-shrink: 0;
+}
+
+.menu-icon-text {
+  font-size: 36rpx;
+  line-height: 1;
+}
+
+/* 图标背景色 */
+.icon-dark {
+  background: #2a2521;
+}
+.icon-dark .menu-icon-text {
+  color: #ffffff;
+}
+
+.icon-amber {
+  background: #fbead2;
+}
+.icon-amber .menu-icon-text {
+  color: #c98a2e;
+}
+
+.icon-beige {
+  background: #f3ebe0;
+}
+.icon-beige .menu-icon-text {
+  color: #8a8175;
+}
+
+.icon-pink {
+  background: #fde8e2;
+}
+.icon-pink .menu-icon-text {
+  color: #d8593b;
+}
+
+.icon-green {
+  background: #e7f1e8;
+}
+.icon-green .menu-icon-text {
+  color: #5e8a6a;
+}
+
+/* 中间内容 */
+.menu-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6rpx;
+}
+
+.menu-title {
+  color: #2a2521;
+  font-size: 32rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.menu-subtitle {
+  color: #b8ae9e;
+  font-size: 24rpx;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 右侧内容 */
+.menu-right {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+
+.menu-value {
+  color: #c98a2e;
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.menu-id {
+  color: #b8ae9e;
+  font-size: 28rpx;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+.menu-status {
+  color: #b8ae9e;
+  font-size: 26rpx;
+}
+
+.menu-status-empty {
+  color: #e5392e;
+}
+
+.menu-arrow {
+  color: #d0c5b4;
+  font-size: 36rpx;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.dialog-overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 28rpx 44rpx;
+  background: rgba(42, 37, 33, 0.36);
+  box-sizing: border-box;
+}
+
+.name-dialog {
+  width: 100%;
+  padding: 30rpx 32rpx 24rpx;
+  border-radius: 24rpx;
+  background: #fffdf9;
+  box-shadow: 0 24rpx 70rpx rgba(42, 37, 33, 0.2);
+  box-sizing: border-box;
+}
+
+.dialog-title {
+  display: block;
+  color: #2a2521;
+  font-size: 34rpx;
+  font-weight: 800;
+}
+
+.name-input {
+  height: 92rpx;
+  margin-top: 22rpx;
+  padding: 0 24rpx;
+  border-radius: 18rpx;
+  color: #2a2521;
+  background: #f7f2ec;
+  font-size: 32rpx;
+  box-sizing: border-box;
+}
+
+.dialog-hint {
+  display: block;
+  margin-top: 18rpx;
+  color: #8f8578;
+  font-size: 26rpx;
+  line-height: 1.45;
+}
+
+.dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
+  margin-top: 28rpx;
+}
+
+.dialog-button {
+  height: 84rpx;
+  border-radius: 18rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 84rpx;
+}
+
+.dialog-button-cancel {
+  color: #8f8578;
+  background: #f3ebe0;
+}
+
+.dialog-button-confirm {
+  color: #ffffff;
+  background: #c7432f;
+}

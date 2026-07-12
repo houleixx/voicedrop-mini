@@ -1,0 +1,242 @@
+/* Recording screen - full screen layout */
+.recording-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #faf6ef;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Status bar */
+.status-bar {
+  padding-top: 40px;
+  padding-bottom: 12px;
+}
+
+.recording-status {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.status-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background-color: #e9332c;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.status-text {
+  margin-left: 12rpx;
+  color: #8d8578;
+  font-size: 28rpx;
+  font-weight: 500;
+  letter-spacing: 2rpx;
+}
+
+/* Center content */
+.center-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 80rpx;
+}
+
+.timer {
+  color: #2a2521;
+  font-size: 120rpx;
+  font-weight: 200;
+  font-family: -apple-system, "Helvetica Neue", sans-serif;
+  letter-spacing: 4rpx;
+  line-height: 1;
+}
+
+/* Waveform */
+.waveform {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+  height: 80rpx;
+  margin-top: 60rpx;
+}
+
+.wave-bar {
+  width: 6rpx;
+  margin: 0 3rpx;
+  border-radius: 3rpx;
+  transition: height 0.15s ease-out, background-color 0.15s ease-out;
+  min-height: 8rpx;
+}
+
+/* Bottom controls */
+.bottom-controls {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 60rpx;
+  padding-left: 40rpx;
+  padding-right: 40rpx;
+}
+
+/* Stop button */
+.stop-button-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stop-button {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 64rpx;
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 32rpx rgba(54, 46, 38, 0.12);
+}
+
+.stop-icon {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 10rpx;
+  background-color: #e9332c;
+}
+
+.stop-label {
+  margin-top: 20rpx;
+  color: #8d8578;
+  font-size: 24rpx;
+  font-weight: 500;
+  letter-spacing: 1rpx;
+}
+
+/* Camera button */
+.camera-button-column {
+  position: absolute;
+  right: 40rpx;
+  bottom: 60rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.camera-button {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(54, 46, 38, 0.10);
+}
+
+/* Flat camera icon */
+.camera-body {
+  position: relative;
+  width: 36rpx;
+  height: 24rpx;
+  border-radius: 4rpx;
+  background-color: #8d8578;
+  top: 2rpx;
+}
+
+.camera-body::before {
+  content: "";
+  position: absolute;
+  top: -4rpx;
+  left: 6rpx;
+  width: 12rpx;
+  height: 6rpx;
+  border-radius: 3rpx 3rpx 0 0;
+  background-color: #8d8578;
+}
+
+.camera-lens {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background-color: #faf6ef;
+  border: 3rpx solid #a9a297;
+}
+
+.camera-label {
+  margin-top: 14rpx;
+  color: #a9a297;
+  font-size: 22rpx;
+}
+
+.interview-status {
+  display: block;
+  margin-top: 4rpx;
+  color: #a9a297;
+  font-size: 22rpx;
+  letter-spacing: 1rpx;
+  text-align: center;
+}
+
+.interview-status.degraded { color: #c38b68; }
+
+.interview-button-column {
+  position: absolute;
+  bottom: 60rpx;
+  left: 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.interview-button {
+  display: flex;
+  width: 88rpx;
+  height: 88rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(54, 46, 38, 0.10);
+}
+
+.interview-button.active { background: #fff0df; }
+
+.interview-wave {
+  display: flex;
+  height: 42rpx;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.interview-wave-bar { width: 5rpx; border-radius: 99rpx; background: #8d8578; }
+.interview-wave-bar.short { height: 18rpx; }
+.interview-wave-bar.medium { height: 26rpx; }
+.interview-wave-bar.tall { height: 38rpx; }
+.interview-button.active .interview-wave-bar { background: #e9332c; }
+
+.interview-label {
+  margin-top: 14rpx;
+  color: #a9a297;
+  font-size: 22rpx;
+}
+
+.interview-label.active { color: #e9332c; }

@@ -1,0 +1,263 @@
+<view class="screen detail-screen">
+  <view class="detail-toolbar" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx;">
+    <view class="tool-button back-button" bindtap="goBack" aria-label="返回">
+      <text class="back-icon ri-arrow-left-s-line"></text>
+    </view>
+    <view class="toolbar-actions">
+      <button class="play-button {{playbackMode === 'playing' ? 'playing' : ''}}" bindtap="togglePlayback" aria-label="{{playbackMode === 'playing' ? '停止播放' : '播放录音'}}">
+        <canvas class="playback-ring-canvas" canvas-id="playbackRingCanvas" wx:if="{{playbackMode !== 'idle'}}"></canvas>
+        <text class="play-icon ri-play-fill"></text>
+      </button>
+      <button class="tool-button" bindtap="insertPhoto" aria-label="插入图片">
+        <view class="image-icon">
+          <view class="image-sun"></view>
+          <view class="image-mountain"></view>
+        </view>
+      </button>
+      <view class="history-button-group">
+        <button class="tool-button history-button history-undo" disabled="{{!versionNav.canUndo}}" data-direction="-1" bindtap="navigateVersion" aria-label="上一版">
+          <text class="history-icon ri-arrow-go-back-line"></text>
+        </button>
+        <button class="tool-button history-button history-redo" disabled="{{!versionNav.canRedo}}" data-direction="1" bindtap="navigateVersion" aria-label="下一版">
+          <text class="history-icon ri-arrow-go-forward-line"></text>
+        </button>
+      </view>
+      <button class="tool-button" bindtap="showMoreActions" aria-label="更多">
+        <text class="more-icon">•••</text>
+      </button>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state">正在加载...</view>
+  <view wx:elif="{{!current}}" class="empty card">
+    <text class="empty-title">文章还没生成</text>
+    <text class="empty-sub">稍后刷新，或回到列表查看处理状态。</text>
+  </view>
+  <view wx:else class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight + 40}}px + 26rpx);">
+    <view class="article-head">
+      <text class="article-title">{{current.title}}</text>
+      <view class="article-meta">
+        <text>{{rec.timeLabel || rec.uploaded || ''}}</text>
+        <button class="style-trigger" bindtap="openStyleSheet">
+          <text class="style-mark">✎</text>
+          <text>{{styleLabel}}</text>
+          <text class="meta-chevron">›</text>
+        </button>
+      </view>
+    </view>
+
+    <scroll-view wx:if="{{articleTabs.length > 1}}" class="article-tabs" scroll-x enhanced show-scrollbar="{{false}}">
+      <button class="article-tab {{item.active ? 'active' : ''}}" wx:for="{{articleTabs}}" wx:key="index" data-index="{{item.index}}" bindtap="selectArticle">{{item.title}}</button>
+    </scroll-view>
+
+    <view class="article">
+      <block wx:for="{{blocks}}" wx:key="index">
+        <view wx:if="{{item.type === 'paragraph'}}" class="paragraph-row" data-index="{{index}}" bindlongpress="longpressBlock">
+          <text class="paragraph-locator" wx:if="{{holdEditLocatorsVisible}}">{{item.lineNo}}</text>
+          <text class="paragraph">{{item.text}}</text>
+        </view>
+        <view wx:else class="photo-block" data-index="{{index}}" bindtouchstart="startImageLongpress" bindtouchmove="moveImageLongpress" bindtouchend="finishImageLongpress" bindtouchcancel="finishImageLongpress">
+          <text class="photo-line-locator" wx:if="{{holdEditLocatorsVisible}}">{{item.lineNo}}</text>
+          <text class="photo-image-locator" wx:if="{{holdEditLocatorsVisible && item.imageNo}}">图{{item.imageNo}}</text>
+          <image wx:if="{{item.url}}" id="article-photo-{{index}}" class="article-image {{item.photoState === 'loading' ? 'preloading' : ''}}" src="{{item.url}}" mode="widthFix" data-index="{{index}}" bindload="onArticleImageLoad" binderror="onArticleImageError" />
+          <view wx:if="{{item.photoState === 'loading' || item.photoState === 'grace'}}" class="photo-placeholder photo-making grace"></view>
+          <view wx:elif="{{item.photoState === 'making'}}" class="photo-placeholder photo-making">
+            <text class="photo-making-icon ri-image-line"></text>
+            <text class="photo-making-title">正在制作中</text>
+            <view class="photo-making-dots"><text class="photo-making-dot"></text><text class="photo-making-dot"></text><text class="photo-making-dot"></text></view>
+            <text class="photo-making-sub">约 1 分钟完成</text>
+          </view>
+          <view wx:elif="{{item.photoState === 'failed'}}" class="photo-placeholder photo-making-failed">
+            <text class="photo-making-icon ri-image-line"></text>
+            <text class="photo-failed-title">暂时无法显示</text>
+            <button class="photo-making-retry" data-key="{{item.key}}" bindtap="retryMakingPhoto">重试</button>
+          </view>
+          <view wx:elif="{{!item.url}}" class="photo-placeholder">{{item.photoState === 'loadFailed' || item.failed ? '图片加载失败' : '图片加载中...'}}</view>
+        </view>
+      </block>
+    </view>
+
+    <view class="editor-panel" wx:if="{{editPanelOpen}}">
+      <view class="editor-head">
+        <text class="editor-title">修改文章</text>
+        <text class="muted">{{editState || '未连接'}}</text>
+      </view>
+      <textarea class="field edit-field" value="{{editText}}" bindinput="onEditInput" placeholder="输入修改要求，例如：把开头改得更直接" />
+      <button class="primary" bindtap="submitEdit">提交修改</button>
+      <text wx:if="{{editQueue.length}}" class="queue-tip">还有 {{editQueue.length}} 条修改排队中</text>
+    </view>
+
+    <view class="history card" wx:if="{{historyOpen}}">
+      <view class="row">
+        <text>版本历史</text>
+        <text class="muted">当前 {{history.head || 0}}</text>
+      </view>
+      <view class="version-row" wx:for="{{history.versions}}" wx:key="index">
+        <view>
+          <text class="version-title">版本 {{item.v != null ? item.v : index}}</text>
+          <text class="version-meta">{{item.createdAt || item.ts || ''}}</text>
+        </view>
+        <button class="version-btn" data-head="{{item.v != null ? item.v : index}}" bindtap="switchVersion">切换</button>
+      </view>
+      <view wx:if="{{!history.versions || history.versions.length === 0}}" class="version-empty">暂无历史版本</view>
+    </view>
+  </view>
+
+  <view class="more-menu-layer" wx:if="{{moreMenuOpen}}" bindtap="closeMoreMenu">
+    <view class="more-menu-card" style="top: {{toolbarTop + toolbarHeight + 20}}px;" catchtap="noop">
+      <view class="more-menu-row" data-action="publishWechat" bindtap="runMoreMenuAction">
+        <text class="more-menu-check"></text>
+        <text class="more-menu-label">{{hasWechatDraft ? '更新公众号草稿' : '发布公众号草稿'}}</text>
+        <text class="more-menu-icon ri-send-plane-2-line"></text>
+      </view>
+      <view class="more-menu-row" data-action="community" bindtap="runMoreMenuAction">
+        <text class="more-menu-check">{{sharedToCommunity ? '✓' : ''}}</text>
+        <text class="more-menu-label">VD社区可见</text>
+        <text class="more-menu-icon ri-team-line"></text>
+      </view>
+      <view class="more-menu-row" data-action="share" bindtap="runMoreMenuAction">
+        <text class="more-menu-check"></text>
+        <text class="more-menu-label">分享</text>
+        <text class="more-menu-icon ri-share-forward-line"></text>
+      </view>
+      <view class="more-menu-separator"></view>
+      <view class="more-menu-row danger" data-action="delete" bindtap="runMoreMenuAction">
+        <text class="more-menu-check"></text>
+        <text class="more-menu-label">删除</text>
+        <text class="more-menu-icon ri-delete-bin-6-line"></text>
+      </view>
+    </view>
+  </view>
+
+  <view class="style-sheet-layer" wx:if="{{styleSheetOpen}}" bindtap="closeStyleSheet">
+    <view class="style-sheet-panel" catchtap="noop">
+      <view class="style-sheet-close" bindtap="closeStyleSheet" aria-label="关闭">
+        <text class="style-sheet-close-icon ri-close-line"></text>
+      </view>
+      <view class="style-sheet-head">
+        <text class="style-sheet-title">换个风格重写</text>
+        <text class="style-sheet-sub">选一个范文版本，把本文重写一遍。原文不变，可随时换回。</text>
+      </view>
+      <view class="style-sheet-loading" wx:if="{{styleSheetLoading}}">正在加载文风...</view>
+      <scroll-view wx:else class="style-sheet-list" scroll-y enhanced show-scrollbar="{{false}}">
+        <button
+          class="style-sheet-row {{item.selected ? 'selected' : ''}}"
+          wx:for="{{styleSheetRows}}"
+          wx:key="v"
+          data-version="{{item.v}}"
+          bindtap="selectStyleSheetVersion">
+          <text class="style-sheet-version">v{{item.v}}</text>
+          <view class="style-sheet-copy">
+            <text class="style-sheet-preview">{{item.preview}}</text>
+            <text class="style-sheet-meta">{{item.words}} 字 · {{item.date || '未记录日期'}}</text>
+          </view>
+          <view class="style-sheet-radio">
+            <text wx:if="{{item.selected}}" class="style-sheet-check ri-check-line"></text>
+          </view>
+        </button>
+      </scroll-view>
+      <button class="style-sheet-submit" disabled="{{styleSheetLoading || !styleSheetRows.length}}" bindtap="submitStyleSheet">
+        <text class="style-sheet-submit-icon ri-loop-left-line"></text>
+        <text>{{styleSheetButtonText}}</text>
+      </button>
+    </view>
+  </view>
+
+  <view class="edit-dock">
+    <view class="photo-insert-tip" wx:if="{{photoInsertPromptVisible}}">
+      <text class="photo-insert-status">{{photoInsertTip}}</text>
+      <text wx:if="{{photoInsertInstruction}}" class="photo-insert-instruction">✎ {{photoInsertInstruction}}</text>
+    </view>
+    <view class="edit-feedback-reply {{editReplyOk ? 'ok' : 'error'}}" wx:if="{{editReply}}">
+      <text class="edit-feedback-icon">{{editReplyOk ? '✨' : '⚠'}}</text>
+      <text>{{editReply}}</text>
+    </view>
+    <view
+      class="edit-feedback-row {{item.inFlight ? 'in-flight' : 'queued'}}"
+      wx:for="{{editFeedbackQueue}}"
+      wx:key="id">
+      <text class="edit-feedback-icon">{{item.inFlight ? '✎' : '◷'}}</text>
+      <text class="edit-feedback-text">{{item.text}}</text>
+    </view>
+    <view class="hold-edit-transcript" wx:if="{{holdEditBubbleVisible}}">
+      <text>{{holdEditTranscriptText}}</text>
+      <view class="hold-edit-transcript-tail"></view>
+    </view>
+    <button
+      class="hold-edit-button {{holdEditState}}"
+      bindtouchstart="startHoldArticleEdit"
+      bindtouchmove="moveHoldArticleEdit"
+      bindtouchend="finishHoldArticleEdit"
+      bindtouchcancel="cancelHoldArticleEdit">
+      <view class="small-mic">
+        <view class="small-mic-head"></view>
+        <view class="small-mic-stand"></view>
+        <view class="small-mic-base"></view>
+      </view>
+      <text>{{holdEditButtonText}}</text>
+    </button>
+  </view>
+
+  <view class="photo-sheet" wx:if="{{photoSheetOpen}}">
+    <view class="photo-sheet-panel">
+      <view class="photo-sheet-top" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx; padding-right: {{photoSheetToolbarRightPadding}}px;">
+        <button class="photo-strip-close" bindtap="closePhotoSheet" aria-label="返回">
+          <text class="photo-strip-back-icon ri-arrow-left-s-line"></text>
+        </button>
+        <view class="photo-sheet-spacer"></view>
+        <button class="photo-sheet-done" disabled="{{!photoPickerCount || photoUploading}}" bindtap="uploadDetailPhotos">完成</button>
+      </view>
+
+      <view class="photo-sheet-content" style="padding-top: calc({{photoSheetTopPadding}}px + 26rpx);">
+        <view class="photo-sheet-empty" wx:if="{{!photoPickerCount}}">
+          <view class="photo-sheet-image-icon">
+            <view class="image-icon">
+              <view class="image-sun"></view>
+              <view class="image-mountain"></view>
+            </view>
+          </view>
+          <text class="photo-sheet-title">插入图片</text>
+          <text class="photo-sheet-sub">拍照或从相册选择，照片会交给 AI 放进文章</text>
+        </view>
+
+        <scroll-view class="photo-sheet-strip" wx:else scroll-x enhanced show-scrollbar="{{false}}">
+          <view class="photo-sheet-thumb-wrap" wx:for="{{photoPickerPhotos}}" wx:key="path">
+            <image class="photo-sheet-thumb" src="{{item.path}}" mode="aspectFill" />
+            <view class="photo-sheet-thumb-delete" data-index="{{index}}" bindtap="removeDetailPhoto" aria-label="删除图片">
+              <text class="photo-sheet-thumb-delete-icon ri-close-line"></text>
+            </view>
+          </view>
+        </scroll-view>
+
+        <view class="photo-sheet-status" wx:if="{{photoSheetStatus || photoUploading || photoUploadFailed}}">
+          {{photoSheetStatus || (photoUploading ? '正在上传图片...' : '') || (photoUploadFailed ? '上传失败，请重试' : '')}}
+        </view>
+
+        <view class="photo-sheet-actions">
+          <button class="photo-choice" data-source="album" bindtap="chooseDetailPhoto">
+            <view class="image-icon">
+              <view class="image-sun"></view>
+              <view class="image-mountain"></view>
+            </view>
+            <text>相册</text>
+          </button>
+          <button class="photo-choice" data-source="camera" bindtap="chooseDetailPhoto">
+            <text class="camera-icon">▣</text>
+            <text>拍照</text>
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <canvas id="detailPhotoCanvas" canvas-id="detailPhotoCanvas" type="2d" class="photo-canvas"></canvas>
+  <config-menu
+    open="{{longpressMenuOpen}}"
+    menu="{{longpressMenu}}"
+    anchor="{{longpressAnchor}}"
+    anchor-type="{{longpressTarget.kind}}"
+    local-rows="{{longpressLocalRows}}"
+    bindpick="onLongpressPick"
+    bindlocalpick="onLongpressLocalPick"
+    bindclose="closeLongpressMenu" />
+</view>

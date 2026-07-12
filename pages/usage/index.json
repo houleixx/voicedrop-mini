@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "算力",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "page-header": "../../components/page-header/index"
+  }
+}

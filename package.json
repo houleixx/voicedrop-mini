@@ -1,0 +1,14 @@
+{
+  "name": "voicedrop-mini",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "validate:miniapp": "node scripts/validate-miniapp.js"
+  },
+  "dependencies": {
+    "pako": "^3.0.1",
+    "remixicon-weapp": "^2.5.0",
+    "ws": "^8.21.0"
+  }
+}

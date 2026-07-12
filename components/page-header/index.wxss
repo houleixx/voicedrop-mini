@@ -1,0 +1,96 @@
+@import '../../styles/remixicon.wxss';
+
+.page-header {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding-top: 0;
+  padding-right: 32rpx;
+  padding-bottom: 0;
+  background: #faf6ef;
+}
+
+.header-back {
+  position: absolute;
+  left: 32rpx;
+  bottom: 24rpx;
+  z-index: 1;
+  display: flex;
+  width: 64rpx;
+  height: 64rpx;
+  min-width: 64rpx;
+  max-width: 64rpx;
+  min-height: 64rpx;
+  max-height: 64rpx;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border-radius: 16rpx;
+  background: #ffffff;
+  box-shadow: 0 6rpx 18rpx rgba(65, 52, 41, 0.14);
+  flex-shrink: 0;
+}
+
+.header-back:active {
+  background: #eadccd;
+}
+
+.header-back-icon {
+  width: 38rpx;
+  height: 38rpx;
+  color: #2a2521;
+  font-family: 'remixicon' !important;
+  font-size: 38rpx;
+  font-weight: 700;
+  line-height: 38rpx;
+  text-align: center;
+}
+
+.header-back-icon-arrow::before {
+  content: "\ea64";
+}
+
+.header-spacer {
+  width: 64rpx;
+  height: 64rpx;
+  min-width: 64rpx;
+  max-width: 64rpx;
+  min-height: 64rpx;
+  max-height: 64rpx;
+  padding: 0;
+  margin: 0;
+  border-radius: 16rpx;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.header-title {
+  position: absolute;
+  left: 128rpx;
+  right: 128rpx;
+  bottom: 24rpx;
+  height: 88rpx;
+  min-width: 0;
+  line-height: 88rpx;
+  text-align: center;
+  color: #2a2521;
+  font-size: 36rpx;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-right {
+  position: absolute;
+  right: 32rpx;
+  bottom: 24rpx;
+  display: flex;
+  height: 88rpx;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  min-width: 64rpx;
+}

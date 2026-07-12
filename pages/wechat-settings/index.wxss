@@ -1,0 +1,265 @@
+@import '../../styles/remixicon.wxss';
+
+.screen {
+  padding: 32rpx;
+  background: #faf7f3;
+}
+
+.page-body {
+  padding-bottom: 40rpx;
+}
+
+/* Top info card */
+.info-card {
+  display: flex;
+  align-items: center;
+  margin-top: 24rpx;
+  padding: 24rpx 28rpx;
+  border: 1rpx solid #efe4d4;
+  border-radius: 12rpx;
+  background: #ffffff;
+}
+
+.info-card-connected {
+  border-color: #d6ead7;
+  background: #f3fbf1;
+}
+
+.info-icon {
+  margin-right: 16rpx;
+  color: #aaa39a;
+  font-size: 32rpx;
+}
+
+.status-dot {
+  width: 14rpx;
+  height: 14rpx;
+  margin-right: 16rpx;
+  border-radius: 50%;
+  background: #2f9e44;
+}
+
+.info-copy {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.connected-title {
+  color: #245b2d;
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.connected-subtitle {
+  margin-top: 4rpx;
+  color: #5c8d61;
+  font-size: 24rpx;
+  line-height: 1.3;
+}
+
+.info-text {
+  flex: 1;
+  color: #8a8175;
+  font-size: 26rpx;
+  line-height: 1.4;
+}
+
+/* Toggle card */
+.toggle-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+  padding: 28rpx;
+  border: 1rpx solid #efe4d4;
+  border-radius: 12rpx;
+  background: #ffffff;
+}
+
+.toggle-left {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  margin-right: 20rpx;
+}
+
+.toggle-title {
+  color: #2a2521;
+  font-size: 30rpx;
+  font-weight: 800;
+  margin-bottom: 6rpx;
+}
+
+.toggle-desc {
+  color: #8a8175;
+  font-size: 24rpx;
+  line-height: 1.35;
+}
+
+/* Section titles */
+.section-title {
+  display: block;
+  margin: 32rpx 0 14rpx;
+  color: #2a2521;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+/* Input cards */
+.input-card {
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx;
+  margin-bottom: 14rpx;
+  border: 1rpx solid #eadccd;
+  border-radius: 10rpx;
+  background: #ffffff;
+  min-height: 76rpx;
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+.input-field {
+  flex: 1;
+  width: 100%;
+  color: #2a2521;
+  font-size: 28rpx;
+}
+
+.input-field::placeholder {
+  color: #c9c6c1;
+}
+
+.input-icon {
+  position: absolute;
+  right: 24rpx;
+  color: #8a8175;
+  font-size: 36rpx;
+}
+
+.input-note {
+  display: block;
+  margin: 10rpx 8rpx 0;
+  color: #b2aaa1;
+  font-size: 24rpx;
+  line-height: 1.45;
+}
+
+/* Help row */
+.help-row {
+  display: flex;
+  align-items: center;
+  margin: 16rpx 0 0;
+  color: #c7432f;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.help-arrow {
+  margin-left: 8rpx;
+  font-size: 24rpx;
+}
+
+/* Divider */
+.divider {
+  height: 1rpx;
+  margin: 32rpx 0;
+  background: #efe8dd;
+}
+
+/* Section description */
+.section-desc {
+  display: block;
+  margin-bottom: 16rpx;
+  color: #8a8175;
+  font-size: 24rpx;
+  line-height: 1.45;
+}
+
+/* IP card */
+.ip-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24rpx;
+  margin-bottom: 28rpx;
+  border: 1rpx solid #eadccd;
+  border-radius: 10rpx;
+  background: #ffffff;
+  min-height: 76rpx;
+}
+
+.ip-address {
+  flex: 1;
+  color: #2a2521;
+  font-size: 28rpx;
+  font-family: monospace;
+  letter-spacing: 1rpx;
+}
+
+.copy-icon {
+  display: flex;
+  align-items: center;
+  color: #c7432f;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.icon-only {
+  font-size: 40rpx;
+}
+
+/* Save button */
+.save-button {
+  width: 100%;
+  min-height: 88rpx;
+  margin-top: 28rpx;
+  border-radius: 14rpx;
+  background: #e8a894;
+  color: #ffffff;
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 88rpx;
+  text-align: center;
+  border: none;
+}
+
+.save-button-active {
+  background: #c7432f;
+}
+
+.save-button::after {
+  border: none;
+}
+
+.save-button[disabled] {
+  opacity: 0.5;
+}
+
+.disconnect-button {
+  width: 100%;
+  min-height: 82rpx;
+  margin-top: 16rpx;
+  border-radius: 14rpx;
+  background: #ffffff;
+  color: #8a8175;
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 82rpx;
+  text-align: center;
+  border: 1rpx solid #eadccd;
+}
+
+.disconnect-button::after {
+  border: none;
+}
+
+.disconnect-button[disabled] {
+  opacity: 0.5;
+}

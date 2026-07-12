@@ -1,0 +1,18 @@
+<view class="page">
+  <view class="hero">
+    <view class="brand-mark">V</view>
+    <text class="title">{{title}}</text>
+    <text class="subtitle">{{subtitle}}</text>
+    <button class="primary-button" bindtap="onStartTap">开始使用</button>
+  </view>
+
+  <view class="panel">
+    <text class="section-title">基础流程</text>
+    <view class="step-list">
+      <view class="step" wx:for="{{steps}}" wx:key="*this">
+        <view class="step-dot">{{index + 1}}</view>
+        <text class="step-text">{{item}}</text>
+      </view>
+    </view>
+  </view>
+</view>

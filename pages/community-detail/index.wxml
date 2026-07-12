@@ -1,0 +1,108 @@
+<view class="screen community-detail-screen">
+  <view class="detail-toolbar" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx;">
+    <view class="tool-button back-button" bindtap="goBack" aria-label="返回">
+      <text class="back-icon ri-arrow-left-s-line"></text>
+    </view>
+    <view class="toolbar-actions">
+      <button class="tool-button icon-only-button" bindtap="tip" aria-label="投币">
+        <text class="action-icon ri-flashlight-line"></text>
+      </button>
+      <button class="tool-button icon-only-button {{liked ? 'liked' : ''}}" bindtap="toggleLike" aria-label="喜欢">
+        <text class="action-icon {{liked ? 'ri-heart-fill' : 'ri-heart-line'}}"></text>
+      </button>
+      <button class="tool-button" bindtap="showMoreActions" aria-label="更多">
+        <text class="more-icon ri-more-fill"></text>
+      </button>
+    </view>
+  </view>
+
+  <view class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight + 20}}px + 26rpx);">
+    <view class="article-head">
+      <text class="article-title">{{article.title || post.title || '社区文章'}}</text>
+      <text class="meta">{{post.author || post.authorName || '匿名作者'}} · 社区分享</text>
+      <view class="reply-to" wx:if="{{replyToPost && !loading}}" bindtap="openReplyTo">
+        <text class="reply-to-prefix">回应</text>
+        <text class="reply-to-title">{{replyToPost.title || '原文'}}</text>
+      </view>
+    </view>
+    <view class="loading-card" wx:if="{{loading}}">
+      <text>内容加载中...</text>
+    </view>
+    <view class="loaded-content" wx:else>
+      <view class="article card" wx:if="{{sections.length}}">
+        <block wx:for="{{sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="sectionIndex">
+          <text wx:if="{{section.title}}" class="section-title">{{section.title}}</text>
+          <block wx:for="{{section.blocks}}" wx:for-item="item" wx:key="index">
+            <text wx:if="{{item.type === 'paragraph'}}" class="paragraph">{{item.text}}</text>
+            <view wx:else class="photo-block">
+              <image class="article-image" src="{{item.url}}" mode="widthFix" />
+            </view>
+          </block>
+        </block>
+      </view>
+      <view class="empty card" wx:else>社区正文暂不可读，请稍后刷新或打开分享链接查看。</view>
+
+      <view class="reply-section card" wx:if="{{replies.length}}">
+        <view class="row">
+          <text>{{replies.length}} 篇回应</text>
+        </view>
+        <view class="reply" wx:for="{{replies}}" wx:key="shareId" data-index="{{index}}" bindtap="openReply">
+          <view class="reply-accent"></view>
+          <view class="reply-copy">
+            <text class="meta">{{item.author || item.authorName || '匿名作者'}} · {{item.replyLabel || '续文'}}</text>
+            <text class="reply-title">{{item.title || '续文'}}</text>
+            <text class="reply-preview" wx:if="{{item.preview}}">{{item.preview}}</text>
+            <text class="reply-more" wx:if="{{item.hasMore}}">继续阅读 ↓</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="more-menu-layer" wx:if="{{moreMenuOpen}}" bindtap="closeMoreMenu">
+    <view class="more-menu-card" style="top: {{toolbarTop + toolbarHeight + 20}}px;" catchtap="noop">
+      <view class="more-menu-row" data-action="reply" bindtap="runMoreMenuAction">
+        <text class="more-menu-label">写回应</text>
+        <text class="more-menu-icon ri-mic-line"></text>
+      </view>
+      <view class="more-menu-row more-menu-share-row">
+        <text class="more-menu-label">分享</text>
+        <text class="more-menu-icon ri-share-box-line"></text>
+        <button class="more-menu-share-button" open-type="share" bindtap="shareLink" aria-label="分享"></button>
+      </view>
+      <view class="more-menu-row is-danger" data-action="report" bindtap="runMoreMenuAction">
+        <text class="more-menu-label">举报</text>
+        <text class="more-menu-icon ri-flag-line"></text>
+      </view>
+      <view class="more-menu-row is-danger" data-action="blockAuthor" bindtap="runMoreMenuAction">
+        <text class="more-menu-label">屏蔽此用户</text>
+        <text class="more-menu-icon ri-hand-heart-line"></text>
+      </view>
+    </view>
+  </view>
+
+  <view class="reply-recording-dock" wx:if="{{replyRecording}}">
+    <view class="reply-recording-top">
+      <text class="reply-recording-title">回复：{{article.title || post.title || '社区文章'}}</text>
+      <text class="reply-recording-cancel" wx:if="{{!replyUploading}}" bindtap="cancelReplyRecording">取消</text>
+    </view>
+    <view class="reply-recording-controls">
+      <view class="reply-recording-dot"></view>
+      <text class="reply-recording-time">{{replyTimerDisplay}}</text>
+      <view class="reply-recording-wave">
+        <view
+          class="reply-wave-bar"
+          wx:for="{{replyWaveBars}}"
+          wx:key="index"
+          style="height: {{item}}rpx;"
+        ></view>
+      </view>
+      <view class="reply-stop-halo {{replyUploading ? 'is-uploading' : ''}}" bindtap="stopReplyRecording">
+        <view class="reply-stop-button">
+          <view class="reply-stop-square"></view>
+        </view>
+      </view>
+    </view>
+    <text class="reply-recording-hint">{{replyUploading ? '正在保存回应...' : '点停止，保存回应'}}</text>
+  </view>
+</view>

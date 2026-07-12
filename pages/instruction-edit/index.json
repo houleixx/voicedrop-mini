@@ -1,0 +1,5 @@
+{
+  "navigationBarTitleText": "编辑提示词",
+  "navigationStyle": "custom",
+  "usingComponents": { "page-header": "../../components/page-header/index" }
+}

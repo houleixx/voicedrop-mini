@@ -1,0 +1,101 @@
+<view class="screen recording-screen">
+  <home-tabs current="{{currentHomeTab}}" tabs="{{homeTabs}}" bind:change="switchHomeTab" bind:settings="openSettings" />
+
+  <scroll-view class="scroll-content" scroll-y enhanced style="top: {{scrollContentTop}}px;" bindtouchstart="onScreenTouchStart">
+    <view class="scroll-inner {{activeTab === 'recordings' ? 'with-record-dock' : ''}}">
+    <block wx:if="{{activeTab === 'recordings'}}">
+      <view wx:if="{{error}}" class="notice">{{error}}</view>
+      <view wx:elif="{{loading}}" class="notice">正在加载...</view>
+
+      <view wx:if="{{!loading && !error && records.length === 0}}" class="empty card">
+        <text class="empty-title">还没有录音</text>
+        <text class="empty-sub">{{selectedTag ? '当前标签还没有录音。' : '录一段话，VoiceDrop 会把它整理成文章。'}}</text>
+      </view>
+
+      <view class="list" wx:if="{{!loading && !error && records.length > 0}}">
+        <view class="record-row" wx:for="{{records}}" wx:key="stem"
+              bindtouchstart="onRowTouchStart"
+              bindtouchmove="onRowTouchMove"
+              bindtouchend="onRowTouchEnd"
+              data-index="{{index}}">
+          <view class="record-card {{item.isEmpty ? 'silent' : ''}}" style="transform: translateX({{item._translateX || 0}}px);" data-index="{{index}}" bindtap="openDetail">
+            <view class="record-icon-wrapper">
+              <view class="record-icon" aria-hidden="true">
+                <view class="record-wave">
+                  <view class="record-wave-line record-wave-line-short"></view>
+                  <view class="record-wave-line record-wave-line-tall"></view>
+                  <view class="record-wave-line record-wave-line-mid record-wave-line-last"></view>
+                </view>
+              </view>
+              <view wx:if="{{commandTalking && item._commandRef}}" class="command-badge">
+                {{item._commandRef}}
+              </view>
+            </view>
+            <view class="record-main">
+              <text class="record-name">{{item.rowTitle}}</text>
+              <view class="record-meta">
+                <text>{{item.timeLabel || item.uploaded || '上传中'}}</text>
+                <text class="duration">{{item.durationLabel || '音频'}}</text>
+                <text class="status-dot"></text>
+                <text class="status">{{item.statusLabel}}</text>
+              </view>
+            </view>
+            <text class="chevron" aria-hidden="true">›</text>
+          </view>
+          <view class="delete-btn" data-index="{{index}}" bindtap="confirmDelete">删除</view>
+        </view>
+      </view>
+    </block>
+
+    <block wx:elif="{{activeTab === 'community'}}">
+      <view wx:if="{{communityError}}" class="notice">{{communityError}}</view>
+      <view wx:elif="{{communityLoading}}" class="notice">正在加载...</view>
+      <view wx:elif="{{communityPosts.length === 0}}" class="empty card">
+        <text class="empty-title">社区暂无文章</text>
+        <text class="empty-sub">稍后刷新，或先分享自己的文章。</text>
+      </view>
+
+      <view wx:else class="post-list">
+        <view class="post" wx:for="{{communityPosts}}" wx:key="shareId" data-index="{{index}}" bindtap="openPost">
+          <view class="post-icon" aria-hidden="true">
+            <text class="doc-icon-img ri-article-line"></text>
+          </view>
+          <view class="post-main">
+            <text class="post-title">{{item.title || '社区文章'}}</text>
+            <view class="post-meta">
+              <text>{{item.author || item.authorName || '匿名作者'}}</text>
+              <text wx:if="{{item.dateLabel}}" class="post-time">{{item.dateLabel}}</text>
+            </view>
+          </view>
+          <text class="chevron" aria-hidden="true">›</text>
+        </view>
+      </view>
+    </block>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{activeTab === 'recordings'}}" class="record-dock">
+    <!-- Transcript text above button (Android: fabStatus) -->
+    <view wx:if="{{commandStatusText}}" class="fab-status {{commandStatusOk ? '' : 'error'}}">
+      {{commandStatusText}}
+    </view>
+
+    <view class="mic-button-wrapper {{commandTalking ? 'talking' : ''}} {{commandCanceled ? 'canceled' : ''}}">
+      <view class="mic-button {{recording ? 'recording' : ''}}"
+            bindtouchstart="onMicTouchStart"
+            bindtouchmove="onMicTouchMove"
+            bindtouchend="onMicTouchEnd"
+            bindtouchcancel="onMicTouchCancel"
+            aria-label="{{recording ? '停止录音' : '开始录音'}}">
+        <view class="mic-icon">
+          <view class="mic-head"></view>
+          <view class="mic-stand"></view>
+          <view class="mic-base"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- Hint text below button (Android: fabLabel) -->
+    <text class="dock-hint {{commandTalking ? 'talking' : ''}} {{commandCanceled ? 'canceled' : ''}}">{{dockHint}}</text>
+  </view>
+</view>

@@ -1,0 +1,65 @@
+<view class="screen">
+  <page-header title="算力" />
+  <view class="page-body usage-body">
+    <!-- Loading state -->
+    <view wx:if="{{loading}}" class="loading-container">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <!-- Content -->
+    <view wx:else>
+      <view class="balance-hero">
+        <view class="hero-glow"></view>
+        <text class="hero-label">剩余算力</text>
+        <view class="hero-main">
+          <text class="hero-value">{{balanceDisplay}}</text>
+          <text class="hero-capacity">≈ {{capacity}} 篇</text>
+        </view>
+        <text class="hero-meta">累计获得 {{earnedDisplay}} · 已用 {{spentDisplay}}</text>
+      </view>
+
+      <view wx:if="{{hasSources}}" class="summary-section">
+        <text class="section-label">算力来源</text>
+        <view class="summary-card">
+          <view class="summary-row" wx:for="{{sources}}" wx:key="id">
+            <view class="summary-copy">
+              <text class="summary-title">{{item.title}}</text>
+              <text wx:if="{{item.countText}}" class="summary-count">{{item.countText}}</text>
+            </view>
+            <text class="summary-amount {{item.amountClass}}">{{item.amountText}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{hasSpendSummary}}" class="summary-section">
+        <text class="section-label">花费总结</text>
+        <view class="summary-card">
+          <view class="summary-row" wx:for="{{spendSummary}}" wx:key="id">
+            <view class="summary-copy">
+              <text class="summary-title">{{item.title}}</text>
+              <text wx:if="{{item.countText}}" class="summary-count">{{item.countText}}</text>
+            </view>
+            <text class="summary-amount {{item.amountClass}}">{{item.amountText}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="ledger-section">
+        <text class="section-label">明细</text>
+        <view class="ledger-card">
+          <view class="entry" wx:for="{{entries}}" wx:key="id">
+            <view class="entry-copy">
+              <text class="entry-title">{{item.title}}</text>
+              <text class="entry-meta">{{item.timeText}}</text>
+            </view>
+            <text class="entry-amount {{item.amountClass}}">{{item.amountText}}</text>
+          </view>
+          <view wx:if="{{!hasEntries}}" class="empty-ledger">
+            <text>暂无算力明细</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "收集文风",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "page-header": "../../components/page-header/index"
+  }
+}

@@ -1,0 +1,58 @@
+<view class="screen">
+  <page-header title="收集文风" />
+  <view class="page-body">
+    <view class="card audio-task">
+      <view class="row">
+        <text>从音频成文</text>
+        <text class="muted">{{audioFile ? audioFile.name : '选择聊天文件里的音频'}}</text>
+      </view>
+      <view class="audio-file" wx:if="{{audioFile}}" bindtap="clearAudio">
+        <text class="audio-name">{{audioFile.name}}</text>
+        <text class="item-meta">{{audioFile.size ? audioFile.size + ' bytes' : '已选择'}}</text>
+      </view>
+      <view class="image-actions">
+        <button class="ghost" bindtap="chooseAudio">选择音频</button>
+        <button class="primary" loading="{{generatingAudio}}" bindtap="generateFromAudio">开始生成文章</button>
+      </view>
+    </view>
+
+    <view class="card image-task">
+      <view class="row">
+        <text>看图写一篇</text>
+        <text class="muted">{{images.length ? images.length + ' 张' : '上传图片生成文章'}}</text>
+      </view>
+      <view class="image-grid" wx:if="{{images.length}}">
+        <view class="image-cell" wx:for="{{images}}" wx:key="path" data-index="{{index}}" bindtap="removeImage">
+          <image class="image-thumb" src="{{item.path}}" mode="aspectFill" />
+        </view>
+      </view>
+      <view class="image-actions">
+        <button class="ghost" bindtap="chooseImages">选择图片</button>
+        <button class="primary" loading="{{generatingImages}}" bindtap="generateFromImages">开始生成文章</button>
+      </view>
+    </view>
+
+    <view class="card form">
+      <input class="field" data-key="title" value="{{title}}" bindinput="onInput" placeholder="标题" />
+      <input class="field" data-key="source" value="{{source}}" bindinput="onInput" placeholder="来源" />
+      <textarea class="field textarea" data-key="text" value="{{text}}" bindinput="onInput" placeholder="粘贴想学习的文章或文字" />
+      <button class="primary" bindtap="collect">收集到文风素材</button>
+    </view>
+
+    <view class="actions">
+      <button class="ghost" bindtap="triggerExtract">提炼并清空</button>
+      <button class="ghost" bindtap="triggerExtractKeep">提炼后保留</button>
+      <button class="danger" bindtap="clearDataset">清空素材</button>
+    </view>
+
+    <view class="card dataset">
+      <view class="row">
+        <text>已收集 {{dataset.length}} 条</text>
+      </view>
+      <view class="item" wx:for="{{dataset}}" wx:key="id">
+        <text class="item-title">{{item.title || item.source || item.id}}</text>
+        <text class="item-meta">{{item.chars}} 字 · {{item.collectedAt}}</text>
+      </view>
+    </view>
+  </view>
+</view>

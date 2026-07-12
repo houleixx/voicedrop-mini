@@ -1,0 +1,32 @@
+{
+  "pages": [
+    "pages/recordings/index",
+    "pages/detail/index",
+    "pages/community/index",
+    "pages/community-detail/index",
+    "pages/settings/index",
+    "pages/account/index",
+    "pages/usage/index",
+    "pages/about/index",
+    "pages/wechat-settings/index",
+    "pages/share-collect/index",
+    "pages/style-settings/index",
+    "pages/instruction-settings/index",
+    "pages/instruction-edit/index",
+    "pages/index/index",
+    "pages/record/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "VoiceDrop Mini",
+    "navigationBarBackgroundColor": "#faf6ef",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#faf6ef"
+  },
+  "permission": {
+    "scope.record": {
+      "desc": "用于录制口述音频并生成文章"
+    }
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
