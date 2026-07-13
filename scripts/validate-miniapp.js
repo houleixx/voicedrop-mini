@@ -3,8 +3,28 @@ const path = require('path')
 
 const root = process.cwd()
 const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
+const project = JSON.parse(fs.readFileSync(path.join(root, 'project.config.json'), 'utf8'))
 const errors = []
 const pageSet = new Set(app.pages || [])
+
+const requiredPackIgnoreFolders = [
+  'node_modules',
+  'tests',
+  'docs',
+  'scripts',
+  '.worktrees',
+  '.superpowers',
+  '.claude'
+]
+const ignoredPackFolders = new Set(((project.packOptions && project.packOptions.ignore) || [])
+  .filter((item) => item && item.type === 'folder')
+  .map((item) => item.value))
+for (const folder of requiredPackIgnoreFolders) {
+  if (!ignoredPackFolders.has(folder)) errors.push(`project.config.json must ignore development folder: ${folder}`)
+}
+if (!project.setting || project.setting.uploadWithSourceMap !== false) {
+  errors.push('project.config.json must disable uploadWithSourceMap to keep release source small')
+}
 
 function exists(rel) {
   return fs.existsSync(path.join(root, rel))
