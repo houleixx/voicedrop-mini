@@ -1098,7 +1098,12 @@ Page({
     this.setData({ editPanelOpen: true })
   },
 
-  startHoldArticleEdit(event) {
+  requestAudioConsent() {
+    const dialog = this.selectComponent && this.selectComponent('#audio-consent-dialog')
+    return dialog && dialog.request ? dialog.request() : Promise.resolve(false)
+  },
+
+  async startHoldArticleEdit(event) {
     if (this._holdEditFinishing || this._holdEditTouchActive) return
     const touch = event && event.touches && event.touches[0]
     this._holdEditStartY = touch ? touch.clientY : 0
@@ -1111,6 +1116,11 @@ Page({
       holdEditTranscriptText: '正在连接…',
       holdEditLocatorsVisible: true
     })
+    if (!await this.requestAudioConsent() || !this._holdEditTouchActive) {
+      this._pendingHoldEditStart = false
+      this.resetHoldArticleEdit()
+      return
+    }
     wx.authorize({
       scope: 'scope.record',
       success: () => {

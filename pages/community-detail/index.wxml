@@ -105,4 +105,5 @@
     </view>
     <text class="reply-recording-hint">{{replyUploading ? '正在保存回应...' : '点停止，保存回应'}}</text>
   </view>
+  <audio-consent-dialog id="audio-consent-dialog" />
 </view>

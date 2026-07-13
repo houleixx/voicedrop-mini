@@ -274,6 +274,48 @@ test('community detail reply action starts in-page voice response recording', ()
   assert.equal(getApp().globalData.pendingReplyTo, undefined)
 })
 
+test('community reply does not request microphone permission when audio consent is denied', async () => {
+  const page = freshCommunityDetailPage([], null)
+  let authorized = false
+  let started = false
+  global.wx.authorize = () => { authorized = true }
+  const ctx = {
+    data: { shareId: 'share-1', replyRecording: false, replyUploading: false },
+    requestAudioConsent: async () => false,
+    beginReplyRecording() { started = true }
+  }
+
+  await page.startReplyRecording.call(ctx)
+
+  assert.equal(authorized, false)
+  assert.equal(started, false)
+})
+
+test('community reply starts only after audio consent and WeChat permission', async () => {
+  const page = freshCommunityDetailPage([], null)
+  let started = ''
+  global.wx.authorize = ({ complete }) => complete({ errMsg: 'authorize:ok' })
+  const ctx = {
+    data: { shareId: 'share-1', replyRecording: false, replyUploading: false },
+    requestAudioConsent: async () => true,
+    beginReplyRecording(shareId) { started = shareId }
+  }
+
+  await page.startReplyRecording.call(ctx)
+
+  assert.equal(started, 'share-1')
+})
+
+test('community detail registers and renders the shared audio consent dialog', () => {
+  const fs = require('node:fs')
+  const path = require('node:path')
+  const config = JSON.parse(fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.json'), 'utf8'))
+  const wxml = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxml'), 'utf8')
+
+  assert.equal(config.usingComponents['audio-consent-dialog'], '/components/audio-consent-dialog/index')
+  assert.match(wxml, /<audio-consent-dialog id="audio-consent-dialog"/)
+})
+
 test('community detail saves uploaded reply recording for automatic community publish', async () => {
   const page = freshCommunityDetailPage([], null)
   const storage = {}

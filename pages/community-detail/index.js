@@ -222,12 +222,18 @@ Page({
   },
 
   reply() {
-    this.startReplyRecording()
+    return this.startReplyRecording()
   },
 
-  startReplyRecording() {
+  requestAudioConsent() {
+    const dialog = this.selectComponent && this.selectComponent('#audio-consent-dialog')
+    return dialog && dialog.request ? dialog.request() : Promise.resolve(false)
+  },
+
+  async startReplyRecording() {
     const shareId = this.data.shareId || (this.data.post && this.data.post.shareId)
     if (!shareId || this.data.replyRecording || this.data.replyUploading) return
+    if (!await this.requestAudioConsent()) return
     wx.authorize({
       scope: 'scope.record',
       complete: (res) => {

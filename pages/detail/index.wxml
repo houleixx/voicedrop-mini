@@ -260,4 +260,5 @@
     bindpick="onLongpressPick"
     bindlocalpick="onLongpressLocalPick"
     bindclose="closeLongpressMenu" />
+  <audio-consent-dialog id="audio-consent-dialog" />
 </view>

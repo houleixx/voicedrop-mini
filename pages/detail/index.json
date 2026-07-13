@@ -2,6 +2,7 @@
   "navigationBarTitleText": "",
   "navigationStyle": "custom",
   "usingComponents": {
-    "config-menu": "../../components/config-menu/index"
+    "config-menu": "../../components/config-menu/index",
+    "audio-consent-dialog": "/components/audio-consent-dialog/index"
   }
 }

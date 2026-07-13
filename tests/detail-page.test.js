@@ -80,7 +80,8 @@ function holdEditContext(page, articleIndex) {
     },
     enqueueInstruction(text, index) {
       enqueued.push({ text, articleIndex: index })
-    }
+    },
+    requestAudioConsent: async () => true
   }
   ;[
     'startHoldArticleEdit',
@@ -1258,7 +1259,8 @@ test('detail page numbers paragraphs and photos while holding to talk like iOS',
     setData(update) { Object.assign(this.data, update) },
     loadArticlePhotos() {},
     applyDoc: page.applyDoc,
-    resetHoldArticleEdit: page.resetHoldArticleEdit
+    resetHoldArticleEdit: page.resetHoldArticleEdit,
+    requestAudioConsent: async () => true
   }
 
   page.applyDoc.call(ctx, {
@@ -1279,7 +1281,7 @@ test('detail page numbers paragraphs and photos while holding to talk like iOS',
     { type: 'paragraph', lineNo: 3, imageNo: 0 }
   ])
 
-  page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
+  await page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
   assert.equal(ctx.data.holdEditLocatorsVisible, true)
 
   await page.finishHoldArticleEdit.call(ctx)
@@ -1661,7 +1663,7 @@ test('detail hold edit streams ASR and submits transcript on release', async () 
   })
   const ctx = holdEditContext(page, 2)
 
-  page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
+  await page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
   handlers.onText('把开头改短', true)
   recorder.frame({ frameBuffer: 'pcm' })
   await page.finishHoldArticleEdit.call(ctx)
@@ -1694,7 +1696,7 @@ test('detail hold edit swipe-up cancel never submits', async () => {
   })
   const ctx = holdEditContext(page)
 
-  page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
+  await page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
   page.moveHoldArticleEdit.call(ctx, { touches: [{ clientY: 330 }] })
   assert.equal(ctx.data.holdEditState, 'canceling')
   await page.finishHoldArticleEdit.call(ctx)
@@ -1722,7 +1724,7 @@ test('detail hold edit ignores permission success after finger released', async 
   })
   const ctx = holdEditContext(page)
 
-  page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
+  await page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
   await page.finishHoldArticleEdit.call(ctx)
   authorizeSuccess()
 
@@ -1748,7 +1750,7 @@ test('detail hold edit unload stops recorder and closes ASR', () => {
   assert.equal(editSessionClosed, true)
 })
 
-test('detail hold edit ASR error stops recorder and resets state', () => {
+test('detail hold edit ASR error stops recorder and resets state', async () => {
   let handlers
   let recorderStopped = false
   const recorder = {
@@ -1768,11 +1770,53 @@ test('detail hold edit ASR error stops recorder and resets state', () => {
   })
   const ctx = holdEditContext(page)
 
-  page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
+  await page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
   handlers.onError('连接失败')
 
   assert.equal(recorderStopped, true)
   assert.equal(ctx.data.holdEditState, 'idle')
+})
+
+test('detail hold edit does not request microphone permission when audio consent is denied', async () => {
+  let authorized = false
+  const page = freshDetailPage({}, {
+    authorize() { authorized = true }
+  })
+  const ctx = holdEditContext(page)
+  ctx.requestAudioConsent = async () => false
+
+  await page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
+
+  assert.equal(authorized, false)
+  assert.equal(ctx.data.holdEditState, 'idle')
+  assert.equal(ctx.data.holdEditLocatorsVisible, false)
+})
+
+test('detail hold edit never starts after the finger is released during consent', async () => {
+  let resolveConsent
+  let authorized = false
+  const consent = new Promise((resolve) => { resolveConsent = resolve })
+  const page = freshDetailPage({}, {
+    authorize() { authorized = true }
+  })
+  const ctx = holdEditContext(page)
+  ctx.requestAudioConsent = () => consent
+
+  const start = page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
+  await page.finishHoldArticleEdit.call(ctx)
+  resolveConsent(true)
+  await start
+
+  assert.equal(authorized, false)
+  assert.equal(ctx.data.holdEditState, 'idle')
+})
+
+test('detail page registers and renders the shared audio consent dialog', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/detail/index.json'), 'utf8'))
+  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+
+  assert.equal(config.usingComponents['audio-consent-dialog'], '/components/audio-consent-dialog/index')
+  assert.match(wxml, /<audio-consent-dialog id="audio-consent-dialog"/)
 })
 
 test('detail page uploads selected photo inline and asks AI to insert it', async () => {
