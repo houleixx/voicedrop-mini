@@ -11,6 +11,7 @@ const recordingQuality = require('../../utils/recording-quality')
 const recordingUtil = require('../../utils/recording')
 const resumeRefresh = require('../../utils/resume-refresh')
 const holdToTalk = require('../../utils/hold-to-talk')
+const audioConsentFlow = require('../../utils/audio-consent-flow')
 
 const app = getApp()
 
@@ -47,6 +48,7 @@ Page({
     communityPosts: [],
     communityError: '',
     communityLoaded: false,
+    audioConsentVisible: false,
     scrollContentTop: 0
   },
 
@@ -99,6 +101,7 @@ Page({
   },
 
   onUnload() {
+    audioConsentFlow.dispose(this)
     if (this.statusSession) this.statusSession.close()
     if (this.commandSession) this.commandSession.close()
     if (this.asrSession) this.asrSession.close()
@@ -436,8 +439,24 @@ Page({
   },
 
   requestAudioConsent() {
-    const dialog = this.selectComponent && this.selectComponent('#audio-consent-dialog')
-    return dialog && dialog.request ? dialog.request() : Promise.resolve(false)
+    return audioConsentFlow.request(this)
+  },
+
+  onAudioConsentReady() {
+    audioConsentFlow.markReady(this)
+  },
+
+  onAudioConsentAgree() {
+    audioConsentFlow.agree(this)
+  },
+
+  onAudioConsentDecline() {
+    audioConsentFlow.decline(this)
+  },
+
+  onAudioConsentViewAgreement() {
+    audioConsentFlow.decline(this)
+    wx.navigateTo({ url: '/pages/audio-consent/index' })
   },
 
   async startRecord() {

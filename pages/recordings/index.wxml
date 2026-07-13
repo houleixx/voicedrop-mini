@@ -98,5 +98,11 @@
     <!-- Hint text below button (Android: fabLabel) -->
     <text class="dock-hint {{commandTalking ? 'talking' : ''}} {{commandCanceled ? 'canceled' : ''}}">{{dockHint}}</text>
   </view>
-  <audio-consent-dialog id="audio-consent-dialog" />
+  <audio-consent-dialog
+    visible="{{audioConsentVisible}}"
+    bind:ready="onAudioConsentReady"
+    bind:agree="onAudioConsentAgree"
+    bind:decline="onAudioConsentDecline"
+    bind:viewagreement="onAudioConsentViewAgreement"
+  />
 </view>
