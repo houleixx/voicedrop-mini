@@ -26,6 +26,7 @@
       </view>
     </view>
     <view class="loading-card" wx:if="{{loading}}">
+      <view class="loading-spinner" aria-hidden="true"></view>
       <text>内容加载中...</text>
     </view>
     <view class="loaded-content" wx:else>

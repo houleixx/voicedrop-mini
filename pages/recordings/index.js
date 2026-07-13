@@ -48,6 +48,7 @@ Page({
     communityPosts: [],
     communityError: '',
     communityLoaded: false,
+    refreshing: false,
     audioConsentVisible: false,
     scrollContentTop: 0
   },
@@ -109,7 +110,11 @@ Page({
   },
 
   onPullDownRefresh() {
-    this.refreshCurrent().finally(() => wx.stopPullDownRefresh())
+    this.refreshFromUser().finally(() => wx.stopPullDownRefresh())
+  },
+
+  onRefresherRefresh() {
+    return this.refreshFromUser()
   },
 
   onShareAppMessage() {
@@ -175,9 +180,28 @@ Page({
     wx.navigateTo({ url: '/pages/settings/index' })
   },
 
-  refreshCurrent() {
-    if (this.data.activeTab === 'community') return this.loadCommunity()
-    return this.load()
+  refreshCurrent(options) {
+    if (this.data.activeTab === 'community') return this.loadCommunity(options)
+    return this.load(options)
+  },
+
+  refreshFromUser() {
+    if (this._refreshPromise) return this._refreshPromise
+    this.setData({ refreshing: true })
+    this._refreshPromise = Promise.resolve(this.refreshCurrent({ silent: true, keepDataOnError: true }))
+      .then((ok) => {
+        if (ok === false) wx.showToast({ title: '加载失败', icon: 'error' })
+        return ok
+      })
+      .catch(() => {
+        wx.showToast({ title: '加载失败', icon: 'error' })
+        return false
+      })
+      .finally(() => {
+        this._refreshPromise = null
+        this.setData({ refreshing: false })
+      })
+    return this._refreshPromise
   },
 
   bindRecorder() {
@@ -252,14 +276,17 @@ Page({
         selectedTag,
         selectedTagMissing: Boolean(selectedTag && !homeTags.includes(selectedTag)),
         currentHomeTab,
-        records: filteredRecords
+        records: filteredRecords,
+        error: ''
       })
       this.publishPendingReplies(records)
       if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
+      return true
     } catch (error) {
       if (!keepDataOnError || !this.data.records.length) {
         this.setData({ error: this.loadErrorMessage(error) })
       }
+      return false
     } finally {
       this.topLevelUiRendered = true
       if (!silent) this.setData({ loading: false })
@@ -293,10 +320,12 @@ Page({
         ? ranking.order.map((id) => byId[id]).filter(Boolean).concat(visible.filter((post) => !ranking.order.includes(post.shareId)))
         : visible
       this.setData({ communityPosts: ranked, communityLoaded: true, communityError: '' })
+      return true
     } catch (error) {
       if (!keepDataOnError || !this.data.communityPosts.length) {
         this.setData({ communityError: this.loadErrorMessage(error) })
       }
+      return false
     } finally {
       if (!silent) this.setData({ communityLoading: false })
     }
@@ -795,16 +824,36 @@ Page({
     try {
       const library = require('../../services/library')
       const ok = await library.deleteRecording(rec)
-      wx.hideLoading()
       if (ok) {
+        this.removeRecordingLocally(rec)
         wx.showToast({ title: '已删除' })
-        await this.load()
       } else {
         wx.showToast({ title: '删除失败', icon: 'error' })
       }
     } catch (error) {
-      wx.hideLoading()
       wx.showToast({ title: '删除失败', icon: 'error' })
+    } finally {
+      wx.hideLoading()
     }
+  },
+
+  removeRecordingLocally(rec) {
+    const remaining = this.data.allRecords.filter((item) => item.stem !== rec.stem)
+    const allRecords = this.assignCommandRefs(remaining)
+    const homeTags = recordingUtil.tagsFromRecords(allRecords)
+    const selectedTag = this.selectedTagFor(allRecords)
+    const records = recordingUtil.filterByTag(allRecords, selectedTag)
+    const currentHomeTab = selectedTag ? `tag:${selectedTag}` : 'recordings'
+    this.setData({
+      allRecords,
+      records,
+      homeTags,
+      homeTabs: this.homeTabsFor(homeTags),
+      selectedTag,
+      selectedTagMissing: false,
+      currentHomeTab,
+      error: ''
+    })
+    if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs(records))
   }
 })

@@ -1,11 +1,29 @@
 <view class="screen recording-screen">
   <home-tabs current="{{currentHomeTab}}" tabs="{{homeTabs}}" bind:change="switchHomeTab" bind:settings="openSettings" />
 
-  <scroll-view class="scroll-content" scroll-y enhanced style="top: {{scrollContentTop}}px;" bindtouchstart="onScreenTouchStart">
+  <scroll-view
+    class="scroll-content"
+    scroll-y
+    enhanced
+    refresher-enabled="{{true}}"
+    refresher-triggered="{{refreshing}}"
+    refresher-default-style="none"
+    refresher-threshold="60"
+    refresher-background="#faf6ef"
+    bindrefresherrefresh="onRefresherRefresh"
+    style="top: {{scrollContentTop}}px;"
+    bindtouchstart="onScreenTouchStart"
+  >
+    <view slot="refresher" class="pull-refresh-indicator">
+      <view class="loading-spinner pull-refresh-spinner" aria-hidden="true"></view>
+    </view>
     <view class="scroll-inner {{activeTab === 'recordings' ? 'with-record-dock' : ''}}">
     <block wx:if="{{activeTab === 'recordings'}}">
       <view wx:if="{{error}}" class="notice">{{error}}</view>
-      <view wx:elif="{{loading}}" class="notice">正在加载...</view>
+      <view wx:elif="{{loading}}" class="notice loading-notice">
+        <view class="loading-spinner" aria-hidden="true"></view>
+        <text>正在加载...</text>
+      </view>
 
       <view wx:if="{{!loading && !error && records.length === 0}}" class="empty card">
         <text class="empty-title">还没有录音</text>
@@ -49,7 +67,10 @@
 
     <block wx:elif="{{activeTab === 'community'}}">
       <view wx:if="{{communityError}}" class="notice">{{communityError}}</view>
-      <view wx:elif="{{communityLoading}}" class="notice">正在加载...</view>
+      <view wx:elif="{{communityLoading}}" class="notice loading-notice">
+        <view class="loading-spinner" aria-hidden="true"></view>
+        <text>正在加载...</text>
+      </view>
       <view wx:elif="{{communityPosts.length === 0}}" class="empty card">
         <text class="empty-title">社区暂无文章</text>
         <text class="empty-sub">稍后刷新，或先分享自己的文章。</text>

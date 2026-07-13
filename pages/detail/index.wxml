@@ -28,7 +28,10 @@
     </view>
   </view>
 
-  <view wx:if="{{loading}}" class="loading-state">正在加载...</view>
+  <view wx:if="{{loading}}" class="loading-state">
+    <view class="loading-spinner" aria-hidden="true"></view>
+    <text>正在加载...</text>
+  </view>
   <view wx:elif="{{!current}}" class="empty card">
     <text class="empty-title">文章还没生成</text>
     <text class="empty-sub">稍后刷新，或回到列表查看处理状态。</text>

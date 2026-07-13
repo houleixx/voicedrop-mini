@@ -142,13 +142,29 @@
   display: flex;
   min-height: 160rpx;
   padding: 0 10rpx;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18rpx;
+  gap: 24rpx;
   color: #9b8f7f;
   font-size: 30rpx;
   font-weight: 700;
   text-align: center;
+}
+
+.loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid #efe8dd;
+  border-top-color: #c7432f;
+  border-radius: 50%;
+  animation: loading-spin 0.8s linear infinite;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .paragraph {

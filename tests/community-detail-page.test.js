@@ -146,6 +146,7 @@ test('community detail has custom actions and loading markup', () => {
   const actionIconRule = wxss.match(/\.action-icon\s*\{([^}]*)\}/)[1]
   const moreIconRule = wxss.match(/\.more-icon\s*\{([^}]*)\}/)[1]
   const loadingRule = wxss.match(/\.loading-card\s*\{([^}]*)\}/)[1]
+  const loadingSpinnerRule = wxss.match(/\.loading-spinner\s*\{([^}]*)\}/)?.[1] || ''
   const moreMenuCardRule = wxss.match(/\.more-menu-card\s*\{([^}]*)\}/)?.[1] || ''
   const moreMenuRowRule = wxss.match(/\.more-menu-row\s*\{([^}]*)\}/)?.[1] || ''
   const moreMenuShareButtonRule = wxss.match(/\.more-menu-share-button\s*\{([^}]*)\}/)?.[1] || ''
@@ -157,7 +158,7 @@ test('community detail has custom actions and loading markup', () => {
   assert.match(wxml, /<view class="loaded-content" wx:else>/)
   assert.match(wxml, /loaded-content[\s\S]*article card/)
   assert.doesNotMatch(wxml, /loaded-content[\s\S]*article-head/)
-  assert.doesNotMatch(wxml, /loading-dot/)
+  assert.match(wxml, /<view class="loading-card" wx:if="\{\{loading\}\}">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>内容加载中\.\.\.<\/text>\s*<\/view>/)
   assert.match(wxml, /加载中/)
   assert.match(wxml, /class="more-menu-layer"/)
   assert.match(wxml, /data-action="reply"/)
@@ -193,7 +194,10 @@ test('community detail has custom actions and loading markup', () => {
   assert.match(moreIconRule, /font-size:\s*42rpx;/)
   assert.doesNotMatch(moreIconRule, /margin-top:/)
   assert.match(loadingRule, /justify-content:\s*center;/)
+  assert.match(loadingRule, /flex-direction:\s*column;/)
   assert.match(loadingRule, /text-align:\s*center;/)
+  assert.match(loadingSpinnerRule, /border-top-color:\s*#c7432f;/)
+  assert.match(loadingSpinnerRule, /animation:\s*loading-spin\s+0\.8s\s+linear\s+infinite;/)
   assert.doesNotMatch(wxss, /\.coin-action-icon/)
   assert.match(moreMenuCardRule, /right:\s*40rpx;/)
   assert.match(moreMenuCardRule, /background:\s*#ffffff;/)
