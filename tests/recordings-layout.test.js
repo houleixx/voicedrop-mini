@@ -73,3 +73,29 @@ test('recording tags are rendered in the top home tabs instead of a secondary ta
   assert.match(js, /const currentHomeTab = this\.data\.activeTab === 'community'[\s\S]*\(selectedTag \? `tag:\$\{selectedTag\}` : 'recordings'\)/)
   assert.match(js, /return tags\.includes\(selected\) \? selected : ''/)
 })
+
+test('both home microphone paths require audio consent before WeChat permission', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
+  const js = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/recordings/index.json'), 'utf8'))
+
+  assert.equal(config.usingComponents['audio-consent-dialog'], '/components/audio-consent-dialog/index')
+  assert.match(wxml, /<audio-consent-dialog id="audio-consent-dialog"/)
+  assert.match(js, /requestAudioConsent\(\)\s*\{[\s\S]*selectComponent\('#audio-consent-dialog'\)[\s\S]*\.request\(\)/)
+  assert.match(js, /async startRecord\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\) return[\s\S]*wx\.authorize/)
+  assert.match(js, /async _startLibraryCommandTalk\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\)[\s\S]*wx\.authorize/)
+})
+
+test('home voice command rechecks finger state after consent', () => {
+  const js = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
+  const method = js.match(/async _startLibraryCommandTalk\(\)\s*\{([\s\S]*?)\n  \},\n\n  _beginAsrSession/)
+
+  assert.ok(method)
+  const body = method[1]
+  const consentIndex = body.indexOf('await this.requestAudioConsent()')
+  const releaseIndex = body.indexOf('this._micTouchEndedBeforeCommandStart', consentIndex)
+  const authorizeIndex = body.indexOf('wx.authorize', consentIndex)
+  assert.ok(consentIndex >= 0)
+  assert.ok(releaseIndex > consentIndex)
+  assert.ok(authorizeIndex > releaseIndex)
+})

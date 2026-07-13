@@ -3,6 +3,7 @@
   "navigationStyle": "custom",
   "enablePullDownRefresh": true,
   "usingComponents": {
-    "home-tabs": "/components/home-tabs/index"
+    "home-tabs": "/components/home-tabs/index",
+    "audio-consent-dialog": "/components/audio-consent-dialog/index"
   }
 }

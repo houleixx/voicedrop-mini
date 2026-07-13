@@ -435,7 +435,13 @@ Page({
     this.setData({ commandText: '' })
   },
 
-  startRecord() {
+  requestAudioConsent() {
+    const dialog = this.selectComponent && this.selectComponent('#audio-consent-dialog')
+    return dialog && dialog.request ? dialog.request() : Promise.resolve(false)
+  },
+
+  async startRecord() {
+    if (!await this.requestAudioConsent()) return
     wx.authorize({
       scope: 'scope.record',
       complete: (res) => {
@@ -522,9 +528,18 @@ Page({
     }
   },
 
-  _startLibraryCommandTalk() {
+  async _startLibraryCommandTalk() {
     if (this.data.commandTalking || this._pendingCommandTalkStart) return
     this._pendingCommandTalkStart = true
+
+    if (!await this.requestAudioConsent()) {
+      this._pendingCommandTalkStart = false
+      return
+    }
+    if (this._micTouchEndedBeforeCommandStart) {
+      this._pendingCommandTalkStart = false
+      return
+    }
 
     wx.authorize({
       scope: 'scope.record',
