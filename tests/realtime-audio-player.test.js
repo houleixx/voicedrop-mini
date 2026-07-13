@@ -4,6 +4,7 @@ const playerModule = require('../services/realtime-audio-player')
 
 test('converts PCM16 to float audio and schedules deltas in order', () => {
   const starts = []
+  const scheduled = []
   const buffers = []
   const ctx = {
     currentTime: 5,
@@ -19,7 +20,9 @@ test('converts PCM16 to float audio and schedules deltas in order', () => {
     },
     close() {}
   }
-  const player = playerModule.createPlayer({}, { wx: { createWebAudioContext: () => ctx } })
+  const player = playerModule.createPlayer({
+    onScheduled: (data, delayMs) => scheduled.push({ data, delayMs })
+  }, { wx: { createWebAudioContext: () => ctx } })
   const pcm = new ArrayBuffer(4)
   const view = new DataView(pcm)
   view.setInt16(0, 32767, true)
@@ -27,6 +30,10 @@ test('converts PCM16 to float audio and schedules deltas in order', () => {
   player.enqueue(pcm)
   player.enqueue(pcm)
   assert.deepEqual(starts, [5, 5 + 2 / 24000])
+  assert.equal(scheduled.length, 2)
+  assert.equal(scheduled[0].data, pcm)
+  assert.equal(scheduled[0].delayMs, 0)
+  assert.ok(scheduled[1].delayMs > 0)
   assert.equal(buffers[0].channels, 1)
   assert.equal(buffers[0].length, 2)
   assert.equal(buffers[0].sampleRate, 24000)

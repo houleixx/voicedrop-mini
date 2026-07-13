@@ -71,6 +71,9 @@ function createPlayer(handlers, injected) {
       source.connect(ctx.destination)
       const when = Math.max(ctx.currentTime, nextStart)
       source.start(when)
+      if (callbacks.onScheduled) {
+        try { callbacks.onScheduled(input, Math.max(0, (when - ctx.currentTime) * 1000)) } catch (_) {}
+      }
       nextStart = when + count / OUTPUT_RATE
       return true
     } catch (error) {

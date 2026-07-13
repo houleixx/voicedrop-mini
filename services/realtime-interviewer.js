@@ -32,6 +32,11 @@ function createInterviewer(handlers, injected) {
     onError: () => {
       playbackError = true
       changed()
+    },
+    onScheduled: (data, delayMs) => {
+      if (handlers && typeof handlers.onAiAudio === 'function') {
+        handlers.onAiAudio(data, delayMs)
+      }
     }
   })
   const session = (deps.createSession || realtimeSession.createSession)({

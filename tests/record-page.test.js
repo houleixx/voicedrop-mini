@@ -44,7 +44,7 @@ function createRecorder() {
 function loadPage(overrides = {}) {
   const recorder = overrides.recorder || createRecorder()
   const app = overrides.app || { globalData: { pendingRecordTag: '', pendingReplyTo: null, ...(overrides.globalData || {}) } }
-  const calls = { uploads: [], tags: [], toasts: [], navigations: 0, unlinks: [], interviewerStops: 0, refreshes: 0, order: [] }
+  const calls = { uploads: [], tags: [], mixes: [], toasts: [], navigations: 0, unlinks: [], interviewerStops: 0, refreshes: 0, order: [] }
   const upload = overrides.upload || (() => Promise.resolve(true))
   const audio = {
     recorder: () => recorder,
@@ -65,11 +65,21 @@ function loadPage(overrides = {}) {
       if (overrides.interviewerStopError) throw overrides.interviewerStopError
     },
     toggle() {},
-    onPcm16() {}
+    onPcm16() {},
+    emitAiAudio(data, delayMs) { if (this.onAiAudio) this.onAiAudio(data, delayMs) }
   }
-  const realtimeInterviewer = { createInterviewer: () => interviewer }
+  const realtimeInterviewer = {
+    createInterviewer(handlers) {
+      interviewer.onAiAudio = handlers.onAiAudio
+      return interviewer
+    }
+  }
   const wav = {
     peakAmplitude: () => 0,
+    mixPcm16(data, overlays, options) {
+      calls.mixes.push({ data, overlays, options })
+      return data
+    },
     wrapPcm16Wav: (data) => data
   }
   const fsManager = overrides.fsManager || {
@@ -109,7 +119,7 @@ function loadPage(overrides = {}) {
   global.setInterval = () => 101
   page.onLoad({})
   global.setInterval = originalSetInterval
-  return { page, app, recorder, calls, fsManager }
+  return { page, app, recorder, interviewer, calls, fsManager }
 }
 
 test('record page owns one guarded recording session', () => {
@@ -135,7 +145,24 @@ test('record page uses PCM frames for waveform and interview uplink', () => {
   assert.match(js, /wav\.peakAmplitude\(frame\.frameBuffer\)/)
   assert.match(js, /this\.interviewer\.onPcm16\(frame\.frameBuffer, 16000\)/)
   assert.match(js, /wav\.wrapPcm16Wav/)
+  assert.match(js, /wav\.mixPcm16/)
   assert.match(js, /audio\.uploadFile\(finalizedPath, name, 'audio\/wav'\)/)
+})
+
+test('record page mixes AI playback into the final microphone PCM timeline', async () => {
+  const h = loadPage()
+  const ai = new ArrayBuffer(4)
+
+  h.interviewer.emitAiAudio(ai, 250)
+  await h.page.finalizePcmFile('/tmp/raw.pcm', h.page._recordSessionId)
+
+  assert.equal(h.calls.mixes.length, 1)
+  assert.equal(h.calls.mixes[0].overlays.length, 1)
+  assert.equal(h.calls.mixes[0].overlays[0].data, ai)
+  assert.equal(h.calls.mixes[0].overlays[0].sampleRate, 24000)
+  assert.ok(h.calls.mixes[0].overlays[0].startMs >= 250)
+  assert.equal(h.calls.mixes[0].options.sampleRate, 16000)
+  assert.equal(h.calls.mixes[0].options.baseGainDuringOverlay, 0)
 })
 
 test('record page stops interview before primary recording and renders Android copy', () => {

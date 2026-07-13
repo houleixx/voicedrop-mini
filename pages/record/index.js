@@ -87,6 +87,7 @@ Page({
     const sessionId = `record-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     app.globalData.activeRecorderSession = { type: 'record', id: sessionId }
     this._recordSessionId = sessionId
+    this._aiAudioSegments = []
     const manager = audio.recorder()
     this.setData({ recorder: manager, startedAt: Date.now() })
     this.interviewer = realtimeInterviewer.createInterviewer({
@@ -96,6 +97,15 @@ Page({
           interviewActive: state.active,
           interviewState: state.state,
           interviewStateText: state.stateText
+        })
+      },
+      onAiAudio: (data, delayMs) => {
+        if (this._recordSessionId !== sessionId) return
+        const elapsedMs = Math.max(0, Date.now() - this.data.startedAt)
+        this._aiAudioSegments.push({
+          data,
+          sampleRate: 24000,
+          startMs: elapsedMs + Math.max(0, Number(delayMs) || 0)
         })
       }
     })
@@ -134,6 +144,8 @@ Page({
         this.unbindRecorderEvents()
         return
       }
+      const aiAudioSegments = this._aiAudioSegments || []
+      this._aiAudioSegments = []
 
       this._stopping = true
       this.stopInterviewer()
@@ -152,7 +164,7 @@ Page({
       }
 
       // Wrap raw PCM as WAV while retaining the Android-compatible .m4a object key.
-      this.finalizePcmFile(res.tempFilePath, sessionId)
+      this.finalizePcmFile(res.tempFilePath, sessionId, aiAudioSegments)
         .then((finalizedPath) => audio.uploadFile(finalizedPath, name, 'audio/wav'))
         .then(() => {
           // Upload tags if present
@@ -255,13 +267,18 @@ Page({
     return `${wx.env.USER_DATA_PATH}/voicedrop-${sessionId}.wav`
   },
 
-  finalizePcmFile(filePath, sessionId) {
+  finalizePcmFile(filePath, sessionId, aiAudioSegments) {
     return new Promise((resolve, reject) => {
       const fsManager = wx.getFileSystemManager()
       fsManager.readFile({
         filePath,
         success: (file) => {
-          const data = wav.wrapPcm16Wav(file.data, { sampleRate: 16000, channels: 1, bitsPerSample: 16 })
+          const mixedPcm = wav.mixPcm16(
+            file.data,
+            aiAudioSegments || this._aiAudioSegments || [],
+            { sampleRate: 16000, baseGainDuringOverlay: 0 }
+          )
+          const data = wav.wrapPcm16Wav(mixedPcm, { sampleRate: 16000, channels: 1, bitsPerSample: 16 })
           const wavPath = this.wavPathForSession(sessionId)
           fsManager.writeFile({ filePath: wavPath, data, success: () => resolve(wavPath), fail: reject })
         },

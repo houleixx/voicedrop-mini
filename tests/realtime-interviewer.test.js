@@ -27,7 +27,12 @@ function harness(extraHandlers) {
   let callbacks
   const deps = {
     createSession(next) { callbacks = next; return session },
-    createPlayer(next) { player.onDrain = next.onDrain; player.onError = next.onError; return player },
+    createPlayer(next) {
+      player.onDrain = next.onDrain
+      player.onError = next.onError
+      player.onScheduled = next.onScheduled
+      return player
+    },
     pcm16ToPcmu8k: () => new Uint8Array([9]),
     setTimeout(fn, delay) {
       const timer = { fn, delay, canceled: false }
@@ -50,6 +55,16 @@ test('toggle only controls the interview side-path', () => {
   h.interviewer.toggle()
   assert.equal(h.interviewer.active(), false)
   assert.equal(h.session.disconnectCount, 1)
+})
+
+test('forwards the AI audio playback timeline for final recording mixdown', () => {
+  const scheduled = []
+  const h = harness({ onAiAudio: (data, delayMs) => scheduled.push({ data, delayMs }) })
+  const audio = new Uint8Array([1, 2, 3, 4])
+
+  h.player.onScheduled(audio, 125)
+
+  assert.deepEqual(scheduled, [{ data: audio, delayMs: 125 }])
 })
 
 test('playback failure does not report the live relay as disconnected', () => {
