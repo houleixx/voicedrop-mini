@@ -7,6 +7,7 @@ const root = path.join(__dirname, '..')
 const js = fs.readFileSync(path.join(root, 'pages/record/index.js'), 'utf8')
 const wxml = fs.readFileSync(path.join(root, 'pages/record/index.wxml'), 'utf8')
 const wxss = fs.readFileSync(path.join(root, 'pages/record/index.wxss'), 'utf8')
+const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/record/index.json'), 'utf8'))
 
 function deferred() {
   let resolve
@@ -117,6 +118,15 @@ test('record page owns one guarded recording session', () => {
   assert.match(js, /active\.type !== 'record' \|\| active\.id !== this\._recordSessionId/)
   assert.match(js, /app\.globalData\.activeRecorderSession = null/)
   assert.match(js, /if \(this\._recorderBound\) return/)
+})
+
+test('record page uses the shared page header and custom navigation', () => {
+  assert.equal(config.navigationStyle, 'custom')
+  assert.equal(config.usingComponents['page-header'], '../../components/page-header/index')
+  assert.match(wxml, /<page-header title="录音"\s*\/>/)
+  assert.doesNotMatch(wxml, /class="status-bar"[^>]*padding-top:/)
+  assert.match(wxss, /\.status-bar\s*\{[^}]*padding-top:\s*180rpx;/)
+  assert.doesNotMatch(js, /getSystemInfoSync/)
 })
 
 test('record page uses PCM frames for waveform and interview uplink', () => {

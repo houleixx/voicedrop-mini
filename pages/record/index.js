@@ -8,7 +8,6 @@ const WAVE_PATTERN = [0.30, 0.56, 0.82, 0.48, 0.95, 0.65, 0.38, 0.74, 0.52, 0.86
 
 Page({
   data: {
-    statusBarHeight: 20,
     timerDisplay: '00:00',
     startedAt: 0,
     elapsedSeconds: 0,
@@ -27,8 +26,6 @@ Page({
   onLoad(options) {
     this._alive = true
     this._stopping = false
-    const info = wx.getSystemInfoSync()
-    this.setData({ statusBarHeight: info.statusBarHeight || 20 })
 
     // Read tag/replyTo from globalData (set by recordings page before navigation)
     const tag = app.globalData.pendingRecordTag || ''

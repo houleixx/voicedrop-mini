@@ -12,7 +12,7 @@
 
 /* Status bar */
 .status-bar {
-  padding-top: 40px;
+  padding-top: 180rpx;
   padding-bottom: 12px;
 }
 

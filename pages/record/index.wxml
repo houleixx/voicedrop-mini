@@ -1,6 +1,8 @@
 <view class="recording-screen">
+  <page-header title="录音" />
+
   <!-- Status bar area -->
-  <view class="status-bar" style="padding-top: {{statusBarHeight}}px;">
+  <view class="status-bar">
     <view class="recording-status">
       <view class="status-dot"></view>
       <text class="status-text">{{interviewActive ? 'AI 采访中' : '正在录音'}}</text>

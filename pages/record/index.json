@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "录音",
-  "navigationBarBackgroundColor": "#faf6ef",
-  "navigationBarTextStyle": "black"
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "page-header": "../../components/page-header/index"
+  }
 }
