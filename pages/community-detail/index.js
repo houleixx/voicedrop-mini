@@ -249,23 +249,7 @@ Page({
     const shareId = this.data.shareId || (this.data.post && this.data.post.shareId)
     if (!shareId || this.data.replyRecording || this.data.replyUploading) return
     if (!await this.requestAudioConsent()) return
-    wx.authorize({
-      scope: 'scope.record',
-      complete: (res) => {
-        if (res.errMsg && res.errMsg.indexOf('authorize:ok') < 0) {
-          wx.showModal({
-            title: '需要录音权限',
-            content: '请允许使用麦克风写回应',
-            confirmText: '去设置',
-            success: (modalRes) => {
-              if (modalRes.confirm) wx.openSetting()
-            }
-          })
-          return
-        }
-        this.beginReplyRecording(shareId)
-      }
-    })
+    this.beginReplyRecording(shareId)
   },
 
   beginReplyRecording(shareId) {

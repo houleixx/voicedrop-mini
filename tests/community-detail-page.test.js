@@ -291,10 +291,11 @@ test('community reply does not request microphone permission when audio consent 
   assert.equal(started, false)
 })
 
-test('community reply starts only after audio consent and WeChat permission', async () => {
+test('community reply starts directly after audio consent without platform authorization', async () => {
   const page = freshCommunityDetailPage([], null)
   let started = ''
-  global.wx.authorize = ({ complete }) => complete({ errMsg: 'authorize:ok' })
+  let authorized = false
+  global.wx.authorize = () => { authorized = true }
   const ctx = {
     data: { shareId: 'share-1', replyRecording: false, replyUploading: false },
     requestAudioConsent: async () => true,
@@ -304,6 +305,7 @@ test('community reply starts only after audio consent and WeChat permission', as
   await page.startReplyRecording.call(ctx)
 
   assert.equal(started, 'share-1')
+  assert.equal(authorized, false)
 })
 
 test('community detail registers and renders the shared audio consent dialog', () => {
@@ -314,6 +316,8 @@ test('community detail registers and renders the shared audio consent dialog', (
   const wxml = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxml'), 'utf8')
 
   assert.equal(config.usingComponents['audio-consent-dialog'], '/components/audio-consent-dialog/index')
+  assert.doesNotMatch(js, /wx\.authorize/)
+  assert.doesNotMatch(js, /需要录音权限/)
   assert.match(js, /const audioConsentFlow = require\('\.\.\/\.\.\/utils\/audio-consent-flow'\)/)
   assert.match(js, /audioConsentVisible:\s*false/)
   assert.match(js, /requestAudioConsent\(\)\s*\{\s*return audioConsentFlow\.request\(this\)/)

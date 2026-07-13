@@ -457,24 +457,8 @@ Page({
 
   async startRecord() {
     if (!await this.requestAudioConsent()) return
-    wx.authorize({
-      scope: 'scope.record',
-      complete: (res) => {
-        if (res.errMsg && res.errMsg.indexOf('authorize:ok') < 0) {
-          wx.showModal({
-            title: '需要录音权限',
-            content: '请允许使用麦克风进行录音',
-            confirmText: '去设置',
-            success: (modalRes) => {
-              if (modalRes.confirm) wx.openSetting()
-            }
-          })
-          return
-        }
-        if (this.data.selectedTag) app.globalData.pendingRecordTag = this.data.selectedTag
-        wx.navigateTo({ url: '/pages/record/index' })
-      }
-    })
+    if (this.data.selectedTag) app.globalData.pendingRecordTag = this.data.selectedTag
+    wx.navigateTo({ url: '/pages/record/index' })
   },
 
   stopRecord() {
@@ -556,25 +540,7 @@ Page({
       return
     }
 
-    wx.authorize({
-      scope: 'scope.record',
-      success: () => {
-        if (this._micTouchEndedBeforeCommandStart) {
-          this._pendingCommandTalkStart = false
-          return
-        }
-        this._beginAsrSession()
-      },
-      fail: () => {
-        this._pendingCommandTalkStart = false
-        wx.showModal({
-          title: '需要录音权限',
-          content: '请允许使用麦克风进行语音指令',
-          confirmText: '去设置',
-          success: (res) => { if (res.confirm) wx.openSetting() }
-        })
-      }
-    })
+    this._beginAsrSession()
   },
 
   _beginAsrSession() {

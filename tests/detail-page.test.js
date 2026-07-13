@@ -1260,6 +1260,8 @@ test('detail page numbers paragraphs and photos while holding to talk like iOS',
     loadArticlePhotos() {},
     applyDoc: page.applyDoc,
     resetHoldArticleEdit: page.resetHoldArticleEdit,
+    beginHoldArticleEdit() {},
+    finishHoldArticleEditSession: page.finishHoldArticleEditSession,
     requestAudioConsent: async () => true
   }
 
@@ -1706,11 +1708,11 @@ test('detail hold edit swipe-up cancel never submits', async () => {
   assert.equal(ctx.data.holdEditState, 'idle')
 })
 
-test('detail hold edit ignores permission success after finger released', async () => {
-  let authorizeSuccess
+test('detail hold edit starts directly after consent without platform authorization', async () => {
+  let authorized = false
   let recorderStarted = false
   const page = freshDetailPage({}, {
-    authorize: ({ success }) => { authorizeSuccess = success },
+    authorize: () => { authorized = true },
     getRecorderManager: () => ({
       onFrameRecorded() {},
       onError() {},
@@ -1725,11 +1727,10 @@ test('detail hold edit ignores permission success after finger released', async 
   const ctx = holdEditContext(page)
 
   await page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
-  await page.finishHoldArticleEdit.call(ctx)
-  authorizeSuccess()
 
-  assert.equal(recorderStarted, false)
-  assert.equal(ctx.data.holdEditState, 'idle')
+  assert.equal(recorderStarted, true)
+  assert.equal(authorized, false)
+  assert.equal(ctx.data.holdEditState, 'talking')
 })
 
 test('detail hold edit unload stops recorder and closes ASR', () => {
@@ -1817,6 +1818,8 @@ test('detail page registers and renders the shared audio consent dialog', () => 
   const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
 
   assert.equal(config.usingComponents['audio-consent-dialog'], '/components/audio-consent-dialog/index')
+  assert.doesNotMatch(js, /wx\.authorize/)
+  assert.doesNotMatch(js, /需要录音权限/)
   assert.match(js, /const audioConsentFlow = require\('\.\.\/\.\.\/utils\/audio-consent-flow'\)/)
   assert.match(js, /audioConsentVisible:\s*false/)
   assert.match(js, /requestAudioConsent\(\)\s*\{\s*return audioConsentFlow\.request\(this\)/)

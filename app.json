@@ -23,11 +23,6 @@
     "navigationBarTextStyle": "black",
     "backgroundColor": "#faf6ef"
   },
-  "permission": {
-    "scope.record": {
-      "desc": "用于录制音频，完成转写、文章处理、语音指令和社区回应"
-    }
-  },
   "style": "v2",
   "sitemapLocation": "sitemap.json"
 }

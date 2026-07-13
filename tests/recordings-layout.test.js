@@ -74,7 +74,7 @@ test('recording tags are rendered in the top home tabs instead of a secondary ta
   assert.match(js, /return tags\.includes\(selected\) \? selected : ''/)
 })
 
-test('both home microphone paths require audio consent before WeChat permission', () => {
+test('both home microphone paths require only audio consent', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
   const js = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
   const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/recordings/index.json'), 'utf8'))
@@ -95,8 +95,10 @@ test('both home microphone paths require audio consent before WeChat permission'
   assert.match(wxml, /bind:agree="onAudioConsentAgree"/)
   assert.match(wxml, /bind:decline="onAudioConsentDecline"/)
   assert.match(wxml, /bind:viewagreement="onAudioConsentViewAgreement"/)
-  assert.match(js, /async startRecord\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\) return[\s\S]*wx\.authorize/)
-  assert.match(js, /async _startLibraryCommandTalk\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\)[\s\S]*wx\.authorize/)
+  assert.match(js, /async startRecord\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\) return[\s\S]*wx\.navigateTo/)
+  assert.match(js, /async _startLibraryCommandTalk\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\)[\s\S]*this\._beginAsrSession\(\)/)
+  assert.doesNotMatch(js, /wx\.authorize/)
+  assert.doesNotMatch(js, /需要录音权限/)
 })
 
 test('home voice command rechecks finger state after consent', () => {
@@ -107,8 +109,8 @@ test('home voice command rechecks finger state after consent', () => {
   const body = method[1]
   const consentIndex = body.indexOf('await this.requestAudioConsent()')
   const releaseIndex = body.indexOf('this._micTouchEndedBeforeCommandStart', consentIndex)
-  const authorizeIndex = body.indexOf('wx.authorize', consentIndex)
+  const beginIndex = body.indexOf('this._beginAsrSession()', consentIndex)
   assert.ok(consentIndex >= 0)
   assert.ok(releaseIndex > consentIndex)
-  assert.ok(authorizeIndex > releaseIndex)
+  assert.ok(beginIndex > releaseIndex)
 })

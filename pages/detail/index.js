@@ -1136,23 +1136,8 @@ Page({
       this.resetHoldArticleEdit()
       return
     }
-    wx.authorize({
-      scope: 'scope.record',
-      success: () => {
-        this._pendingHoldEditStart = false
-        if (this._holdEditTouchActive) this.beginHoldArticleEdit()
-      },
-      fail: () => {
-        this._pendingHoldEditStart = false
-        this.resetHoldArticleEdit()
-        wx.showModal({
-          title: '需要录音权限',
-          content: '请允许使用麦克风进行语音修改',
-          confirmText: '去设置',
-          success: (res) => { if (res.confirm) wx.openSetting() }
-        })
-      }
-    })
+    this._pendingHoldEditStart = false
+    this.beginHoldArticleEdit()
   },
 
   beginHoldArticleEdit() {
