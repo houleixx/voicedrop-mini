@@ -1,14 +1,19 @@
 const terms = require('../../utils/community-terms')
 const blockStore = require('../../utils/block-store')
+const audioConsent = require('../../utils/audio-consent')
 
 Page({
   data: {
     supportEmail: terms.SUPPORT_EMAIL,
-    blockedAuthors: []
+    blockedAuthors: [],
+    audioConsentGranted: false
   },
 
   onShow() {
-    this.setData({ blockedAuthors: blockStore.blockedList() })
+    this.setData({
+      blockedAuthors: blockStore.blockedList(),
+      audioConsentGranted: audioConsent.isGranted()
+    })
   },
 
   privacy() {
@@ -24,6 +29,29 @@ Page({
       title: '社区公约',
       content: terms.BODY,
       showCancel: false
+    })
+  },
+
+  openAudioConsent() {
+    wx.navigateTo({ url: '/pages/audio-consent/index' })
+  },
+
+  withdrawAudioConsent() {
+    if (!this.data.audioConsentGranted) return
+    wx.showModal({
+      title: '撤回音频授权？',
+      content: '撤回后，再次使用语音功能需要重新授权。已有录音和处理结果不会自动删除；你仍可删除单条录音，或在账户页注销并删除全部数据。',
+      confirmText: '撤回',
+      confirmColor: '#c7432f',
+      success: (res) => {
+        if (!res.confirm) return
+        if (!audioConsent.revoke()) {
+          wx.showToast({ title: '撤回失败，请重试', icon: 'none' })
+          return
+        }
+        this.setData({ audioConsentGranted: false })
+        wx.showToast({ title: '已撤回' })
+      }
     })
   },
 
