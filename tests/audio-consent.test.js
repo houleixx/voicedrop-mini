@@ -80,17 +80,8 @@ test('agreement metadata uses the approved first version and date', () => {
 })
 
 function loadDialog() {
-  const storage = {}
-  const navigations = []
-  const toasts = []
+  const events = []
   let definition
-  global.wx = {
-    getStorageSync: (key) => storage[key],
-    setStorageSync: (key, value) => { storage[key] = value },
-    removeStorageSync: (key) => { delete storage[key] },
-    navigateTo: ({ url }) => navigations.push(url),
-    showToast: (options) => toasts.push(options)
-  }
   global.Component = (next) => { definition = next }
   delete require.cache[require.resolve('../utils/audio-consent')]
   const componentPath = '../components/audio-consent-dialog/index'
@@ -98,53 +89,35 @@ function loadDialog() {
   require(componentPath)
   const ctx = {
     data: Object.assign({}, definition.data),
-    setData(update) { Object.assign(this.data, update) }
+    triggerEvent(name, detail) { events.push({ name, detail }) }
   }
   Object.entries(definition.methods).forEach(([name, method]) => {
     ctx[name] = method.bind(ctx)
   })
-  return { ctx, definition, storage, navigations, toasts }
+  return { ctx, definition, events }
 }
 
-test('dialog deduplicates pending requests and grants only after explicit agreement', async () => {
-  const { ctx, storage } = loadDialog()
+test('dialog exposes controlled visibility and emits explicit actions', () => {
+  const { ctx, definition, events } = loadDialog()
 
-  const first = ctx.request()
-  const second = ctx.request()
-
-  assert.equal(first, second)
-  assert.equal(ctx.data.visible, true)
+  assert.deepEqual(definition.properties.visible, { type: Boolean, value: false })
   ctx.agree()
-  assert.equal(await first, true)
-  assert.equal(storage[storageKey].version, '2026-07-13-v1')
-  assert.equal(ctx.data.visible, false)
-  assert.equal(await ctx.request(), true)
+  ctx.decline()
+  ctx.viewAgreement()
+
+  assert.deepEqual(events.map((event) => event.name), [
+    'agree',
+    'decline',
+    'viewagreement'
+  ])
 })
 
-test('dialog decline and agreement viewing do not save consent', async () => {
-  const denied = loadDialog()
-  const deniedResult = denied.ctx.request()
-  denied.ctx.decline()
-  assert.equal(await deniedResult, false)
-  assert.equal(denied.storage[storageKey], undefined)
+test('dialog reports when its host can safely request consent', () => {
+  const { ctx, definition, events } = loadDialog()
 
-  const viewed = loadDialog()
-  const viewedResult = viewed.ctx.request()
-  viewed.ctx.viewAgreement()
-  assert.equal(await viewedResult, false)
-  assert.deepEqual(viewed.navigations, ['/pages/audio-consent/index'])
-  assert.equal(viewed.storage[storageKey], undefined)
-})
+  definition.lifetimes.ready.call(ctx)
 
-test('dialog fails closed when consent state cannot be saved', async () => {
-  const h = loadDialog()
-  global.wx.setStorageSync = () => { throw new Error('disk full') }
-
-  const result = h.ctx.request()
-  h.ctx.agree()
-
-  assert.equal(await result, false)
-  assert.equal(h.toasts.at(-1).title, '授权状态保存失败')
+  assert.deepEqual(events, [{ name: 'ready', detail: undefined }])
 })
 
 test('dialog has separate view, decline, and agree actions', () => {
@@ -153,6 +126,7 @@ test('dialog has separate view, decline, and agree actions', () => {
   assert.match(wxml, /bindtap="viewAgreement"/)
   assert.match(wxml, /bindtap="decline"/)
   assert.match(wxml, /bindtap="agree"/)
+  assert.match(wxml, /wx:if="\{\{visible\}\}"/)
   assert.match(wxml, /查看完整协议/)
   assert.match(wxml, /不同意/)
   assert.match(wxml, /同意并继续/)
