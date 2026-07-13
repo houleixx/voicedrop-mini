@@ -57,33 +57,14 @@ test('about page shows current audio consent state and opens the independent agr
   assert.deepEqual(h.navigations, ['/pages/audio-consent/index'])
 })
 
-test('about page withdrawal clears consent but explains that recordings remain', () => {
-  const h = freshAbout({ granted: true })
-  h.page.onShow.call(h.ctx)
-
-  h.page.withdrawAudioConsent.call(h.ctx)
-
-  assert.equal(h.storage[storageKey], undefined)
-  assert.equal(h.ctx.data.audioConsentGranted, false)
-  assert.match(h.modals[0].content, /已有录音和处理结果不会自动删除/)
-  assert.equal(h.toasts.at(-1).title, '已撤回')
-})
-
-test('about page keeps consent when withdrawal storage fails', () => {
-  const h = freshAbout({ granted: true, removeFails: true })
-  h.page.onShow.call(h.ctx)
-
-  h.page.withdrawAudioConsent.call(h.ctx)
-
-  assert.equal(h.ctx.data.audioConsentGranted, true)
-  assert.equal(h.toasts.at(-1).title, '撤回失败，请重试')
-})
-
-test('about page renders separate agreement and withdrawal rows', () => {
+test('about page keeps the agreement row without a withdrawal action', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/about/index.wxml'), 'utf8')
+  const js = fs.readFileSync(path.join(root, 'pages/about/index.js'), 'utf8')
 
   assert.match(wxml, /bindtap="openAudioConsent"/)
   assert.match(wxml, /音频信息授权协议/)
-  assert.match(wxml, /bindtap="withdrawAudioConsent"/)
-  assert.match(wxml, /wx:if="\{\{audioConsentGranted\}\}"/)
+  assert.doesNotMatch(wxml, /撤回音频授权/)
+  assert.doesNotMatch(wxml, /bindtap="withdrawAudioConsent"/)
+  assert.doesNotMatch(js, /withdrawAudioConsent/)
+  assert.doesNotMatch(js, /audioConsent\.revoke/)
 })

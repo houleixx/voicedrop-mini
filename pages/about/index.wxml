@@ -15,10 +15,6 @@
         <text>音频信息授权协议</text>
         <text class="muted">{{audioConsentGranted ? '已授权' : '未授权'}}</text>
       </view>
-      <view wx:if="{{audioConsentGranted}}" class="row" bindtap="withdrawAudioConsent">
-        <text class="danger-text">撤回音频授权</text>
-        <text class="muted">撤回</text>
-      </view>
       <view class="row" bindtap="communityTerms">
         <text>社区公约</text>
         <text class="muted">查看</text>
