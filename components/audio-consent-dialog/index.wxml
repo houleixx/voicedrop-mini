@@ -1,0 +1,12 @@
+<view wx:if="{{visible}}" class="consent-layer" catchtouchmove="preventTouchMove">
+  <view class="consent-card" role="dialog" aria-label="音频信息授权">
+    <text class="consent-title">音频信息授权</text>
+    <text class="consent-summary">{{summary}}</text>
+    <text class="consent-note">我们不会提取声纹模板，也不会使用音频进行声纹身份识别。</text>
+    <button class="agreement-link" bindtap="viewAgreement">查看完整协议</button>
+    <view class="consent-actions">
+      <button class="decline-button" bindtap="decline">不同意</button>
+      <button class="agree-button" bindtap="agree">同意并继续</button>
+    </view>
+  </view>
+</view>

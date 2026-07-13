@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "音频信息授权协议",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "page-header": "../../components/page-header/index"
+  }
+}

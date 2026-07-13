@@ -8,6 +8,7 @@
     "pages/account/index",
     "pages/usage/index",
     "pages/about/index",
+    "pages/audio-consent/index",
     "pages/wechat-settings/index",
     "pages/share-collect/index",
     "pages/style-settings/index",
