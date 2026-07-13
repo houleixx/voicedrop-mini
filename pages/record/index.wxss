@@ -130,7 +130,7 @@
 /* Camera button */
 .camera-button-column {
   position: absolute;
-  right: 40rpx;
+  right: 88rpx;
   bottom: 60rpx;
   display: flex;
   flex-direction: column;
@@ -201,7 +201,7 @@
 .interview-button-column {
   position: absolute;
   bottom: 60rpx;
-  left: 40rpx;
+  left: 88rpx;
   display: flex;
   flex-direction: column;
   align-items: center;

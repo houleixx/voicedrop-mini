@@ -138,6 +138,11 @@ test('record page stops interview before primary recording and renders Android c
   assert.match(wxss, /\.interview-button\.active/)
 })
 
+test('record page side controls sit closer to the center', () => {
+  assert.match(wxss, /\.interview-button-column\s*\{[^}]*left:\s*88rpx;/)
+  assert.match(wxss, /\.camera-button-column\s*\{[^}]*right:\s*88rpx;/)
+})
+
 test('record page owns named recorder callbacks and releases them after the session', () => {
   const unload = js.slice(js.indexOf('onUnload()'), js.indexOf('onShow()'))
   assert.match(unload, /this\._alive = false[\s\S]*this\.stopRecording\(\)/)
