@@ -169,3 +169,13 @@ test('standalone agreement page is registered and reading it does not grant cons
   assert.match(wxml, /wx:for="\{\{sections\}\}"/)
   assert.match(wxml, /生效日期/)
 })
+
+test('WeChat microphone permission copy covers every audio purpose', () => {
+  const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
+  const description = app.permission['scope.record'].desc
+
+  assert.match(description, /转写/)
+  assert.match(description, /文章处理/)
+  assert.match(description, /语音指令/)
+  assert.match(description, /社区回应/)
+})
