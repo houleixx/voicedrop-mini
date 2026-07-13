@@ -49,6 +49,7 @@ Source: the VoiceDrop Android client implementation.
 | Device link start/verify/cancel | Implemented | `services/device-link`, `pages/account`, `services/status-session` |
 | Usage balance and ledger | Implemented | `services/usage`, `pages/usage` |
 | About/privacy/community terms/support | Implemented | `pages/about`, `utils/community-terms` |
+| Independent audio information agreement | Implemented: versioned explicit consent before every microphone entry, standalone agreement page, and local withdrawal; copy states audio purposes and explicitly excludes voiceprint identification | `utils/audio-consent`, `components/audio-consent-dialog`, `pages/audio-consent`, `pages/about` |
 | App version display/comparison | Implemented with Android-compatible numeric version comparison, GitHub release/APK asset parsing, GitHub download proxy rewriting, manual and startup update check status handling, ignored-version preference, update auto-check preference policy, and About page version display; APK update install flow remains platform-limited | `utils/app-version`, `utils/update-prefs`, `utils/prefs`, `services/update`, `app.js`, `pages/settings`, `pages/about` |
 | Theme color tokens | Implemented with Android/iOS-compatible accent, red, secondary, and faint tokens applied across Mini Program styles | `utils/theme`, `app.wxss`, `pages/*/*.wxss` |
 | Android deep links | Implemented as Mini Program query/deeplink router | `utils/app-router`, `app.js` |
@@ -82,6 +83,9 @@ Required before claiming full parity:
 - Import the project in WeChat Developer Tools.
 - Configure request/download/upload/socket legal domains for `https://jianshuo.dev` and `wss://jianshuo.dev`.
 - Test recording upload on a real device.
+- Test first-use audio agreement view/decline/agree actions and confirm that merely viewing does not grant consent.
+- Test main recording, home voice commands, article voice editing, and community voice replies all remain blocked before agreement.
+- Test microphone permission denial, recovery through settings, local withdrawal, and agreement re-consent on a real device.
 - Test article generation status WebSocket.
 - Test article edit WebSocket.
 - Test image upload and inline rendering.
