@@ -442,10 +442,6 @@ Page({
     return audioConsentFlow.request(this)
   },
 
-  onAudioConsentReady() {
-    audioConsentFlow.markReady(this)
-  },
-
   onAudioConsentAgree() {
     audioConsentFlow.agree(this)
   },

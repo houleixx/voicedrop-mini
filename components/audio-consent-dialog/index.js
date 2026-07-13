@@ -26,11 +26,5 @@ Component({
     },
 
     preventTouchMove() {}
-  },
-
-  lifetimes: {
-    ready() {
-      this.triggerEvent('ready')
-    }
   }
 })

@@ -10,20 +10,17 @@ function settle(page, granted) {
 
 function request(page) {
   if (audioConsent.isGranted()) return Promise.resolve(true)
-  if (!page._audioConsentDialogReady) {
+  if (page._audioConsentPromise) return page._audioConsentPromise
+  try {
+    page.setData({ audioConsentVisible: true })
+  } catch (_) {
     wx.showToast({ title: '授权组件加载失败，请重试', icon: 'none' })
     return Promise.resolve(false)
   }
-  if (page._audioConsentPromise) return page._audioConsentPromise
-  page.setData({ audioConsentVisible: true })
   page._audioConsentPromise = new Promise((resolve) => {
     page._resolveAudioConsent = resolve
   })
   return page._audioConsentPromise
-}
-
-function markReady(page) {
-  page._audioConsentDialogReady = true
 }
 
 function agree(page) {
@@ -41,7 +38,6 @@ function decline(page) {
 }
 
 function dispose(page) {
-  page._audioConsentDialogReady = false
   const resolve = page._resolveAudioConsent
   page._resolveAudioConsent = null
   page._audioConsentPromise = null
@@ -50,7 +46,6 @@ function dispose(page) {
 
 module.exports = {
   request,
-  markReady,
   agree,
   decline,
   dispose

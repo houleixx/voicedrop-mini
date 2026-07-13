@@ -100,7 +100,6 @@
   </view>
   <audio-consent-dialog
     visible="{{audioConsentVisible}}"
-    bind:ready="onAudioConsentReady"
     bind:agree="onAudioConsentAgree"
     bind:decline="onAudioConsentDecline"
     bind:viewagreement="onAudioConsentViewAgreement"

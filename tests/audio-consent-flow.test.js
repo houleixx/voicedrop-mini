@@ -21,7 +21,6 @@ function loadFlow(overrides) {
     data: { audioConsentVisible: false },
     setData(update) { Object.assign(this.data, update) }
   }
-  flow.markReady(page)
   return { flow, page, storage, toasts }
 }
 
@@ -61,19 +60,17 @@ test('pending requests are deduplicated and dispose resolves them false', async 
   flow.dispose(page)
 
   assert.equal(await first, false)
-  assert.equal(page._audioConsentDialogReady, false)
 })
 
 test('request reports an unavailable dialog instead of failing silently', async () => {
   const { flow, page, toasts } = loadFlow()
-  flow.dispose(page)
+  page.setData = () => { throw new Error('view unavailable') }
 
   assert.equal(await flow.request(page), false)
   assert.deepEqual(toasts.at(-1), {
     title: '授权组件加载失败，请重试',
     icon: 'none'
   })
-  assert.equal(page.data.audioConsentVisible, false)
 })
 
 test('failed local persistence keeps consent denied and reports the error', async () => {

@@ -112,12 +112,10 @@ test('dialog exposes controlled visibility and emits explicit actions', () => {
   ])
 })
 
-test('dialog reports when its host can safely request consent', () => {
-  const { ctx, definition, events } = loadDialog()
+test('dialog leaves host readiness to the page lifecycle', () => {
+  const { definition } = loadDialog()
 
-  definition.lifetimes.ready.call(ctx)
-
-  assert.deepEqual(events, [{ name: 'ready', detail: undefined }])
+  assert.equal(definition.lifetimes, undefined)
 })
 
 test('dialog has separate view, decline, and agree actions', () => {
