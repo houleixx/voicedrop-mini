@@ -14,6 +14,7 @@ const uiConfigService = require('../../services/ui-config')
 const versionNav = require('../../utils/version-navigation')
 const asrDictation = require('../../services/asr-dictation')
 const holdToTalk = require('../../utils/hold-to-talk')
+const audioConsentFlow = require('../../utils/audio-consent-flow')
 
 const app = getApp()
 
@@ -298,7 +299,8 @@ Page({
     holdEditButtonText: '按住 说话 修改',
     holdEditBubbleVisible: false,
     holdEditTranscriptText: '',
-    holdEditLocatorsVisible: false
+    holdEditLocatorsVisible: false,
+    audioConsentVisible: false
   },
 
   onLoad(options) {
@@ -363,6 +365,7 @@ Page({
   },
 
   onUnload() {
+    audioConsentFlow.dispose(this)
     this.longpressQuerySeq = (this.longpressQuerySeq || 0) + 1
     if (this.finishImageLongpress) this.finishImageLongpress()
     if (this.stopPhotoMaking) this.stopPhotoMaking()
@@ -1099,8 +1102,24 @@ Page({
   },
 
   requestAudioConsent() {
-    const dialog = this.selectComponent && this.selectComponent('#audio-consent-dialog')
-    return dialog && dialog.request ? dialog.request() : Promise.resolve(false)
+    return audioConsentFlow.request(this)
+  },
+
+  onAudioConsentReady() {
+    audioConsentFlow.markReady(this)
+  },
+
+  onAudioConsentAgree() {
+    audioConsentFlow.agree(this)
+  },
+
+  onAudioConsentDecline() {
+    audioConsentFlow.decline(this)
+  },
+
+  onAudioConsentViewAgreement() {
+    audioConsentFlow.decline(this)
+    wx.navigateTo({ url: '/pages/audio-consent/index' })
   },
 
   async startHoldArticleEdit(event) {

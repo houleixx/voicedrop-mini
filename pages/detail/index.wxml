@@ -260,5 +260,11 @@
     bindpick="onLongpressPick"
     bindlocalpick="onLongpressLocalPick"
     bindclose="closeLongpressMenu" />
-  <audio-consent-dialog id="audio-consent-dialog" />
+  <audio-consent-dialog
+    visible="{{audioConsentVisible}}"
+    bind:ready="onAudioConsentReady"
+    bind:agree="onAudioConsentAgree"
+    bind:decline="onAudioConsentDecline"
+    bind:viewagreement="onAudioConsentViewAgreement"
+  />
 </view>

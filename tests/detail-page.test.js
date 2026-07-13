@@ -1813,10 +1813,21 @@ test('detail hold edit never starts after the finger is released during consent'
 
 test('detail page registers and renders the shared audio consent dialog', () => {
   const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/detail/index.json'), 'utf8'))
+  const js = fs.readFileSync(path.join(root, 'pages/detail/index.js'), 'utf8')
   const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
 
   assert.equal(config.usingComponents['audio-consent-dialog'], '/components/audio-consent-dialog/index')
-  assert.match(wxml, /<audio-consent-dialog id="audio-consent-dialog"/)
+  assert.match(js, /const audioConsentFlow = require\('\.\.\/\.\.\/utils\/audio-consent-flow'\)/)
+  assert.match(js, /audioConsentVisible:\s*false/)
+  assert.match(js, /requestAudioConsent\(\)\s*\{\s*return audioConsentFlow\.request\(this\)/)
+  assert.match(js, /onAudioConsentReady\(\)\s*\{\s*audioConsentFlow\.markReady\(this\)/)
+  assert.match(js, /onUnload\(\)\s*\{\s*audioConsentFlow\.dispose\(this\)/)
+  assert.doesNotMatch(js, /selectComponent\('#audio-consent-dialog'\)/)
+  assert.match(wxml, /visible="\{\{audioConsentVisible\}\}"/)
+  assert.match(wxml, /bind:ready="onAudioConsentReady"/)
+  assert.match(wxml, /bind:agree="onAudioConsentAgree"/)
+  assert.match(wxml, /bind:decline="onAudioConsentDecline"/)
+  assert.match(wxml, /bind:viewagreement="onAudioConsentViewAgreement"/)
 })
 
 test('detail page uploads selected photo inline and asks AI to insert it', async () => {

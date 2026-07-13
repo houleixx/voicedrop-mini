@@ -310,10 +310,21 @@ test('community detail registers and renders the shared audio consent dialog', (
   const fs = require('node:fs')
   const path = require('node:path')
   const config = JSON.parse(fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.json'), 'utf8'))
+  const js = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.js'), 'utf8')
   const wxml = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxml'), 'utf8')
 
   assert.equal(config.usingComponents['audio-consent-dialog'], '/components/audio-consent-dialog/index')
-  assert.match(wxml, /<audio-consent-dialog id="audio-consent-dialog"/)
+  assert.match(js, /const audioConsentFlow = require\('\.\.\/\.\.\/utils\/audio-consent-flow'\)/)
+  assert.match(js, /audioConsentVisible:\s*false/)
+  assert.match(js, /requestAudioConsent\(\)\s*\{\s*return audioConsentFlow\.request\(this\)/)
+  assert.match(js, /onAudioConsentReady\(\)\s*\{\s*audioConsentFlow\.markReady\(this\)/)
+  assert.match(js, /onUnload\(\)\s*\{\s*audioConsentFlow\.dispose\(this\)/)
+  assert.doesNotMatch(js, /selectComponent\('#audio-consent-dialog'\)/)
+  assert.match(wxml, /visible="\{\{audioConsentVisible\}\}"/)
+  assert.match(wxml, /bind:ready="onAudioConsentReady"/)
+  assert.match(wxml, /bind:agree="onAudioConsentAgree"/)
+  assert.match(wxml, /bind:decline="onAudioConsentDecline"/)
+  assert.match(wxml, /bind:viewagreement="onAudioConsentViewAgreement"/)
 })
 
 test('community detail saves uploaded reply recording for automatic community publish', async () => {

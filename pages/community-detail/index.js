@@ -7,6 +7,7 @@ const communityReply = require('../../utils/community-reply')
 const pendingReplies = require('../../utils/pending-replies')
 const prefs = require('../../utils/prefs')
 const api = require('../../services/api')
+const audioConsentFlow = require('../../utils/audio-consent-flow')
 
 const app = getApp()
 const REPLY_WAVE_PATTERN = [0.25, 0.62, 0.38, 0.9, 0.48, 0.72, 0.34, 0.58]
@@ -33,7 +34,8 @@ Page({
     replyRecording: false,
     replyUploading: false,
     replyTimerDisplay: '00:00',
-    replyWaveBars: REPLY_WAVE_PATTERN.map(() => 10)
+    replyWaveBars: REPLY_WAVE_PATTERN.map(() => 10),
+    audioConsentVisible: false
   },
 
   onLoad(options) {
@@ -59,6 +61,7 @@ Page({
   },
 
   onUnload() {
+    audioConsentFlow.dispose(this)
     this.clearReplyTimer()
     const active = app.globalData.activeRecorderSession || {}
     if (active.type === 'community-reply' && active.id === this._replySessionId) {
@@ -226,8 +229,24 @@ Page({
   },
 
   requestAudioConsent() {
-    const dialog = this.selectComponent && this.selectComponent('#audio-consent-dialog')
-    return dialog && dialog.request ? dialog.request() : Promise.resolve(false)
+    return audioConsentFlow.request(this)
+  },
+
+  onAudioConsentReady() {
+    audioConsentFlow.markReady(this)
+  },
+
+  onAudioConsentAgree() {
+    audioConsentFlow.agree(this)
+  },
+
+  onAudioConsentDecline() {
+    audioConsentFlow.decline(this)
+  },
+
+  onAudioConsentViewAgreement() {
+    audioConsentFlow.decline(this)
+    wx.navigateTo({ url: '/pages/audio-consent/index' })
   },
 
   async startReplyRecording() {
