@@ -1,6 +1,5 @@
 <view class="screen settings-screen">
   <page-header title="写作风格" bgColor="#f9f2eb" textColor="#151210">
-    <button slot="right" class="nav-action nav-action-strong" loading="{{saving}}" bindtap="done">完成</button>
   </page-header>
 
   <view class="style-page settings-content">

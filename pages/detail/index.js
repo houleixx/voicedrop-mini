@@ -813,7 +813,7 @@ Page({
     const clamped = Math.max(0, Math.min(1, Number(progress) || 0))
     const systemInfo = wx.getSystemInfoSync ? wx.getSystemInfoSync() : {}
     const windowWidth = Number(systemInfo.windowWidth) || 375
-    const ringSize = windowWidth * 80 / 750
+    const ringSize = windowWidth * 72 / 750
     const lineWidth = windowWidth * 6 / 750
     const center = ringSize / 2
     const radius = center - lineWidth / 2

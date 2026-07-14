@@ -141,8 +141,8 @@
   top: 50%;
   left: 50%;
   z-index: 0;
-  width: 80rpx;
-  height: 80rpx;
+  width: 72rpx;
+  height: 72rpx;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }

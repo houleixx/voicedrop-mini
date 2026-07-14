@@ -65,13 +65,6 @@ Page({
     wx.navigateBack()
   },
 
-  async done() {
-    const styleOk = await this.saveStyle({ silent: true })
-    const selectionOk = await this.saveStyleSelection({ silent: true })
-    wx.showToast({ title: styleOk && selectionOk ? '已完成' : '保存失败', icon: styleOk && selectionOk ? 'success' : 'error' })
-    if (styleOk && selectionOk) wx.navigateBack()
-  },
-
   async loadStyleHistory() {
     const styleHistory = await settings.loadStyleHistory()
     const versions = styleHistory.versions || []

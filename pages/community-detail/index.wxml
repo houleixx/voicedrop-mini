@@ -16,7 +16,7 @@
     </view>
   </view>
 
-  <view class="detail-body" style="padding-top: 120px;">
+  <view class="detail-body" style="padding-top: 115px;">
     <view class="article-head">
       <text class="article-title">{{article.title || post.title || '社区文章'}}</text>
       <text class="meta">{{post.author || post.authorName || '匿名作者'}} · 社区分享</text>
