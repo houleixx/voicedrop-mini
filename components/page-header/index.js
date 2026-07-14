@@ -5,7 +5,9 @@ Component({
   properties: {
     title: { type: String, value: '' },
     bgColor: { type: String, value: '#faf6ef' },
-    textColor: { type: String, value: '#2a2521' }
+    textColor: { type: String, value: '#2a2521' },
+    titleAlign: { type: String, value: 'center' },
+    safeRightAction: { type: Boolean, value: false }
   },
   data: {
     toolbarTop: 0,

@@ -22,12 +22,12 @@ test('custom detail toolbars paint behind the status bar and leave bottom room',
   assert.match(detail, /class="detail-toolbar"[^>]*height:\s*calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 26rpx\);/)
   assert.match(detail, /class="detail-toolbar"[^>]*padding-top:\s*\{\{toolbarTop\}\}px;/)
   assert.match(detail, /class="detail-toolbar"[^>]*padding-bottom:\s*26rpx;/)
-  assert.match(detail, /class="detail-body"[^>]*padding-top:\s*calc\(\{\{toolbarTop \+ toolbarHeight \+ 40\}\}px \+ 26rpx\);/)
+  assert.match(detail, /class="detail-body"[^>]*padding-top:\s*120px;/)
   assert.match(communityDetail, /class="detail-toolbar"[^>]*top:\s*0px;/)
   assert.match(communityDetail, /class="detail-toolbar"[^>]*height:\s*calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 26rpx\);/)
   assert.match(communityDetail, /class="detail-toolbar"[^>]*padding-top:\s*\{\{toolbarTop\}\}px;/)
   assert.match(communityDetail, /class="detail-toolbar"[^>]*padding-bottom:\s*26rpx;/)
-  assert.match(communityDetail, /class="detail-body"[^>]*padding-top:\s*calc\(\{\{toolbarTop \+ toolbarHeight \+ 20\}\}px \+ 26rpx\);/)
+  assert.match(communityDetail, /class="detail-body"[^>]*padding-top:\s*120px;/)
 })
 
 test('detail photo sheet top bar paints behind the status bar and leaves bottom room', () => {

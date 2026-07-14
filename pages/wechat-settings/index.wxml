@@ -1,4 +1,4 @@
-<view class="screen">
+<view class="screen settings-screen">
   <page-header title="微信公众号" />
   <view class="page-body">
     <!-- Top info card -->

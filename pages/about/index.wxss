@@ -1,5 +1,5 @@
 .about-card {
-  margin-top: 24rpx;
+  margin-top: 0;
   padding: 36rpx;
 }
 

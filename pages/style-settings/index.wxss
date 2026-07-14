@@ -19,10 +19,6 @@
   text-align: right;
 }
 
-.style-page {
-  padding-top: 232rpx;
-}
-
 .dropdown-wrap {
   position: relative;
   z-index: 20;

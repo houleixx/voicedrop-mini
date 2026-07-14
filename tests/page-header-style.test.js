@@ -32,6 +32,17 @@ test('page header title stays below the status bar and centers with the back but
   assert.match(right, /height:\s*88rpx;/)
 })
 
+test('page header can move actions clear of the WeChat capsule and left-align detail titles', () => {
+  const css = fs.readFileSync(path.join(root, 'components/page-header/index.wxss'), 'utf8')
+  const wxml = fs.readFileSync(path.join(root, 'components/page-header/index.wxml'), 'utf8')
+  assert.match(wxml, /safeRightAction/)
+  assert.match(wxml, /titleAlign/)
+  assert.match(wxml, /header-right[^>]*right:/)
+  assert.match(wxml, /safeRightAction \? toolbarTop/)
+  assert.match(wxml, /safeRightAction \? toolbarHeight/)
+  assert.match(css, /\.header-title\.title-left\s*\{[^}]*text-align:\s*left;/s)
+})
+
 test('page header back icon is centered inside the button', () => {
   const css = fs.readFileSync(path.join(root, 'components/page-header/index.wxss'), 'utf8')
   const wxml = fs.readFileSync(path.join(root, 'components/page-header/index.wxml'), 'utf8')

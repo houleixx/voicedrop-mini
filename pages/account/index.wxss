@@ -1,5 +1,5 @@
 .account-screen {
-  padding: 32rpx;
+  padding: 0 32rpx;
 }
 
 .account-body {
@@ -17,7 +17,7 @@
 }
 
 .account-card {
-  margin-top: 28rpx;
+  margin-top: 0;
   padding: 32rpx;
 }
 

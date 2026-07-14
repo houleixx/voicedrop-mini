@@ -16,7 +16,7 @@
     </view>
   </view>
 
-  <view class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight + 20}}px + 26rpx);">
+  <view class="detail-body" style="padding-top: 120px;">
     <view class="article-head">
       <text class="article-title">{{article.title || post.title || '社区文章'}}</text>
       <text class="meta">{{post.author || post.authorName || '匿名作者'}} · 社区分享</text>

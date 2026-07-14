@@ -1,9 +1,9 @@
-<view class="screen">
+<view class="screen settings-screen settings-page">
   <page-header title="设置" />
   <view class="page-body">
 
     <!-- 顶部卡片：账户、算力、写作风格 -->
-    <view class="card menu-card">
+    <view class="card menu-card settings-primary-card">
       <!-- 账户 -->
       <view class="menu-item" data-url="/pages/account/index" bindtap="openPage">
         <view class="menu-icon icon-dark">

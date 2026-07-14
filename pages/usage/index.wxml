@@ -1,4 +1,4 @@
-<view class="screen">
+<view class="screen settings-screen">
   <page-header title="算力" />
   <view class="page-body usage-body">
     <!-- Loading state -->

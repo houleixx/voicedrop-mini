@@ -34,6 +34,8 @@ Page({
   onInstructionInput(event) { this.updateDirty({ instructionDraft: event.detail.value }) },
   onTextChange(event) { this.updateDirty({ textDraft: event.detail.value }) },
   onImageChange(event) { this.updateDirty({ imageDraft: event.detail.value }) },
+  toggleText() { this.updateDirty({ textDraft: !this.data.textDraft }) },
+  toggleImage() { this.updateDirty({ imageDraft: !this.data.imageDraft }) },
   restoreDefault() {
     if (!this.data.item || !this.data.item.forkedFrom) return
     this.setData({ error: '派生项可直接修改；如需系统原版，请在列表中使用“恢复默认”' })

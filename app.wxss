@@ -32,6 +32,16 @@ button::after {
   background: #faf6ef;
 }
 
+.settings-screen {
+  padding: 0 32rpx;
+  --settings-content-top: 210rpx;
+}
+
+.settings-screen > .page-body,
+.settings-screen > .settings-content {
+  padding-top: var(--settings-content-top) !important;
+}
+
 .topbar {
   display: flex;
   min-height: 88rpx;

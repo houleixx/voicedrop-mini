@@ -1,4 +1,4 @@
-<view class="screen account-screen">
+<view class="screen settings-screen account-screen">
   <page-header title="账户" />
   <view class="page-body account-body">
     <view class="account-card">

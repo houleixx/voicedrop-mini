@@ -12,7 +12,7 @@ function context(page, initial) {
 
 function freshPage(name, serviceOverrides, wxOverrides, uiOverrides) {
   let page
-  const service = Object.assign({ items: () => [], refresh: async () => ({ ok: true }), replace: async () => ({ ok: true }), remove: async () => ({ ok: true }), add: async () => ({ ok: true }), restoreDefaults: async () => ({ ok: true }), shareStates: async () => ({ ok: true, byItem: {} }), setSharing: async () => ({ ok: true }) }, serviceOverrides)
+  const service = Object.assign({ items: () => [], refresh: async () => ({ ok: true }), replace: async () => ({ ok: true }), remove: async () => ({ ok: true }), add: async () => ({ ok: true }), restoreDefaults: async () => ({ ok: true }), shareStates: async () => ({ ok: true, byItem: {} }), setSharing: async () => ({ ok: true }), preview: async () => ({ ok: true, data: { label: '共享提示词' } }), importCode: async () => ({ ok: true }) }, serviceOverrides)
   global.Page = (definition) => { page = definition }
   global.wx = Object.assign({ navigateTo() {}, navigateBack() {} }, wxOverrides)
   for (const id of [`../pages/${name}/index`, '../services/prompt-store']) {
@@ -47,12 +47,16 @@ test('prompt pages use the shared screen horizontal gutter without adding a seco
   assert.match(editCss, /\.edit-page\s*\{[^}]*padding:\s*0\s+0\s+80rpx/s)
 })
 
-test('prompt list maps nested system, forked, and user rows', async () => {
+test('prompt list starts with groups collapsed and expands children directly below a group', async () => {
   const page = freshPage('instruction-settings', { items: () => items, refresh: async () => ({ ok: true }) })
   const ctx = context(page)
   await page.loadItems.call(ctx)
-  assert.deepEqual(ctx.data.rows.map((row) => row.originLabel), ['系统', '系统', '派生', '自建'])
-  assert.equal(ctx.data.rows[2].depth, 1)
+  assert.deepEqual(ctx.data.rows.map((row) => row.id), ['g', 'c'])
+  page.toggleGroup.call(ctx, { currentTarget: { dataset: { id: 'g', type: 'group' } } })
+  assert.deepEqual(ctx.data.rows.map((row) => row.id), ['g', 'a', 'b', 'c'])
+  assert.equal(ctx.data.rows[1].depth, 1)
+  assert.equal(ctx.data.rows[1].appliesLabel, '仅图片')
+  assert.equal(ctx.data.rows[2].originLabel, '已自定义')
   assert.equal(ctx.data.loading, false)
 })
 
@@ -62,9 +66,60 @@ test('prompt list keeps cached rows on load failure and encodes edit ids', async
   const ctx = context(page)
   await page.loadItems.call(ctx)
   assert.equal(ctx.data.error, '加载失败，正在显示上次内容')
-  assert.equal(ctx.data.rows.length, 4)
+  assert.equal(ctx.data.rows.length, 2)
   page.openItem.call(ctx, { currentTarget: { dataset: { id: 'a/b c' } } })
   assert.equal(navigations[0], '/pages/instruction-edit/index?id=a%2Fb%20c')
+})
+
+test('plus button opens the new menu and choosing an action closes it before navigation', () => {
+  const navigations = []
+  const page = freshPage('instruction-settings', {}, { navigateTo: ({ url }) => navigations.push(url) })
+  const ctx = context(page)
+  page.openNewMenu.call(ctx)
+  assert.equal(ctx.data.newMenuVisible, true)
+  page.createPrompt.call(ctx)
+  assert.equal(ctx.data.newMenuVisible, false)
+  assert.equal(navigations[0], '/pages/prompt-new/index?type=action')
+})
+
+test('prompt list opens the magic-code importer as a bottom sheet', () => {
+  const page = freshPage('instruction-settings')
+  const ctx = context(page)
+  page.openImport.call(ctx)
+  assert.equal(ctx.data.importVisible, true)
+  page.closeImport.call(ctx)
+  assert.equal(ctx.data.importVisible, false)
+})
+
+test('left swipe delete suppresses the tap that follows the gesture', () => {
+  const navigations = []
+  const page = freshPage('instruction-settings', {}, {
+    navigateTo: ({ url }) => navigations.push(url),
+    showModal: ({ success }) => success({ confirm: false })
+  })
+  const ctx = context(page)
+  const target = { currentTarget: { dataset: { id: 'a', type: 'action' } } }
+  page.rowTouchStart.call(ctx, Object.assign({ touches: [{ pageX: 120, pageY: 20 }] }, target))
+  page.rowTouchEnd.call(ctx, Object.assign({ changedTouches: [{ pageX: 20, pageY: 22 }] }, target))
+  page.handleRowTap.call(ctx, target)
+  assert.deepEqual(navigations, [])
+})
+
+test('prompt list markup contains the screenshot hierarchy and import copy', () => {
+  const root = path.join(__dirname, '..')
+  const wxml = fs.readFileSync(path.join(root, 'pages/instruction-settings/index.wxml'), 'utf8')
+  assert.match(wxml, /slot="right"[\s\S]*class="add-button"/)
+  assert.match(wxml, /输入魔法数字导入/)
+  assert.match(wxml, /恢复默认提示词/)
+  assert.match(wxml, /新建动作[\s\S]*新建分组/)
+  assert.match(wxml, /class="import-sheet"/)
+  const importSheet = wxml.match(/<view class="import-sheet"[\s\S]*?<\/view>\s*<\/view>\s*<\/view>/)
+  assert.ok(importSheet)
+  assert.doesNotMatch(importSheet[0], /class="sheet-handle"/)
+  assert.match(wxml, /safeRightAction/)
+  assert.match(wxml, /bindtouchend="rowTouchEnd"/)
+  const script = fs.readFileSync(path.join(root, 'pages/instruction-settings/index.js'), 'utf8')
+  assert.match(script, /rowTouchEnd\(event\)/)
 })
 
 test('prompt editor forks a system node and saves once', async () => {
@@ -125,12 +180,30 @@ test('prompt editor matches the iOS header and sharing layout', () => {
   const root = path.join(__dirname, '..')
   const wxml = fs.readFileSync(path.join(root, 'pages/instruction-edit/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/instruction-edit/index.wxss'), 'utf8')
-  assert.match(wxml, /<page-header title="\{\{pageTitle\}\}"\s*\/>/)
-  assert.match(wxml, /class="default-note"[\s\S]*class="save-button"[^>]*bindtap="save"/)
-  assert.doesNotMatch(wxml, /slot="right"[\s\S]*bindtap="save"/)
-  assert.match(css, /\.save-button\s*\{[^}]*width:\s*100%/s)
-  assert.doesNotMatch(css.match(/\.save-button\s*\{[^}]*\}/s)[0], /position:\s*(fixed|sticky)/)
+  assert.match(wxml, /<page-header title="\{\{pageTitle\}\}" \/>/)
+  assert.doesNotMatch(wxml, /titleAlign="left"/)
+  assert.doesNotMatch(wxml, /slot="right"/)
+  assert.match(wxml, /class="bottom-save[^\"]*"[\s\S]*bindtap="save"/)
+  assert.match(wxml, /菜单里的名字/)
+  assert.match(wxml, /class="apply-option/)
+  assert.match(css, /\.bottom-save\s*\{[^}]*border-radius/s)
+  assert.match(css, /\.bottom-save\s*\{[^}]*width:\s*320rpx;/s)
+  assert.match(css, /\.bottom-save\s*\{[^}]*margin:\s*42rpx\s+auto\s+0/s)
   assert.match(wxml, /分享这条提示词/)
   assert.match(wxml, /open-type="share"/)
   assert.match(wxml, /分享的始终是已保存的版本/)
+})
+
+test('prompt add button matches the home settings shortcut size in the capsule-safe slot', () => {
+  const root = path.join(__dirname, '..')
+  const css = fs.readFileSync(path.join(root, 'pages/instruction-settings/index.wxss'), 'utf8')
+  const wxml = fs.readFileSync(path.join(root, 'pages/instruction-settings/index.wxml'), 'utf8')
+  const add = css.match(/\.add-button\s*\{([^}]*)\}/)
+  assert.ok(add)
+  assert.match(add[1], /width:\s*32px;/)
+  assert.match(add[1], /height:\s*32px;/)
+  assert.match(add[1], /border-radius:\s*8px;/)
+  assert.match(wxml, /class="add-symbol">\+<\/text>/)
+  assert.match(css, /\.add-symbol\s*\{[^}]*line-height:\s*32px;/s)
+  assert.match(css, /\.add-symbol\s*\{[^}]*transform:\s*translateY\(-1px\);?/s)
 })

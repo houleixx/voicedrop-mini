@@ -1,4 +1,4 @@
-<view class="screen">
+<view class="screen settings-screen">
   <page-header title="{{title}}" />
   <view class="page-body agreement-body">
     <view class="agreement-card card">

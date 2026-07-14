@@ -1,7 +1,3 @@
-.usage-body {
-  padding-top: 176rpx;
-}
-
 /* Loading state */
 .loading-container {
   display: flex;

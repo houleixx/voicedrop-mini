@@ -6,6 +6,10 @@
   overflow: hidden;
 }
 
+.settings-primary-card {
+  margin-top: 0;
+}
+
 /* 分组标题 */
 .section-header {
   margin-top: 36rpx;

@@ -36,7 +36,7 @@
     <text class="empty-title">文章还没生成</text>
     <text class="empty-sub">稍后刷新，或回到列表查看处理状态。</text>
   </view>
-  <view wx:else class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight + 40}}px + 26rpx);">
+  <view wx:else class="detail-body" style="padding-top: 120px;">
     <view class="article-head">
       <text class="article-title">{{current.title}}</text>
       <view class="article-meta">

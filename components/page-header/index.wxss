@@ -83,6 +83,12 @@
   white-space: nowrap;
 }
 
+.header-title.title-left {
+  right: auto;
+  width: 300rpx;
+  text-align: left;
+}
+
 .header-right {
   position: absolute;
   right: 32rpx;
