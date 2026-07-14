@@ -1,15 +1,25 @@
 <view class="screen">
   <page-header title="提示词" />
   <view class="prompt-page">
-    <text class="prompt-intro">长按菜单里每个动作的名字和提示词都可以改成你自己的说法。留空即恢复默认；不想要的可以从菜单里隐藏。</text>
-    <view class="prompt-state" wx:if="{{loading}}">正在加载...</view>
-    <view class="prompt-state" wx:elif="{{error}}"><text>{{error}}</text><button bindtap="loadItems">重试</button></view>
-    <view class="prompt-state" wx:elif="{{empty}}">暂无可自定义提示词</view>
-    <view class="prompt-card" wx:else>
-      <view class="prompt-row {{item.hidden ? 'hidden' : ''}}" wx:for="{{rows}}" wx:key="id" data-id="{{item.id}}" bindtap="openItem">
-        <view class="prompt-copy"><text class="prompt-title">{{item.title}}</text><text class="prompt-preview">{{item.status || item.preview}}</text></view>
-        <text class="prompt-badge" wx:if="{{item.status}}">{{item.status}}</text><text class="prompt-arrow">›</text>
-      </view>
+    <view class="prompt-actions">
+      <button size="mini" bindtap="createPrompt" disabled="{{mutating || reordering}}">新建提示词</button>
+      <button size="mini" bindtap="createGroup" disabled="{{mutating || reordering}}">新建分组</button>
+      <button size="mini" bindtap="openImport" disabled="{{mutating || reordering}}">导入</button>
+      <button size="mini" wx:if="{{!reordering}}" bindtap="startReorder" disabled="{{mutating}}">排序</button>
+      <button size="mini" wx:else bindtap="finishReorder" loading="{{mutating}}">完成</button>
     </view>
+    <text class="prompt-intro">提示词会同时用于文字和图片的长按菜单。系统项编辑时会创建独立副本。</text>
+    <view class="prompt-error" wx:if="{{error}}">{{error}}</view>
+    <view class="prompt-state" wx:if="{{loading}}">正在加载...</view>
+    <view class="prompt-state" wx:elif="{{empty}}">暂无提示词</view>
+    <movable-area class="prompt-card" style="height:{{rows.length * 112}}rpx" wx:else>
+      <movable-view class="prompt-row depth-{{item.depth}}" style="height:112rpx" y="{{item.flatIndex * 56}}" direction="vertical" disabled="{{!reordering}}" wx:for="{{rows}}" wx:key="id" data-id="{{item.id}}" data-group="{{item.parentId}}" data-index="{{item.index}}" bindtap="openItem" bindlongpress="deleteItem" bindchange="movePrompt">
+        <text class="drag-handle" wx:if="{{reordering}}">☰</text>
+        <view class="prompt-copy"><text class="prompt-title">{{item.title}}</text><text class="prompt-preview">{{item.preview}}</text></view>
+        <text class="prompt-badge">{{item.originLabel}}</text><text class="prompt-arrow" wx:if="{{!reordering}}">›</text>
+      </movable-view>
+    </movable-area>
+    <view class="reorder-actions" wx:if="{{reordering}}"><button bindtap="cancelReorder">取消排序</button></view>
+    <button class="restore-button" bindtap="restoreDefaults" disabled="{{mutating || reordering}}">恢复默认</button>
   </view>
 </view>

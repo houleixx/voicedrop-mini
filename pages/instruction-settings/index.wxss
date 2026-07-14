@@ -1,3 +1,12 @@
 @import '../../styles/remixicon.wxss';
-.screen{min-height:100vh;background:#faf6ef;color:#2a2521}.prompt-page{padding:24rpx 32rpx 80rpx}.prompt-intro{display:block;color:#756d63;font-size:26rpx;line-height:1.55;margin:0 8rpx 20rpx}.prompt-card{background:#fff;border-radius:24rpx;overflow:hidden}.prompt-row{display:flex;align-items:center;gap:18rpx;min-height:118rpx;padding:16rpx 24rpx;border-bottom:1rpx solid #efe7d9}.prompt-row:last-child{border-bottom:0}.prompt-row.hidden{opacity:.52}.prompt-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:7rpx}.prompt-title{font-size:30rpx}.prompt-preview{font-size:24rpx;color:#9a9082;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.prompt-badge{font-size:22rpx;color:#c7432f}.prompt-arrow{font-size:38rpx;color:#b8ae9e}.prompt-state{text-align:center;color:#9a9082;padding:100rpx 20rpx}.prompt-state button{margin-top:24rpx;width:180rpx;font-size:26rpx}
+.screen{min-height:100vh;background:#faf6ef;color:#2a2521}.prompt-page{padding:24rpx 0 80rpx}.prompt-intro{display:block;color:#756d63;font-size:26rpx;line-height:1.55;margin:0 8rpx 20rpx}.prompt-card{background:#fff;border-radius:24rpx;overflow:hidden}.prompt-row{display:flex;align-items:center;gap:18rpx;min-height:118rpx;padding:16rpx 24rpx;border-bottom:1rpx solid #efe7d9}.prompt-row:last-child{border-bottom:0}.prompt-row.hidden{opacity:.52}.prompt-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:7rpx}.prompt-title{font-size:30rpx}.prompt-preview{font-size:24rpx;color:#9a9082;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.prompt-badge{font-size:22rpx;color:#c7432f}.prompt-arrow{font-size:38rpx;color:#b8ae9e}.prompt-state{text-align:center;color:#9a9082;padding:100rpx 20rpx}.prompt-state button{margin-top:24rpx;width:180rpx;font-size:26rpx}
 .prompt-page{padding-top:232rpx}
+.prompt-actions{display:flex;flex-wrap:wrap;gap:10rpx;margin-bottom:18rpx}
+.prompt-actions button{margin:0}
+.prompt-error{padding:18rpx 22rpx;margin:12rpx 0;color:#9c3f25;background:#fff0e6;border-radius:16rpx}
+.prompt-card{width:100%;min-height:240rpx;height:auto;overflow:visible}
+.prompt-row{position:relative;width:100%;box-sizing:border-box}
+.prompt-row.depth-1{padding-left:44rpx}
+.drag-handle{margin-right:16rpx;color:#9b9388}
+.restore-button{margin-top:24rpx;width:100%}
+.reorder-actions{margin-top:18rpx}

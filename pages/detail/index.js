@@ -10,7 +10,7 @@ const communityTerms = require('../../utils/community-terms')
 const styleRewrite = require('../../utils/style-rewrite')
 const styleSelection = require('../../utils/style-selection')
 const uiConfig = require('../../utils/ui-config')
-const uiConfigService = require('../../services/ui-config')
+const promptStore = require('../../services/prompt-store')
 const versionNav = require('../../utils/version-navigation')
 const asrDictation = require('../../services/asr-dictation')
 const holdToTalk = require('../../utils/hold-to-talk')
@@ -259,7 +259,7 @@ Page({
     hasWechatDraft: false,
     publishingWechat: false,
     sharingCommunity: false,
-    menus: uiConfig.builtin().pages['voice-editor'].longpress,
+    menus: { text: promptStore.menu('text'), image: promptStore.menu('image') },
     longpressMenuOpen: false,
     longpressMenu: null,
     longpressTarget: null,
@@ -359,9 +359,8 @@ Page({
   },
 
   async loadMenus() {
-    const doc = await uiConfigService.refresh()
-    const menus = uiConfig.menu(doc, 'voice-editor', 'text') && doc.pages['voice-editor'].longpress
-    if (menus) this.setData({ menus })
+    await promptStore.refresh()
+    this.setData({ menus: { text: promptStore.menu('text'), image: promptStore.menu('image') } })
   },
 
   onUnload() {

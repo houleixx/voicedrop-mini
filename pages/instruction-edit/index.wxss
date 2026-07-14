@@ -1,6 +1,6 @@
 @import '../../styles/remixicon.wxss';
 .screen{min-height:100vh;background:#faf6ef;color:#2a2521}
-.edit-page{padding:0 32rpx 80rpx;padding-top:232rpx}
+.edit-page{padding:0 0 80rpx;padding-top:232rpx}
 .save-button{box-sizing:border-box;width:100%;height:88rpx;line-height:88rpx;margin-top:36rpx;background:#c7432f;color:#fff;border-radius:20rpx;font-size:30rpx}
 .save-button::after,.restore-row button::after,.share-details button::after{border:0}
 .save-button[disabled]{background:#b8ae9e;color:#fff}

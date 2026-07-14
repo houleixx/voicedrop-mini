@@ -94,7 +94,7 @@ test('recordings scroll view enables pull refresh for both home tabs', () => {
   assert.match(wxml, /<scroll-view[^>]*bindrefresherrefresh="onRefresherRefresh"/)
   assert.match(wxml, /<view slot="refresher" class="pull-refresh-indicator">\s*<view class="loading-spinner pull-refresh-spinner" aria-hidden="true"><\/view>\s*<\/view>/)
   assert.match(css, /\.pull-refresh-indicator\s*\{[^}]*display:\s*flex;[^}]*width:\s*100%;[^}]*height:\s*60px;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s)
-  assert.match(css, /\.pull-refresh-spinner\s*\{[^}]*box-sizing:\s*border-box;[^}]*width:\s*30px;[^}]*height:\s*30px;[^}]*flex:\s*0 0 30px;/s)
+  assert.match(css, /\.pull-refresh-spinner\s*\{[^}]*box-sizing:\s*border-box;[^}]*width:\s*30px;[^}]*height:\s*30px;[^}]*flex:\s*0 0 30px;[^}]*position:\s*relative;[^}]*top:\s*8px;/s)
 })
 
 test('pull refresh keeps current content visible and forwards silent options to each tab', async () => {

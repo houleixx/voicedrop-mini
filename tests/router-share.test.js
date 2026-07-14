@@ -72,6 +72,19 @@ test('app handles the same launch route only once across onLaunch and onShow', a
   ])
 })
 
+test('app routes one valid prompt code to import and ignores eight digit runs', async () => {
+  let harness = freshApp()
+  harness.app.onLaunch({ query: { promptCode: '1234567' } })
+  harness.app.onShow({ query: { promptCode: '1234567' } })
+  await flushRoutes()
+  assert.deepEqual(harness.calls, [{ type: 'navigateTo', url: '/pages/prompt-import/index?promptCode=1234567' }])
+
+  harness = freshApp()
+  harness.app.onLaunch({ query: { promptCode: '12345678' } })
+  await flushRoutes()
+  assert.deepEqual(harness.calls, [])
+})
+
 test('app does not reopen the detail route already visible after returning from album', async () => {
   const { app, calls } = freshApp({}, [{
     route: 'pages/detail/index',

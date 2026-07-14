@@ -1,0 +1,6 @@
+<view class="screen"><page-header title="导入提示词" /><view class="prompt-import-page">
+  <text class="intro">输入 7 位分享码，也可以粘贴包含分享码的链接。</text><input class="code-input" type="text" value="{{code}}" bindinput="onCodeInput" placeholder="7 位分享码" />
+  <view class="state" wx:if="{{loading}}">正在读取...</view><text class="error" wx:elif="{{error}}">{{error}}</text>
+  <view class="preview" wx:if="{{preview}}"><text class="preview-title">{{preview.label}}</text><text wx:if="{{preview.author}}">分享者：{{preview.author}}</text><text class="preview-prompt" user-select>{{preview.prompt}}</text><text>已被导入 {{preview.importCount || 0}} 次</text></view>
+  <button class="import-button" disabled="{{!preview || importing}}" loading="{{importing}}" bindtap="confirmImport">确认导入</button>
+</view></view>

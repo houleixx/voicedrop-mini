@@ -1,0 +1,6 @@
+<view class="screen"><page-header title="{{pageTitle}}" /><view class="prompt-new-page">
+  <text class="error" wx:if="{{error}}">{{error}}</text><text class="field-label">名称</text><input class="field" maxlength="40" value="{{label}}" bindinput="onLabel" />
+  <block wx:if="{{type === 'action'}}"><text class="field-label">提示词</text><textarea class="field prompt-field" value="{{prompt}}" bindinput="onPrompt" />
+    <view class="anchor-row"><text>应用于文字</text><switch checked="{{text}}" bindchange="onText" /></view><view class="anchor-row"><text>应用于图片</text><switch checked="{{image}}" bindchange="onImage" /></view></block>
+  <button class="save-button" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存</button>
+</view></view>

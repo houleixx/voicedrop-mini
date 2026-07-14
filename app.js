@@ -1,6 +1,7 @@
 const router = require('./utils/app-router')
 const prefs = require('./utils/prefs')
 const auth = require('./services/auth')
+const promptTree = require('./utils/prompt-tree')
 
 function currentPageMatchesRoute(route) {
   if (!route || route.type !== 'navigateTo' || typeof getCurrentPages !== 'function') return false
@@ -57,6 +58,18 @@ App({
   },
 
   handleRouteOptions(options) {
+    const promptCode = promptTree.extractShareCode(options && options.query && options.query.promptCode)
+    if (promptCode) {
+      const url = `/pages/prompt-import/index?promptCode=${promptCode}`
+      const route = { type: 'navigateTo', url }
+      if (currentPageMatchesRoute(route) || this.globalData.pendingRouteUrl === url) return
+      this.globalData.pendingRouteUrl = url
+      setTimeout(() => {
+        try { if (!currentPageMatchesRoute(route)) wx.navigateTo({ url }) }
+        finally { if (this.globalData.pendingRouteUrl === url) this.globalData.pendingRouteUrl = '' }
+      }, 0)
+      return
+    }
     const route = router.routeFor(router.parseQuery(options && options.query))
     if (!route) return
     if (route.tag) this.globalData.pendingRecordTag = route.tag

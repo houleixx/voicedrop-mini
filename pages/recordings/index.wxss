@@ -69,6 +69,8 @@
   width: 30px;
   height: 30px;
   flex: 0 0 30px;
+  position: relative;
+  top: 8px;
 }
 
 @keyframes loading-spin {

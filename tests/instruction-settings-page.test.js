@@ -12,23 +12,23 @@ function context(page, initial) {
 
 function freshPage(name, serviceOverrides, wxOverrides, uiOverrides) {
   let page
-  const service = Object.assign({ load: async () => ({ ok: true, items: [] }), save: async () => ({ ok: true }), setSharing: async () => ({ ok: true }) }, serviceOverrides)
-  const uiService = Object.assign({ refresh: async () => ({}) }, uiOverrides)
+  const service = Object.assign({ items: () => [], refresh: async () => ({ ok: true }), replace: async () => ({ ok: true }), remove: async () => ({ ok: true }), add: async () => ({ ok: true }), restoreDefaults: async () => ({ ok: true }), shareStates: async () => ({ ok: true, byItem: {} }), setSharing: async () => ({ ok: true }) }, serviceOverrides)
   global.Page = (definition) => { page = definition }
   global.wx = Object.assign({ navigateTo() {}, navigateBack() {} }, wxOverrides)
-  for (const id of [`../pages/${name}/index`, '../services/instruction-settings', '../services/ui-config']) {
+  for (const id of [`../pages/${name}/index`, '../services/prompt-store']) {
     try { delete require.cache[require.resolve(id)] } catch (_) {}
   }
-  require.cache[require.resolve('../services/instruction-settings')] = { exports: service }
-  require.cache[require.resolve('../services/ui-config')] = { exports: uiService }
+  require.cache[require.resolve('../services/prompt-store')] = { exports: service }
   require(`../pages/${name}/index`)
   return page
 }
 
 const items = [
-  { id: 'a', label: '图片风格 · 卡通', defaultName: '卡通', defaultText: '默认', effective: '默认', effectiveLabel: '卡通', customized: false, hidden: false },
-  { id: 'b', label: '图片风格 · 水彩', defaultName: '水彩', defaultText: '默认', override: '我的提示词', customLabel: '透明水彩', effective: '我的提示词', effectiveLabel: '透明水彩', customized: true, hidden: false, shareCode: '1234567', sharing: true },
-  { id: 'c', label: '改写这段 · 简洁', defaultName: '简洁', defaultText: '默认', effective: '默认', effectiveLabel: '简洁', customized: false, hidden: true }
+  { id: 'g', type: 'group', label: '图片风格', origin: 'system', children: [
+    { id: 'a', type: 'action', label: '卡通', origin: 'system', prompt: '默认', appliesTo: ['image'] },
+    { id: 'b', type: 'action', label: '透明水彩', origin: 'custom', prompt: '我的提示词', appliesTo: ['image'], forkedFrom: 'sys_watercolor' }
+  ] },
+  { id: 'c', type: 'action', label: '简洁', origin: 'user', prompt: '默认', appliesTo: ['text'] }
 ]
 
 test('prompt pages reserve space below the fixed custom header', () => {
@@ -39,44 +39,49 @@ test('prompt pages reserve space below the fixed custom header', () => {
   assert.match(editCss, /\.edit-page\s*\{[^}]*padding-top:\s*232rpx/s)
 })
 
-test('prompt list maps default, customized, and hidden states', async () => {
-  const page = freshPage('instruction-settings', { load: async () => ({ ok: true, items }) })
+test('prompt pages use the shared screen horizontal gutter without adding a second inset', () => {
+  const root = path.join(__dirname, '..')
+  const listCss = fs.readFileSync(path.join(root, 'pages/instruction-settings/index.wxss'), 'utf8')
+  const editCss = fs.readFileSync(path.join(root, 'pages/instruction-edit/index.wxss'), 'utf8')
+  assert.match(listCss, /\.prompt-page\s*\{[^}]*padding:\s*24rpx\s+0\s+80rpx/s)
+  assert.match(editCss, /\.edit-page\s*\{[^}]*padding:\s*0\s+0\s+80rpx/s)
+})
+
+test('prompt list maps nested system, forked, and user rows', async () => {
+  const page = freshPage('instruction-settings', { items: () => items, refresh: async () => ({ ok: true }) })
   const ctx = context(page)
   await page.loadItems.call(ctx)
-  assert.deepEqual(ctx.data.rows.map((row) => row.status), ['', '已自定义', '已从菜单隐藏'])
-  assert.equal(ctx.data.rows[1].title, '图片风格 · 透明水彩')
+  assert.deepEqual(ctx.data.rows.map((row) => row.originLabel), ['系统', '系统', '派生', '自建'])
+  assert.equal(ctx.data.rows[2].depth, 1)
   assert.equal(ctx.data.loading, false)
 })
 
-test('prompt list exposes load failure and encodes edit ids', async () => {
+test('prompt list keeps cached rows on load failure and encodes edit ids', async () => {
   const navigations = []
-  const page = freshPage('instruction-settings', { load: async () => ({ ok: false, items: [] }) }, { navigateTo: ({ url }) => navigations.push(url) })
+  const page = freshPage('instruction-settings', { items: () => items, refresh: async () => ({ ok: false, error: 'load_failed' }) }, { navigateTo: ({ url }) => navigations.push(url) })
   const ctx = context(page)
   await page.loadItems.call(ctx)
-  assert.equal(ctx.data.error, '加载失败')
+  assert.equal(ctx.data.error, '加载失败，正在显示上次内容')
+  assert.equal(ctx.data.rows.length, 4)
   page.openItem.call(ctx, { currentTarget: { dataset: { id: 'a/b c' } } })
   assert.equal(navigations[0], '/pages/instruction-edit/index?id=a%2Fb%20c')
 })
 
-test('prompt editor loads drafts, restores defaults, and saves once', async () => {
-  const saves = []
+test('prompt editor forks a system node and saves once', async () => {
+  const replacements = []
   const backs = []
   const page = freshPage('instruction-edit', {
-    load: async () => ({ ok: true, items }),
-    save: async (...args) => { saves.push(args); return { ok: true } }
+    items: () => items,
+    shareStates: async () => ({ ok: true, byItem: {} }),
+    replace: async (...args) => { replacements.push(args); return { ok: true } }
   }, { navigateBack: () => backs.push(true) })
-  const ctx = context(page, { itemId: 'b' })
+  const ctx = context(page, { itemId: 'a' })
   await page.loadItem.call(ctx)
-  assert.equal(ctx.data.nameDraft, '透明水彩')
-  assert.equal(ctx.data.instructionDraft, '我的提示词')
-  assert.equal(ctx.data.pageTitle, '图片风格 · 水彩')
-  assert.equal(ctx.data.shareCode, '1234567')
-  assert.equal(ctx.data.sharing, true)
-  page.restoreDefault.call(ctx)
-  assert.equal(ctx.data.nameDraft, '')
-  assert.equal(ctx.data.instructionDraft, '')
+  page.onNameInput.call(ctx, { detail: { value: '动画卡通' } })
   await page.save.call(ctx)
-  assert.deepEqual(saves, [['b', '', '', false]])
+  assert.equal(replacements[0][0], 'a')
+  assert.equal(replacements[0][1].origin, 'custom')
+  assert.equal(replacements[0][1].forkedFrom, 'a')
   assert.equal(backs.length, 1)
 })
 
@@ -84,7 +89,8 @@ test('prompt editor toggles sharing, copies values, and builds share copy', asyn
   const toggles = []
   const clipboards = []
   const page = freshPage('instruction-edit', {
-    load: async () => ({ ok: true, items }),
+    items: () => items,
+    shareStates: async () => ({ ok: true, byItem: { b: { code: '1234567', sharing: true } } }),
     setSharing: async (...args) => { toggles.push(args); return { ok: true, code: '7654321', sharing: true } }
   }, { setClipboardData: ({ data }) => clipboards.push(data) })
   const ctx = context(page, { itemId: 'b' })
@@ -104,7 +110,8 @@ test('prompt editor toggles sharing, copies values, and builds share copy', asyn
 
 test('prompt editor keeps sharing state and shows a friendly cap error', async () => {
   const page = freshPage('instruction-edit', {
-    load: async () => ({ ok: true, items }),
+    items: () => items,
+    shareStates: async () => ({ ok: true, byItem: { b: { code: '1234567', sharing: true } } }),
     setSharing: async () => ({ ok: false, error: 'daily_cap' })
   })
   const ctx = context(page, { itemId: 'b' })

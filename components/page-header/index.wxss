@@ -71,9 +71,9 @@
   left: 128rpx;
   right: 128rpx;
   bottom: 24rpx;
-  height: 88rpx;
+  height: 64rpx;
   min-width: 0;
-  line-height: 88rpx;
+  line-height: 64rpx;
   text-align: center;
   color: #2a2521;
   font-size: 36rpx;

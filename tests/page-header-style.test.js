@@ -20,14 +20,15 @@ test('page header back button stays left aligned', () => {
   assert.match(body, /z-index:\s*1;/)
 })
 
-test('page header title stays below the status bar', () => {
+test('page header title stays below the status bar and centers with the back button', () => {
   const css = fs.readFileSync(path.join(root, 'components/page-header/index.wxss'), 'utf8')
   const title = ruleBody(css, '.header-title')
   const right = ruleBody(css, '.header-right')
 
   assert.doesNotMatch(title, /top:\s*0;/)
   assert.match(title, /bottom:\s*24rpx;/)
-  assert.match(title, /height:\s*88rpx;/)
+  assert.match(title, /height:\s*64rpx;/)
+  assert.match(title, /line-height:\s*64rpx;/)
   assert.match(right, /height:\s*88rpx;/)
 })
 
