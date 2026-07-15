@@ -1,7 +1,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 
-const storageKey = 'voicedrop.audioConsent'
+const storageKey = 'voicedrop.audioConsent.v2'
 
 function loadFlow(overrides) {
   const storage = {}

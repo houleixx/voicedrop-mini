@@ -1,6 +1,6 @@
 const { SUPPORT_EMAIL } = require('./community-terms')
 
-const STORAGE_KEY = 'voicedrop.audioConsent'
+const STORAGE_KEY = 'voicedrop.audioConsent.v2'
 const VERSION = '2026-07-13-v1'
 const EFFECTIVE_DATE = '2026-07-13'
 const TITLE = '音频信息授权协议'

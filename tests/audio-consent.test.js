@@ -4,7 +4,8 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 
 const root = path.join(__dirname, '..')
-const storageKey = 'voicedrop.audioConsent'
+const storageKey = 'voicedrop.audioConsent.v2'
+const legacyStorageKey = 'voicedrop.audioConsent'
 
 function loadConsent(initial, overrides) {
   const storage = Object.assign({}, initial)
@@ -24,6 +25,17 @@ test('audio consent is versioned and fails closed for missing or stale state', (
     [storageKey]: { version: 'old', agreedAt: '2026-01-01T00:00:00.000Z' }
   }).consent
   assert.equal(stale.isGranted(), false)
+})
+
+test('legacy audio consent does not grant the current agreement', () => {
+  const { consent } = loadConsent({
+    [legacyStorageKey]: {
+      version: '2026-07-13-v1',
+      agreedAt: '2026-07-13T00:00:00.000Z'
+    }
+  })
+
+  assert.equal(consent.isGranted(), false)
 })
 
 test('grant stores the current version and revoke clears it', () => {
