@@ -15,7 +15,7 @@ function freshLibraryWithWx(routes, wxOverrides) {
     }),
     request: (options) => {
       requests.push(options)
-      const hit = routes.find((route) => options.url.endsWith(route.path))
+      const hit = routes.find((route) => options.url.endsWith(route.path) && (!route.method || route.method === (options.method || 'GET')))
       if (!hit) {
         options.success({ statusCode: 404, data: {} })
         return
@@ -81,6 +81,35 @@ test('library list fills recording row title and tags from article doc like Andr
   assert.equal(records.length, 1)
   assert.equal(records[0].rowTitle, '重新录一个音频')
   assert.deepEqual(records[0].tags, ['work', 'idea'])
+})
+
+test('library list exposes the first article photo used by the recording like Android', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const library = freshLibraryWithWx([
+    {
+      path: '/list',
+      data: {
+        files: [
+          { name: `${stem}.m4a`, uploaded: '2026-06-18T06:31:00Z', articleTitle: '列表标题', tags: ['已有标签'] },
+          { name: `articles/${stem}.json`, uploaded: '2026-06-18T06:32:00Z' }
+        ]
+      }
+    },
+    {
+      path: `/articles/${stem}`,
+      data: {
+        photos: ['photos/session/first.jpg', 'photos/session/second.jpg'],
+        articles: [
+          { title: '无图版本', body: '正文' },
+          { title: '有图版本', body: '开头\n[[photo:2]]\n结尾' }
+        ]
+      }
+    }
+  ])
+
+  const records = await library.list()
+
+  assert.equal(records[0].coverPhotoKey, 'photos/session/second.jpg')
 })
 
 test('library list does not keep stale tag cache after tags are removed', async () => {
@@ -345,4 +374,31 @@ test('library saveDoc returns submitted doc when post-save refetch is unavailabl
   const saved = await library.saveDoc(stem, doc)
 
   assert.deepEqual(saved, doc)
+})
+
+test('library saveArticles preserves unknown top-level fields from the server', async () => {
+  const stem = 'VoiceDrop-2026-07-15-120000-0m30s-Wed-Noon'
+  const articles = [{ title: 'A', body: '精修后的正文', style: 4 }]
+  const library = freshLibraryWithWx([
+    {
+      method: 'GET',
+      path: `/articles/${stem}`,
+      data: { id: 'doc-1', owner: 'users/anon/', futureField: { keep: true }, articles: [{ title: 'A', body: '旧正文', futureArticleField: '保留' }] }
+    },
+    {
+      method: 'PUT',
+      path: `/articles/${stem}`,
+      data: { ok: true, head: 5 }
+    }
+  ])
+
+  await library.saveArticles(stem, articles)
+
+  const put = library.__requests.find((item) => item.method === 'PUT' && item.url.endsWith(`/articles/${stem}`))
+  assert.deepEqual(put.data, {
+    id: 'doc-1',
+    owner: 'users/anon/',
+    futureField: { keep: true },
+    articles: [{ title: 'A', body: '精修后的正文', style: 4, futureArticleField: '保留' }]
+  })
 })

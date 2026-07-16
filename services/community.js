@@ -3,6 +3,12 @@ const auth = require('./auth')
 const http = require('./request')
 const article = require('../utils/article')
 
+// The standalone reco Worker intentionally has no SESSION_SECRET and therefore
+// accepts the stable anon capability token, not a WeChat session JWT.
+function recoBearer() {
+  return auth.anonymousBearer()
+}
+
 async function list() {
   const res = await http.get(`${api.filesBase()}/community/list`, auth.bearer())
   if (res.statusCode < 200 || res.statusCode >= 300) throw new Error(`community HTTP ${res.statusCode}`)
@@ -10,13 +16,165 @@ async function list() {
 }
 
 async function rank(posts) {
-  if (!posts || !posts.length) return { order: [], liked: [] }
-  const res = await http.postJson(`${api.recoBase()}/rank`, auth.bearer(), rankPayload(posts))
-  if (res.statusCode < 200 || res.statusCode >= 300) return { order: [], liked: [] }
+  if (!posts || !posts.length) return { order: [], liked: [], likes: {} }
+  const res = await http.postJson(`${api.recoBase()}/rank`, recoBearer(), rankPayload(posts))
+  if (res.statusCode < 200 || res.statusCode >= 300) return { order: [], liked: [], likes: {} }
   return {
     order: res.data && res.data.order || [],
-    liked: res.data && res.data.liked || []
+    liked: res.data && res.data.liked || [],
+    likes: res.data && res.data.likes || {}
   }
+}
+
+async function loadFeed() {
+  try {
+    const res = await http.get(`${api.recoBase()}/feed`, recoBearer())
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      const unified = normalizeUnifiedFeed(res.data)
+      if (unified.latest.length) return unified
+    }
+  } catch (_) {
+  }
+
+  const posts = await list()
+  let ranking
+  try {
+    ranking = await rank(posts)
+  } catch (_) {
+    ranking = { order: posts.map((post) => post.shareId), liked: [], likes: {} }
+  }
+  return legacyFeed(posts, ranking)
+}
+
+function normalizeUnifiedFeed(data) {
+  const body = data || {}
+  const latest = Array.isArray(body.posts) ? body.posts.map(normalizePost) : []
+  const likes = {}
+  const replies = {}
+  const liked = []
+  latest.forEach((post) => {
+    likes[post.shareId] = Number(post.likes) || 0
+    if (Number(post.replies) > 0) replies[post.shareId] = Number(post.replies)
+    if (post.liked) liked.push(post.shareId)
+  })
+  return {
+    recommended: reorder(latest, body.order),
+    latest,
+    likes,
+    replies,
+    liked,
+    unified: true
+  }
+}
+
+function legacyFeed(posts, ranking) {
+  const latest = (posts || []).map(normalizePost)
+  const rankResult = ranking || {}
+  const replies = {}
+  latest.forEach((post) => {
+    if (post.replyTo) replies[post.replyTo] = (replies[post.replyTo] || 0) + 1
+  })
+  return {
+    recommended: reorder(latest, rankResult.order),
+    latest,
+    likes: Object.assign({}, rankResult.likes || {}),
+    replies,
+    liked: Array.isArray(rankResult.liked) ? rankResult.liked.slice() : [],
+    unified: false
+  }
+}
+
+function reorder(posts, order) {
+  const latest = posts || []
+  if (!Array.isArray(order) || order.length !== latest.length) return latest.slice()
+  const byId = {}
+  latest.forEach((post) => { byId[post.shareId] = post })
+  const ordered = order.map((id) => byId[id]).filter(Boolean)
+  return ordered.length === latest.length && new Set(ordered.map((post) => post.shareId)).size === latest.length
+    ? ordered
+    : latest.slice()
+}
+
+function postsForTab(feed, tab) {
+  const value = feed || { recommended: [], latest: [] }
+  if (tab === 'latest') return (value.latest || []).slice()
+  if (tab === 'replies') return (value.recommended || []).filter((post) => Boolean(post.replyTo))
+  return (value.recommended || []).slice()
+}
+
+function filterFeed(feed, keep) {
+  const value = feed || legacyFeed([], {})
+  return Object.assign({}, value, {
+    recommended: (value.recommended || []).filter(keep),
+    latest: (value.latest || []).filter(keep)
+  })
+}
+
+function cardPosts(feed, tab) {
+  return postsForTab(feed, tab).map((post) => {
+    const author = post.author || post.authorName || '匿名'
+    return Object.assign({}, post, {
+      authorDisplay: author,
+      authorInitial: Array.from(author)[0] || '匿',
+      avatarColor: avatarColor(author),
+      paletteClass: `community-palette-${paletteIndex(post.shareId)}`,
+      coverPhotoUrl: post.coverPhotoKey ? api.photoUrl(post.coverPhotoKey) : '',
+      isReply: Boolean(post.replyTo),
+      likeCount: Number(feed && feed.likes && feed.likes[post.shareId]) || 0,
+      replyCount: Number(feed && feed.replies && feed.replies[post.shareId]) || 0
+    })
+  })
+}
+
+// Mirrors iOS CommunityFeedView: consume the feed in order and always place the
+// next card in the currently shorter column. CSS multi-column layout cannot be
+// used here because it changes the visual reading order.
+function masonryColumns(posts, coverAspects) {
+  const left = []
+  const right = []
+  let leftHeight = 0
+  let rightHeight = 0
+  ;(posts || []).forEach((post) => {
+    const height = estimatedCardHeight(post, coverAspects)
+    if (leftHeight <= rightHeight) {
+      left.push(post)
+      leftHeight += height + 18
+    } else {
+      right.push(post)
+      rightHeight += height + 18
+    }
+  })
+  return { left, right }
+}
+
+function estimatedCardHeight(post, coverAspects) {
+  const width = 335
+  const titleLength = Array.from(String(post && post.title || '')).length
+  const isReply = Boolean(post && post.replyTo)
+  if (post && post.coverPhotoKey) {
+    const aspect = Number(coverAspects && coverAspects[post.coverPhotoKey]) || 1
+    const titleLines = Math.min(2, Math.max(1, Math.ceil(titleLength * 29 / Math.max(width - 44, 1))))
+    return width / aspect + titleLines * 42 + 40 + 60 + (isReply ? 56 : 0)
+  }
+  const previewLength = Array.from(String(post && post.preview || '')).length
+  const titleLines = Math.min(3, Math.max(1, Math.ceil(titleLength * 32 / Math.max(width - 52, 1))))
+  const previewLines = previewLength
+    ? Math.min(2, Math.max(1, Math.ceil(previewLength * 25 / Math.max(width - 52, 1))))
+    : 0
+  return titleLines * 48 + previewLines * 40 + (isReply ? 60 : 0) + 40 + 54 + (previewLines ? 16 : 0)
+}
+
+function paletteIndex(shareId) {
+  let hash = 0
+  Array.from(String(shareId || '')).forEach((char) => { hash = (hash * 31 + char.charCodeAt(0)) & 0xffff })
+  return hash % 3
+}
+
+function avatarColor(author) {
+  const colors = ['#d8a25b', '#8a9a88', '#b5794c', '#7a6e9a', '#5e8a6a', '#c98a2e']
+  let hash = 0
+  Array.from(String(author || '')).forEach((char) => { hash = (hash * 31 + char.charCodeAt(0)) & 0xffff })
+  return colors[hash % colors.length]
 }
 
 function rankPayload(posts) {
@@ -57,6 +215,12 @@ function normalizePost(raw) {
   post.dateLabel = formatCommunityDate(post.firstSharedAt)
   post.title = trim(post.title)
   post.replyTo = trim(post.replyTo)
+  post.coverPhotoKey = trim(post.coverPhotoKey)
+  post.preview = trim(post.preview)
+  post.updatedAt = post.updatedAt != null ? post.updatedAt : post.firstSharedAt
+  post.count = Number(post.count) || 0
+  post.mine = Boolean(post.mine)
+  post.hasPhoto = Boolean(post.hasPhoto)
   return post
 }
 
@@ -144,14 +308,23 @@ function normalizeFeedResult(statusCode, data) {
 
 async function engage(shareId, action, on) {
   try {
-    await http.postJson(`${api.recoBase()}/engage/${api.path(shareId)}`, auth.bearer(), on == null ? { action } : { action, on })
+    await http.postJson(`${api.recoBase()}/engage/${api.path(shareId)}`, recoBearer(), on == null ? { action } : { action, on })
   } catch (error) {
   }
 }
 
 module.exports = {
+  recoBearer,
   list,
   rank,
+  loadFeed,
+  normalizeUnifiedFeed,
+  legacyFeed,
+  postsForTab,
+  filterFeed,
+  cardPosts,
+  masonryColumns,
+  paletteIndex,
   rankPayload,
   get,
   postFromDetail,

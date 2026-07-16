@@ -1,7 +1,10 @@
+const capsuleLayout = require('../../utils/capsule-layout')
+
 Component({
   data: {
     statusBarHeight: 20,
-    settingsTop: 0
+    settingsTop: 0,
+    capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX
   },
 
   properties: {
@@ -26,10 +29,16 @@ Component({
         // Get capsule position to align settings button
         const menu = wx.getMenuButtonBoundingClientRect()
         if (menu && menu.top != null) {
-          this.setData({ settingsTop: menu.top })
+          this.setData({
+            settingsTop: menu.top,
+            capsuleSafeRightPx: capsuleLayout.safeRightPx(info, menu)
+          })
         }
       } catch (_) {
-        this.setData({ statusBarHeight: 20 })
+        this.setData({
+          statusBarHeight: 20,
+          capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX
+        })
       }
     }
   },

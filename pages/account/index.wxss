@@ -11,7 +11,7 @@
 .sync-card,
 .delete-card {
   border: 1rpx solid #efe4d4;
-  border-radius: 16rpx;
+  border-radius: 24rpx;
   background: #ffffff;
   box-shadow: 0 10rpx 28rpx rgba(85, 67, 48, 0.06);
 }
@@ -351,7 +351,7 @@
 .dialog-card {
   width: 560rpx;
   background: #ffffff;
-  border-radius: 16rpx;
+  border-radius: 24rpx;
   padding: 36rpx 28rpx 0;
   display: flex;
   flex-direction: column;

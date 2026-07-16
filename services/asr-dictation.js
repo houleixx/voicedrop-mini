@@ -192,9 +192,18 @@ function parseServerMessage(buffer) {
   }
 }
 
-function createSession(handlers) {
+function createSession(handlers, runtime) {
+  handlers = handlers || {}
+  runtime = runtime || {}
+  const socketApi = runtime.wx || (typeof wx === 'undefined' ? null : wx)
+  const apiService = runtime.api || api
+  const authService = runtime.auth || auth
+  const httpService = runtime.http || http
+  const delay = runtime.setTimeout || setTimeout
   let socket = null
   let closed = false
+  let connecting = false
+  let generation = 0
   let socketOpen = false
   let ready = false
   let sequence = 0
@@ -236,21 +245,35 @@ function createSession(handlers) {
   }
 
   function connect() {
-    if (closed || socket) return
-    // ASR WebSocket uses the same auth as other API calls
-    // In WeChat Mini Programs, the WebSocket needs proper auth header
-    const headers = {}
-    const token = auth.bearer()
-    if (token) headers.Authorization = `Bearer ${token}`
-    // Add platform header for server-side routing
-    headers['X-VD-Platform'] = 'miniapp'
+    if (closed || socket || connecting || !socketApi) return Promise.resolve()
+    connecting = true
+    const currentGeneration = ++generation
+    try {
+      openSocket({
+        url: `${apiService.agentWs()}/asr`,
+        header: httpService.authHeader(authService.bearer())
+      }, currentGeneration)
+    } catch (error) {
+      handleConnectError(error, currentGeneration)
+    }
+    return Promise.resolve()
+  }
 
-    socket = wx.connectSocket({
-      url: `${api.agentWs()}/asr`,
-      header: headers
-    })
+  function handleConnectError(error, currentGeneration) {
+    connecting = false
+    if (closed || currentGeneration !== generation) return
+    const detail = error && (error.errMsg || error.message)
+    if (handlers.onError) handlers.onError(detail ? `听写连接失败：${detail}` : '听写连接失败')
+  }
 
-    socket.onOpen(() => {
+  function openSocket(options, currentGeneration) {
+    connecting = false
+    if (closed || socket || currentGeneration !== generation) return
+    const current = socketApi.connectSocket(options)
+    socket = current
+
+    current.onOpen(() => {
+      if (closed || socket !== current) return
       socketOpen = true
       let attempts = 0
       const retryDelays = [80, 160, 320, 640, 1000, 1500, 2000]
@@ -266,7 +289,7 @@ function createSession(handlers) {
         }
         attempts++
         if (attempts <= retryDelays.length) {
-          setTimeout(sendConfig, retryDelays[attempts - 1])
+          delay(sendConfig, retryDelays[attempts - 1])
         } else {
           if (handlers.onError) handlers.onError('ASR 连接失败')
         }
@@ -274,7 +297,8 @@ function createSession(handlers) {
       sendConfig()
     })
 
-    socket.onMessage((message) => {
+    current.onMessage((message) => {
+      if (closed || socket !== current) return
       const parsed = parseServerMessage(message.data)
       if (parsed.isError) {
         if (handlers.onError) handlers.onError(parsed.errorMessage || `ASR 错误 ${parsed.errorCode}`)
@@ -288,23 +312,25 @@ function createSession(handlers) {
       }
     })
 
-    socket.onError((error) => {
-      socket = null
+    current.onError((error) => {
+      if (socket === current) socket = null
       socketOpen = false
       ready = false
-      if (!closed && handlers.onError) handlers.onError('听写连接断开')
+      const detail = error && (error.errMsg || error.message)
+      const message = detail ? `听写连接断开：${detail}` : '听写连接断开'
+      if (!closed && handlers.onError) handlers.onError(message)
     })
 
-    socket.onClose(() => {
-      socket = null
+    current.onClose(() => {
+      if (socket === current) socket = null
       socketOpen = false
       ready = false
     })
   }
 
   function sendAudio(pcmBytes, isLast) {
-    if (!socket || closed) return
-    if (!ready) {
+    if (closed) return
+    if (!socket || !ready) {
       queueAudio(pcmBytes, isLast)
       return
     }
@@ -318,13 +344,15 @@ function createSession(handlers) {
   }
 
   function finish() {
-    if (!socket || closed) return
+    if (closed) return
     // Send empty final frame
     sendAudio(new Uint8Array(0), true)
   }
 
   function close() {
     closed = true
+    connecting = false
+    generation++
     socketOpen = false
     ready = false
     pendingAudio.length = 0

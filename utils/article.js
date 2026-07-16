@@ -53,6 +53,48 @@ function bodyWithoutDuplicateTitle(article) {
   return lines.slice(firstContent + 1).join('\n').trim()
 }
 
+function editableBodyRows(body) {
+  const source = String(body || '')
+  const rows = []
+  const token = /<!--[\s\S]*?-->|\[\[photo:([^\]]+)\]\]/g
+  let cursor = 0
+  let match
+  const appendText = (start, end) => {
+    const chunk = source.slice(start, end)
+    const lines = /[^\n]+/g
+    let line
+    while ((line = lines.exec(chunk))) {
+      const raw = line[0]
+      const leading = /^\s*/.exec(raw)[0].length
+      const trailing = /\s*$/.exec(raw)[0].length
+      const value = raw.trim()
+      if (!value) continue
+      rows.push({ type: 'paragraph', text: value, start: start + line.index + leading, end: start + line.index + raw.length - trailing })
+    }
+  }
+  while ((match = token.exec(source))) {
+    appendText(cursor, match.index)
+    if (match[1] != null) rows.push({ type: 'photo', key: match[1], start: match.index, end: token.lastIndex })
+    cursor = token.lastIndex
+  }
+  appendText(cursor, source.length)
+  return rows
+}
+
+function replaceRenderedBodyLine(article, lineNo, replacement) {
+  const source = String(article && article.body || '')
+  const title = String(article && article.title || '').trim()
+  const rows = editableBodyRows(source)
+  if (title && rows.length && rows[0].type === 'paragraph') {
+    const first = rows[0].text.replace(/^#{1,6}\s*/, '').trim()
+    if (first === title) rows.shift()
+  }
+  const index = Number(lineNo) - 1
+  const target = Number.isInteger(index) && index >= 0 ? rows[index] : null
+  if (!target || target.type !== 'paragraph') return null
+  return source.slice(0, target.start) + String(replacement == null ? '' : replacement) + source.slice(target.end)
+}
+
 function resolvePhotoKey(token, photos) {
   const index = Number(token)
   if (Number.isInteger(index) && String(index) === String(token)) {
@@ -175,6 +217,7 @@ module.exports = {
   parseDoc,
   bodyBlocks,
   bodyWithoutDuplicateTitle,
+  replaceRenderedBodyLine,
   legacyBodyBlocks,
   resolvePhotoKey,
   segments,

@@ -15,6 +15,8 @@ const versionNav = require('../../utils/version-navigation')
 const asrDictation = require('../../services/asr-dictation')
 const holdToTalk = require('../../utils/hold-to-talk')
 const audioConsentFlow = require('../../utils/audio-consent-flow')
+const capsuleLayout = require('../../utils/capsule-layout')
+const audioSessionReset = require('../../utils/audio-session-reset')
 
 const app = getApp()
 
@@ -265,6 +267,13 @@ Page({
     longpressTarget: null,
     longpressAnchor: null,
     longpressLocalRows: [],
+    inlineEditing: false,
+    inlineEditSaving: false,
+    inlineEditText: '',
+    inlineEditOriginal: '',
+    inlineEditLineNo: 0,
+    inlineEditHeightPx: 0,
+    inlineEditArticleIndex: 0,
     history: null,
     historyOpen: false,
     styleSheetOpen: false,
@@ -292,6 +301,7 @@ Page({
     photoSheetStatus: '',
     photoSheetTopPadding: 88,
     photoSheetToolbarRightPadding: 110,
+    capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX,
     photoInsertTip: '',
     photoInsertInstruction: '',
     photoInsertPromptVisible: false,
@@ -315,6 +325,7 @@ Page({
     let toolbarTop = statusBarHeight
     let toolbarHeight = 64
     let photoSheetToolbarRightPadding = 110
+    let capsuleSafeRightPx = capsuleLayout.FALLBACK_SAFE_RIGHT_PX
     try {
       const menu = wx.getMenuButtonBoundingClientRect()
       if (menu && menu.top != null && menu.height) {
@@ -322,7 +333,8 @@ Page({
         toolbarHeight = menu.height
         const windowWidth = (sysInfo && sysInfo.windowWidth) || 0
         if (windowWidth && menu.left != null) {
-          photoSheetToolbarRightPadding = Math.max(0, windowWidth - menu.left + 12)
+          capsuleSafeRightPx = capsuleLayout.safeRightPx(sysInfo, menu)
+          photoSheetToolbarRightPadding = capsuleSafeRightPx
         }
       }
     } catch (_) {
@@ -339,6 +351,7 @@ Page({
       statusBarHeight,
       toolbarTop,
       toolbarHeight,
+      capsuleSafeRightPx,
       photoSheetTopPadding,
       photoSheetToolbarRightPadding
     }, hiddenPhotoInsertPromptData()), () => {
@@ -373,7 +386,15 @@ Page({
     if (this.editSession) this.editSession.close()
   },
 
+  onHide() {
+    this._detailHidden = true
+  },
+
   onShow() {
+    if (this._detailHidden) {
+      this._detailHidden = false
+      if (this.editSession && this.editSession.connect) this.editSession.connect()
+    }
     logPhotoInsert('on-show', {
       recStem: this.data.rec && this.data.rec.stem,
       photoInsertTip: this.data.photoInsertTip || '',
@@ -464,6 +485,10 @@ Page({
   },
 
   applyDoc(doc, photoScope) {
+    if (this.data.inlineEditing) {
+      this.pendingInlineEditDoc = doc
+      return
+    }
     this.longpressQuerySeq = (this.longpressQuerySeq || 0) + 1
     const pendingPhotoEdits = Object.keys(this.photoMakingTasks || {}).map((key) => {
       const block = (this.data.blocks || []).find((item) => item && item.type === 'photo' && item.key === key)
@@ -699,6 +724,7 @@ Page({
   },
 
   selectArticle(event) {
+    if (this.data.inlineEditing) return
     const index = Number(event.currentTarget.dataset.index)
     if (!this.data.doc || !this.data.doc.articles || !Number.isInteger(index)) return
     if (index < 0 || index >= this.data.doc.articles.length || index === this.data.articleIndex) return
@@ -760,6 +786,7 @@ Page({
       wx.showToast({ title: '没有音频', icon: 'error' })
       return
     }
+    audioSessionReset.preparePlayback()
     wx.showLoading({ title: '加载音频' })
     try {
       const filePath = await library.downloadTempFile(this.data.rec.audioName)
@@ -868,6 +895,7 @@ Page({
   },
 
   async openStyleSheet() {
+    if (this.data.inlineEditing) return
     this.setData({
       styleSheetOpen: true,
       styleSheetLoading: true,
@@ -1177,15 +1205,19 @@ Page({
     const recorder = wx.getRecorderManager()
     this.holdEditRecorder = recorder
     app.globalData.activeRecorderSession = { type: 'detail-asr', id: sessionId }
-    recorder.onFrameRecorded((res) => {
-      if (this._activeHoldEditSessionId !== sessionId || this._holdEditCanceled || this._holdEditFinishing) return
+    this.unbindHoldEditRecorderEvents()
+    this._holdEditRecorderManager = recorder
+    this._holdEditFrameHandler = (res) => {
+      if (this._activeHoldEditSessionId !== sessionId || this._holdEditCanceled) return
       session.sendAudio(res.frameBuffer, false)
-    })
-    recorder.onError(() => {
+    }
+    this._holdEditErrorHandler = () => {
       if (this._activeHoldEditSessionId !== sessionId || this._holdEditFinishing) return
       this.resetHoldArticleEdit()
       wx.showToast({ title: '录音失败', icon: 'none' })
-    })
+    }
+    recorder.onFrameRecorded(this._holdEditFrameHandler)
+    recorder.onError(this._holdEditErrorHandler)
     recorder.start({
       duration: 60 * 60 * 1000,
       sampleRate: 16000,
@@ -1233,10 +1265,12 @@ Page({
     const sessionId = this._activeHoldEditSessionId
     const session = this.holdEditAsrSession
     const transcript = this.holdEditTranscript
-    if (this.holdEditRecorder) this.holdEditRecorder.stop()
+    const recorder = this.holdEditRecorder
     this.holdEditRecorder = null
 
     if (cancel) {
+      if (recorder) recorder.stop()
+      this.unbindHoldEditRecorderEvents()
       session.close()
       this.resetHoldArticleEdit()
       wx.showToast({ title: '已取消语音修改', icon: 'none' })
@@ -1247,10 +1281,15 @@ Page({
       holdEditState: 'finishing',
       holdEditButtonText: '正在整理…'
     })
+    await holdToTalk.stopRecorderAndWait(recorder, 500)
+    this.unbindHoldEditRecorderEvents()
+    const finalText = transcript.waitForFinalText(1500)
     session.finish()
-    const text = await transcript.waitForBestText(3000)
+    const text = await finalText
     if (this._activeHoldEditSessionId !== sessionId) return
     session.close()
+    await audioSessionReset.resetAfterRecording()
+    if (this._activeHoldEditSessionId !== sessionId) return
     const articleIndex = this.data.articleIndex || 0
     this.resetHoldArticleEdit()
     if (!text) {
@@ -1261,6 +1300,21 @@ Page({
     wx.showToast({ title: `已发送修改：${text}`, icon: 'none' })
   },
 
+  unbindHoldEditRecorderEvents() {
+    const recorder = this._holdEditRecorderManager
+    if (recorder) {
+      if (recorder.offFrameRecorded && this._holdEditFrameHandler) {
+        recorder.offFrameRecorded(this._holdEditFrameHandler)
+      }
+      if (recorder.offError && this._holdEditErrorHandler) {
+        recorder.offError(this._holdEditErrorHandler)
+      }
+    }
+    this._holdEditRecorderManager = null
+    this._holdEditFrameHandler = null
+    this._holdEditErrorHandler = null
+  },
+
   resetHoldArticleEdit() {
     this._holdEditTouchActive = false
     this._pendingHoldEditStart = false
@@ -1269,6 +1323,7 @@ Page({
     this._activeHoldEditSessionId = null
     if (this.holdEditRecorder) this.holdEditRecorder.stop()
     this.holdEditRecorder = null
+    if (this.unbindHoldEditRecorderEvents) this.unbindHoldEditRecorderEvents()
     if (this.holdEditAsrSession) this.holdEditAsrSession.close()
     this.holdEditAsrSession = null
     this.holdEditTranscript = null
@@ -1358,6 +1413,7 @@ Page({
   },
 
   longpressBlock(event) {
+    if (this.data.inlineEditing) return
     this.longpressQuerySeq = (this.longpressQuerySeq || 0) + 1
     const querySeq = this.longpressQuerySeq
     const index = Number(event.currentTarget.dataset.index)
@@ -1367,8 +1423,10 @@ Page({
     if (block.type !== 'photo' && !String(block.text || '').trim()) return
     const kind = block.type === 'photo' ? 'image' : 'text'
     const menu = this.data.menus && this.data.menus[kind]
-    if (!uiConfig.renderableGroups(menu).length) return
-    const localRows = kind === 'text' ? [{ id: 'copy', label: '拷贝' }] : []
+    const localRows = kind === 'text'
+      ? [{ id: 'copy', label: '拷贝' }, { id: 'edit', label: '编辑' }]
+      : []
+    if (!uiConfig.renderableGroups(menu).length && !localRows.length) return
     const detail = event.detail || {}
     const sys = wx.getSystemInfoSync ? wx.getSystemInfoSync() : {}
     const isCurrentTarget = () => {
@@ -1381,7 +1439,7 @@ Page({
       this.setData({
         longpressMenuOpen: true,
         longpressMenu: menu,
-        longpressTarget: { kind, block },
+        longpressTarget: { kind, block: Object.assign({}, block, { blockIndex: index }) },
         longpressAnchor: longpressAnchor(block, kind, rect, detail, sys, menu, localRows),
         longpressLocalRows: localRows
       })
@@ -1408,10 +1466,106 @@ Page({
 
   onLongpressLocalPick(event) {
     const target = this.data.longpressTarget
-    if (event && event.detail && event.detail.id === 'copy' && target && target.kind === 'text') {
+    const id = event && event.detail && event.detail.id
+    if (id === 'copy' && target && target.kind === 'text') {
       wx.setClipboardData({ data: target.block.text })
     }
+    const editBlock = id === 'edit' && target && target.kind === 'text' ? target.block : null
     this.closeLongpressMenu()
+    if (editBlock) this.beginInlineParagraphEdit(editBlock)
+  },
+
+  beginInlineParagraphEdit(block) {
+    if (!block || block.type && block.type !== 'paragraph') return
+    const measuredHeight = Number(block.editorHeightPx)
+    if (!(measuredHeight > 0) && Number.isInteger(block.blockIndex) && wx.createSelectorQuery) {
+      try {
+        wx.createSelectorQuery()
+          .in(this)
+          .select(`#article-paragraph-${block.blockIndex}`)
+          .boundingClientRect((rect) => {
+            this.beginInlineParagraphEdit(Object.assign({}, block, {
+              editorHeightPx: rect && Number(rect.height) || this.inlineParagraphFallbackHeight(block.text)
+            }))
+          })
+          .exec()
+        return
+      } catch (_) {
+      }
+    }
+    this.pendingInlineEditDoc = null
+    this.setData({
+      inlineEditing: true,
+      inlineEditSaving: false,
+      inlineEditText: String(block.text || ''),
+      inlineEditOriginal: String(block.text || ''),
+      inlineEditLineNo: Number(block.lineNo) || 0,
+      inlineEditHeightPx: measuredHeight > 0 ? measuredHeight : this.inlineParagraphFallbackHeight(block.text),
+      inlineEditArticleIndex: this.data.articleIndex || 0
+    })
+  },
+
+  inlineParagraphFallbackHeight(text) {
+    const lineCount = Math.max(1, String(text || '').split('\n').length)
+    return Math.ceil(lineCount * 34.2)
+  },
+
+  onInlineEditInput(event) {
+    this.setData({ inlineEditText: event && event.detail ? event.detail.value : '' })
+  },
+
+  cancelInlineEdit() {
+    if (this.data.inlineEditSaving) return
+    const pending = this.pendingInlineEditDoc
+    this.pendingInlineEditDoc = null
+    this.setData({
+      inlineEditing: false,
+      inlineEditText: '',
+      inlineEditOriginal: '',
+      inlineEditLineNo: 0,
+      inlineEditHeightPx: 0
+    })
+    if (pending) this.applyDoc(pending)
+  },
+
+  async saveInlineEdit() {
+    if (!this.data.inlineEditing || this.data.inlineEditSaving) return
+    const replacement = String(this.data.inlineEditText || '').trim()
+    if (!replacement) {
+      wx.showToast({ title: '内容不能为空', icon: 'none' })
+      return
+    }
+    if (replacement === String(this.data.inlineEditOriginal || '').trim()) {
+      this.cancelInlineEdit()
+      return
+    }
+    const index = this.data.inlineEditArticleIndex || 0
+    const articles = this.data.doc && this.data.doc.articles ? this.data.doc.articles.slice() : []
+    const current = articles[index]
+    const body = articleUtil.replaceRenderedBodyLine(current, this.data.inlineEditLineNo, replacement)
+    if (!current || body == null) {
+      wx.showToast({ title: '这段内容已变化，请重试', icon: 'none' })
+      return
+    }
+    articles[index] = Object.assign({}, current, { body })
+    this.setData({ inlineEditSaving: true })
+    try {
+      const saved = await library.saveArticles(this.data.rec.stem, articles)
+      this.pendingInlineEditDoc = null
+      this.setData({
+        inlineEditing: false,
+        inlineEditSaving: false,
+        inlineEditText: '',
+        inlineEditOriginal: '',
+        inlineEditLineNo: 0,
+        inlineEditHeightPx: 0
+      })
+      this.applyDoc(saved)
+      await this.refreshVersionNav()
+    } catch (error) {
+      this.setData({ inlineEditSaving: false })
+      wx.showToast({ title: '保存失败，请重试', icon: 'none' })
+    }
   },
 
   enqueueInstruction(instruction, articleIndex, images) {

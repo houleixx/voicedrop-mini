@@ -33,6 +33,16 @@
       <view class="new-row" bindtap="createGroup"><view class="new-icon"><text class="ri-folder-line"></text></view><view class="new-copy"><text class="new-title">新建分组</text><text class="new-subtitle">收纳几个动作，菜单里成二级子菜单</text></view><text class="prompt-arrow">›</text></view>
     </view>
   </view>
+  <view class="group-dialog-mask" wx:if="{{groupDialogVisible}}" catchtap="noop">
+    <view class="group-dialog" catchtap="noop">
+      <text class="group-dialog-title">新建分组</text>
+      <input class="group-name-input" value="{{groupName}}" placeholder="分组名字" maxlength="40" focus bindinput="onGroupNameInput" />
+      <view class="group-dialog-actions">
+        <view class="group-dialog-button" bindtap="closeGroupDialog">取消</view>
+        <view class="group-dialog-button create" bindtap="confirmCreateGroup">创建</view>
+      </view>
+    </view>
+  </view>
   <view class="sheet-mask" wx:if="{{importVisible}}" bindtap="closeImport">
     <view class="import-sheet" catchtap="noop">
       <text class="import-sheet-title">导入提示词</text><text class="import-sheet-subtitle">输入 7 位魔法数字，或粘贴分享链接</text>

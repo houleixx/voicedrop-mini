@@ -3,7 +3,7 @@
     <view class="tool-button back-button" bindtap="goBack" aria-label="返回">
       <text class="back-icon ri-arrow-left-s-line"></text>
     </view>
-    <view class="toolbar-actions">
+    <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;">
       <button class="tool-button icon-only-button" bindtap="tip" aria-label="投币">
         <text class="action-icon ri-flashlight-line"></text>
       </button>
@@ -21,6 +21,7 @@
       <text class="article-title">{{article.title || post.title || '社区文章'}}</text>
       <text class="meta">{{post.author || post.authorName || '匿名作者'}} · 社区分享</text>
       <view class="reply-to" wx:if="{{replyToPost && !loading}}" bindtap="openReplyTo">
+        <view class="reply-to-icon community-reply-icon-accent"></view>
         <text class="reply-to-prefix">回应</text>
         <text class="reply-to-title">{{replyToPost.title || '原文'}}</text>
       </view>

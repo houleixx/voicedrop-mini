@@ -1,3 +1,5 @@
+const capsuleLayout = require('../../utils/capsule-layout')
+
 Component({
   options: {
     multipleSlots: true
@@ -7,12 +9,14 @@ Component({
     bgColor: { type: String, value: '#faf6ef' },
     textColor: { type: String, value: '#2a2521' },
     titleAlign: { type: String, value: 'center' },
-    safeRightAction: { type: Boolean, value: false }
+    safeRightAction: { type: Boolean, value: false },
+    backToHome: { type: Boolean, value: false }
   },
   data: {
     toolbarTop: 0,
     toolbarHeight: 64,
-    paddingLeft: 50
+    paddingLeft: 50,
+    capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX
   },
   lifetimes: {
     attached() {
@@ -23,6 +27,7 @@ Component({
         let toolbarTop = statusBarHeight
         let toolbarHeight = 64
         let paddingLeft = 50
+        let capsuleSafeRightPx = capsuleLayout.FALLBACK_SAFE_RIGHT_PX
 
         const menu = wx.getMenuButtonBoundingClientRect()
         if (menu && menu.top != null && menu.height) {
@@ -32,15 +37,25 @@ Component({
           const rightMarginPx = windowWidth - menu.right
           // Convert to rpx and double the distance: rpx = px * (750 / windowWidth) * 2
           paddingLeft = Math.round(rightMarginPx * 750 / windowWidth * 2)
+          capsuleSafeRightPx = capsuleLayout.safeRightPx(info, menu)
         }
-        this.setData({ toolbarTop, toolbarHeight, paddingLeft })
+        this.setData({ toolbarTop, toolbarHeight, paddingLeft, capsuleSafeRightPx })
       } catch (e) {
-        this.setData({ toolbarTop: 0, toolbarHeight: 64, paddingLeft: 50 })
+        this.setData({
+          toolbarTop: 0,
+          toolbarHeight: 64,
+          paddingLeft: 50,
+          capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX
+        })
       }
     }
   },
   methods: {
     goBack() {
+      if (this.data.backToHome) {
+        wx.reLaunch({ url: '/pages/recordings/index' })
+        return
+      }
       wx.navigateBack({ delta: 1 })
     }
   }

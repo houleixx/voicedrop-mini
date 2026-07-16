@@ -39,6 +39,7 @@ Page({
     commandReply: '',
     commandReplyOk: true,
     commandStatusText: '',
+    commandStatusKind: '',
     commandStatusOk: true,
     commandTalking: false,
     commandCanceled: false,
@@ -46,11 +47,15 @@ Page({
     linkRequest: null,
     communityLoading: false,
     communityPosts: [],
+    communityLeftPosts: [],
+    communityRightPosts: [],
+    communityFeedTab: 'recommended',
     communityError: '',
     communityLoaded: false,
     refreshing: false,
     audioConsentVisible: false,
-    scrollContentTop: 0
+    scrollContentTop: 0,
+    communityScrollContentTop: 0
   },
 
   onLoad(options) {
@@ -63,9 +68,15 @@ Page({
       const statusBarPx = info.statusBarHeight
       const topRpx = 200
       const pxPerRpx = info.windowWidth / 750
-      this.setData({ scrollContentTop: statusBarPx + topRpx * pxPerRpx })
+      const scrollContentTop = statusBarPx + topRpx * pxPerRpx
+      this.setData({
+        scrollContentTop,
+        communityScrollContentTop: scrollContentTop + 88 * pxPerRpx
+      })
     } catch (_) {
-      this.setData({ scrollContentTop: 200 * (wx.getSystemInfoSync?.().windowWidth || 375) / 750 + 20 })
+      const pxPerRpx = (wx.getSystemInfoSync?.().windowWidth || 375) / 750
+      const scrollContentTop = 200 * pxPerRpx + 20
+      this.setData({ scrollContentTop, communityScrollContentTop: scrollContentTop + 88 * pxPerRpx })
     }
     this.bindRecorder()
     this.createStatusSession()
@@ -103,6 +114,7 @@ Page({
 
   onUnload() {
     audioConsentFlow.dispose(this)
+    this.recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
     if (this.statusSession) this.statusSession.close()
     if (this.commandSession) this.commandSession.close()
     if (this.asrSession) this.asrSession.close()
@@ -145,7 +157,9 @@ Page({
     app.globalData.pendingHomeTab = ''
     if (pending === this.data.activeTab) return
     this.setData({ activeTab: pending === 'community' ? 'community' : 'recordings' })
-    if (this.data.activeTab === 'community' && !this.data.communityLoaded) this.loadCommunity()
+    if (this.data.activeTab === 'community') {
+      this.loadCommunity(this.data.communityLoaded ? { silent: true, keepDataOnError: true } : undefined)
+    }
   },
 
   switchHomeTab(event) {
@@ -158,7 +172,7 @@ Page({
         currentHomeTab: key,
         selectedTag: tag,
         selectedTagMissing: Boolean(tag && !this.data.homeTags.includes(tag)),
-        records: recordingUtil.filterByTag(this.data.allRecords, tag)
+        records: this.commandRecordsFor(this.data.allRecords, tag)
       })
       if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
       return
@@ -170,9 +184,11 @@ Page({
       currentHomeTab: key,
       selectedTag,
       selectedTagMissing: false,
-      records: activeTab === 'recordings' ? recordingUtil.filterByTag(this.data.allRecords, '') : this.data.records
+      records: activeTab === 'recordings' ? this.commandRecordsFor(this.data.allRecords, '') : this.data.records
     })
-    if (activeTab === 'community' && !this.data.communityLoaded) this.loadCommunity()
+    if (activeTab === 'community') {
+      this.loadCommunity(this.data.communityLoaded ? { silent: true, keepDataOnError: true } : undefined)
+    }
     if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
   },
 
@@ -263,8 +279,10 @@ Page({
       const homeTags = recordingUtil.tagsFromRecords(records)
       const homeTabs = this.homeTabsFor(homeTags)
       // Assign command reference numbers to records with articles
-      const recordsWithRefs = this.assignCommandRefs(records)
-      const filteredRecords = recordingUtil.filterByTag(recordsWithRefs, selectedTag)
+      const recordsWithRefs = this.preserveRecordingCovers(this.assignCommandRefs(records))
+      const filteredRecords = this.commandRecordsFor(recordsWithRefs, selectedTag)
+      const recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
+      this.recordCoverLoadId = recordCoverLoadId
       const currentHomeTab = this.data.activeTab === 'community'
         ? 'community'
         : (selectedTag ? `tag:${selectedTag}` : 'recordings')
@@ -279,6 +297,7 @@ Page({
         records: filteredRecords,
         error: ''
       })
+      this.loadRecordingCovers(recordsWithRefs, recordCoverLoadId)
       this.publishPendingReplies(records)
       if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
       return true
@@ -305,21 +324,66 @@ Page({
     return error && (error.message || error.errMsg) || '加载失败'
   },
 
+  async loadRecordingCovers(records, loadId) {
+    const candidates = (records || []).filter((rec) => rec && rec.coverPhotoKey && !rec.coverPhotoUrl)
+    if (!candidates.length) return
+    let scope = ''
+    try {
+      scope = await library.ownerScope()
+    } catch (_) {
+      return
+    }
+    if (!scope || loadId !== this.recordCoverLoadId) return
+    await Promise.all(candidates.map(async (rec) => {
+      try {
+        const coverPhotoUrl = await library.downloadPhotoTemp(rec.coverPhotoKey, scope)
+        if (!coverPhotoUrl || loadId !== this.recordCoverLoadId) return
+        this.updateRecordingCover(rec.stem, coverPhotoUrl)
+      } catch (_) {
+      }
+    }))
+  },
+
+  preserveRecordingCovers(records) {
+    const current = new Map((this.data.allRecords || []).map((rec) => [rec.stem, rec]))
+    return (records || []).map((rec) => {
+      const cached = current.get(rec.stem)
+      if (!cached || !cached.coverPhotoUrl || cached.coverPhotoKey !== rec.coverPhotoKey) return rec
+      return Object.assign({}, rec, { coverPhotoUrl: cached.coverPhotoUrl })
+    })
+  },
+
+  updateRecordingCover(stem, coverPhotoUrl) {
+    const update = (records) => (records || []).map((rec) => rec.stem === stem
+      ? Object.assign({}, rec, { coverPhotoUrl: coverPhotoUrl || '' })
+      : rec)
+    this.setData({
+      allRecords: update(this.data.allRecords),
+      records: update(this.data.records)
+    })
+  },
+
+  onRecordCoverError(event) {
+    const stem = event.currentTarget.dataset.stem || ''
+    if (stem) this.updateRecordingCover(stem, '')
+  },
+
   async loadCommunity(options) {
     const silent = Boolean(options && options.silent)
     const keepDataOnError = Boolean(options && options.keepDataOnError)
     if (!silent) this.setData({ communityLoading: true, communityError: '' })
     try {
-      const posts = await community.list()
-      const visible = posts.filter((post) => !blockStore.isBlocked(post.author || post.authorName || ''))
-      const ranking = await community.rank(visible).catch(() => ({ order: [], liked: [] }))
-      if (ranking.liked && ranking.liked.length) prefs.setLikedCommunityPosts(new Set(ranking.liked))
-      const byId = {}
-      visible.forEach((post) => { byId[post.shareId] = post })
-      const ranked = ranking.order && ranking.order.length
-        ? ranking.order.map((id) => byId[id]).filter(Boolean).concat(visible.filter((post) => !ranking.order.includes(post.shareId)))
-        : visible
-      this.setData({ communityPosts: ranked, communityLoaded: true, communityError: '' })
+      const loaded = await community.loadFeed()
+      const feed = community.filterFeed(loaded,
+        (post) => !blockStore.isBlocked(post.author || post.authorName || ''))
+      this._communityFeed = feed
+      if (feed.liked && feed.liked.length) prefs.setLikedCommunityPosts(new Set(feed.liked))
+      const postData = this.communityPostData(feed, this.data.communityFeedTab)
+      this.setData({
+        ...postData,
+        communityLoaded: true,
+        communityError: ''
+      })
       return true
     } catch (error) {
       if (!keepDataOnError || !this.data.communityPosts.length) {
@@ -329,6 +393,39 @@ Page({
     } finally {
       if (!silent) this.setData({ communityLoading: false })
     }
+  },
+
+  selectCommunityFeed(event) {
+    const tab = event.currentTarget.dataset.feedTab
+    if (!['recommended', 'latest', 'replies'].includes(tab) || tab === this.data.communityFeedTab) return
+    const postData = this.communityPostData(this._communityFeed, tab)
+    this.setData({
+      communityFeedTab: tab,
+      ...postData
+    })
+  },
+
+  communityPostData(feed, tab) {
+    const communityPosts = community.cardPosts(feed, tab)
+    const columns = community.masonryColumns(communityPosts, this._communityCoverAspects)
+    return {
+      communityPosts,
+      communityLeftPosts: columns.left,
+      communityRightPosts: columns.right
+    }
+  },
+
+  onCommunityCoverLoad(event) {
+    const key = event.currentTarget.dataset.coverKey
+    const width = Number(event.detail && event.detail.width)
+    const height = Number(event.detail && event.detail.height)
+    if (!key || !width || !height) return
+    const aspect = width / height
+    this._communityCoverAspects = this._communityCoverAspects || {}
+    if (Math.abs((this._communityCoverAspects[key] || 0) - aspect) < 0.01) return
+    this._communityCoverAspects[key] = aspect
+    const columns = community.masonryColumns(this.data.communityPosts, this._communityCoverAspects)
+    this.setData({ communityLeftPosts: columns.left, communityRightPosts: columns.right })
   },
 
   createStatusSession() {
@@ -346,8 +443,7 @@ Page({
           showCancel: false
         })
       },
-      onLinkRelease: () => this.setData({ linkRequest: null }),
-      onError: (message) => this.setData({ commandReply: message, commandReplyOk: false })
+      onLinkRelease: () => this.setData({ linkRequest: null })
     })
   },
 
@@ -362,15 +458,48 @@ Page({
         this.refreshCommandStatus({ commandReply: text, commandReplyOk: ok })
       },
       onConfirm: (id, text) => {
-        this.commandSession.confirm(id)
+        this.confirmLibraryCommand(id, text)
       },
-      onUpdate: () => this.load(),
+      onUpdate: () => this.load({ silent: true, keepDataOnError: true }),
       onState: (state) => {
         this.setData({ commandState: state })
       },
       onError: (message) => {
         this.setData({ commandReply: message, commandReplyOk: false })
         this.refreshCommandStatus({ commandReply: message, commandReplyOk: false })
+      }
+    })
+  },
+
+  confirmLibraryCommand(id, text) {
+    if (!id) return
+    const queue = this._libraryCommandConfirms || (this._libraryCommandConfirms = [])
+    if ((this._activeLibraryCommandConfirm && this._activeLibraryCommandConfirm.id === id) ||
+        queue.some((item) => item.id === id)) return
+    queue.push({ id, text })
+    this.showNextLibraryCommandConfirm()
+  },
+
+  showNextLibraryCommandConfirm() {
+    if (this._activeLibraryCommandConfirm) return
+    const queue = this._libraryCommandConfirms || []
+    if (!queue.length) return
+    const item = queue.shift()
+    this._activeLibraryCommandConfirm = item
+    wx.showModal({
+      title: '确认操作',
+      content: item.text || '确认执行这条指令？',
+      confirmText: '删除',
+      cancelText: '取消',
+      confirmColor: '#d8593b',
+      success: (result) => {
+        if (!this.commandSession) return
+        if (result.confirm) this.commandSession.confirm(item.id)
+        else if (result.cancel) this.commandSession.cancel(item.id)
+      },
+      complete: () => {
+        if (this._activeLibraryCommandConfirm === item) this._activeLibraryCommandConfirm = null
+        this.showNextLibraryCommandConfirm()
       }
     })
   },
@@ -382,6 +511,7 @@ Page({
     const status = holdToTalk.commandStatus(state)
     this.setData({
       commandStatusText: status.text,
+      commandStatusKind: status.kind,
       commandStatusOk: status.ok
     })
   },
@@ -424,7 +554,7 @@ Page({
       activeTab: 'recordings',
       selectedTag: tag,
       selectedTagMissing: Boolean(tag && !this.data.homeTags.includes(tag)),
-      records: recordingUtil.filterByTag(this.data.allRecords, tag)
+      records: this.commandRecordsFor(this.data.allRecords, tag)
     })
     if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
   },
@@ -446,6 +576,10 @@ Page({
       next._commandRef = refMap[rec.stem] || 0
       return next
     })
+  },
+
+  commandRecordsFor(records, tag) {
+    return this.assignCommandRefs(recordingUtil.filterByTag(records || [], tag || ''))
   },
 
   currentCommandRefs(records) {
@@ -594,7 +728,11 @@ Page({
     this._updateDockHint()
     if (this.commandSession) {
       this.commandSession.setRefs(this.currentCommandRefs())
-      this.commandSession.connect()
+      // The Mini Program runtime can corrupt one of several same-host
+      // WebSockets when status + command + binary ASR overlap. Keep the
+      // command queue persisted, close its idle socket while listening, then
+      // let enqueue reconnect it after ASR has closed.
+      this.commandSession.close()
     }
 
     // Create ASR dictation session
@@ -661,15 +799,13 @@ Page({
     if (!this.data.commandTalking || this._finishingTalk) return
     this._finishingTalk = true
 
-    // Stop ASR recorder
-    if (this.asrRecorder) {
-      this.asrRecorder.stop()
-      this.asrRecorder = null
-    }
-
-    // Send final frame to ASR
-    if (this.asrSession && !cancel) {
-      this.asrSession.finish()
+    // RecorderManager.stop() is asynchronous. Wait for onStop so its buffered
+    // tail PCM reaches onFrameRecorded before sending the ASR final packet.
+    const recorder = this.asrRecorder
+    this.asrRecorder = null
+    if (recorder) {
+      if (cancel) recorder.stop()
+      else await holdToTalk.stopRecorderAndWait(recorder, 500)
     }
 
     let text = ''
@@ -679,7 +815,11 @@ Page({
         commandReply: this.commandTranscript.bubbleText(),
         commandReplyOk: true
       })
-      text = await this.commandTranscript.waitForBestText(3000)
+      // Register before finish: an existing partial transcript must not make us
+      // close early; wait for the new final response caused by this final packet.
+      const finalText = this.commandTranscript.waitForFinalText(1500)
+      if (this.asrSession) this.asrSession.finish()
+      text = await finalText
     }
 
     if (this.asrSession) {
@@ -721,10 +861,43 @@ Page({
   },
 
   openPost(event) {
+    const shareId = event.currentTarget.dataset.shareId
     const index = Number(event.currentTarget.dataset.index)
-    const post = this.data.communityPosts[index]
+    const post = shareId
+      ? this.data.communityPosts.find((item) => item.shareId === shareId)
+      : this.data.communityPosts[index]
+    if (!post) return
+    if (this._longPressedCommunityPost === post.shareId) {
+      this._longPressedCommunityPost = ''
+      return
+    }
     app.globalData.currentCommunityPost = post
     wx.navigateTo({ url: `/pages/community-detail/index?shareId=${encodeURIComponent(post.shareId)}` })
+  },
+
+  confirmCommunityUnshare(event) {
+    const shareId = event.currentTarget.dataset.shareId
+    const index = Number(event.currentTarget.dataset.index)
+    const post = shareId
+      ? this.data.communityPosts.find((item) => item.shareId === shareId)
+      : this.data.communityPosts[index]
+    if (!post || !post.mine) return
+    this._longPressedCommunityPost = post.shareId
+    wx.showModal({
+      title: '从 VD社区隐藏？',
+      content: '原文章不受影响，之后仍可再次分享。',
+      confirmText: '取消分享',
+      confirmColor: '#d8593b',
+      success: async (result) => {
+        if (!result.confirm) return
+        const ok = await community.unshare(post.shareId).catch(() => false)
+        if (!ok) {
+          wx.showToast({ title: '取消分享失败', icon: 'error' })
+          return
+        }
+        await this.loadCommunity({ silent: true, keepDataOnError: true })
+      }
+    })
   },
 
   // MARK: - Swipe to delete (like Android)
@@ -842,7 +1015,7 @@ Page({
     const allRecords = this.assignCommandRefs(remaining)
     const homeTags = recordingUtil.tagsFromRecords(allRecords)
     const selectedTag = this.selectedTagFor(allRecords)
-    const records = recordingUtil.filterByTag(allRecords, selectedTag)
+    const records = this.commandRecordsFor(allRecords, selectedTag)
     const currentHomeTab = selectedTag ? `tag:${selectedTag}` : 'recordings'
     this.setData({
       allRecords,

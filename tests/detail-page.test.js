@@ -14,7 +14,7 @@ test('audio detail loading state shows a spinner above the text', () => {
   assert.match(css, /\.loading-spinner\s*\{[^}]*border-top-color:\s*#c7432f;[^}]*animation:\s*loading-spin\s+0\.8s\s+linear\s+infinite;/s)
 })
 
-function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, asrOverrides, settingsOverrides, communityOverrides) {
+function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, asrOverrides, settingsOverrides, communityOverrides, audioSessionResetOverrides) {
   let page
   const app = { globalData: {} }
   const library = Object.assign({
@@ -60,7 +60,8 @@ function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, as
     '../services/community',
     '../services/asr-dictation',
     '../services/auth',
-    '../services/request'
+    '../services/request',
+    '../utils/audio-session-reset'
   ].forEach((id) => {
     delete require.cache[require.resolve(id)]
   })
@@ -69,6 +70,7 @@ function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, as
   require.cache[require.resolve('../services/settings')] = { exports: settings }
   if (communityOverrides) require.cache[require.resolve('../services/community')] = { exports: communityOverrides }
   if (asrOverrides) require.cache[require.resolve('../services/asr-dictation')] = { exports: asrOverrides }
+  if (audioSessionResetOverrides) require.cache[require.resolve('../utils/audio-session-reset')] = { exports: audioSessionResetOverrides }
   require('../pages/detail/index')
   page.__app = app
   return page
@@ -99,6 +101,7 @@ function holdEditContext(page, articleIndex) {
     'finishHoldArticleEdit',
     'cancelHoldArticleEdit',
     'finishHoldArticleEditSession',
+    'unbindHoldEditRecorderEvents',
     'resetHoldArticleEdit',
     'stopHoldArticleEdit'
   ].forEach((name) => { ctx[name] = page[name] })
@@ -146,6 +149,97 @@ test('detail page renders the custom configurable longpress menu', () => {
   const json = JSON.parse(fs.readFileSync(path.join(root, 'pages/detail/index.json'), 'utf8'))
   assert.equal(json.usingComponents['config-menu'], '../../components/config-menu/index')
   assert.match(wxml, /<config-menu[\s\S]*bindpick="onLongpressPick"/)
+})
+
+test('detail page exposes inline paragraph editing from the text longpress menu', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
+  assert.match(wxml, /wx:if="\{\{inlineEditing\}\}"[\s\S]*bindtap="cancelInlineEdit"[\s\S]*bindtap="saveInlineEdit"/)
+  assert.doesNotMatch(wxml, />编辑正文</)
+  assert.match(css, /\.inline-edit-toolbar\s*\{[^}]*position:\s*relative;[^}]*box-sizing:\s*border-box;/s)
+  assert.match(css, /\.inline-edit-action\s*\{[^}]*margin:\s*0;[^}]*padding:\s*0;/s)
+  assert.match(css, /\.inline-edit-action\.cancel\s*\{[^}]*position:\s*absolute;[^}]*left:\s*0;[^}]*width:\s*80rpx;[^}]*text-align:\s*left;/s)
+  assert.match(css, /\.inline-edit-action\.done\s*\{[^}]*position:\s*absolute;[^}]*width:\s*128rpx;[^}]*text-align:\s*right;[^}]*white-space:\s*nowrap;/s)
+  assert.match(wxml, /class="inline-edit-action done"[^>]*right:\s*\{\{capsuleSafeRightPx\}\}px;/)
+  assert.match(wxml, /<textarea[^>]*class="inline-paragraph-editor"[^>]*bindinput="onInlineEditInput"/)
+  assert.match(wxml, /id="article-paragraph-\{\{index\}\}"/)
+  assert.match(wxml, /<textarea[^>]*class="inline-paragraph-editor"[^>]*height:\s*\{\{inlineEditHeightPx\}\}px;/)
+  assert.doesNotMatch(wxml, /class="inline-paragraph-editor"[^>]*auto-height/)
+  assert.match(wxml, /<view class="edit-dock" wx:if="\{\{!inlineEditing\}\}">/)
+  assert.match(css, /\.inline-paragraph-editor\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*0;[^}]*padding:\s*0 8rpx;[^}]*font-size:\s*36rpx;[^}]*line-height:\s*1\.9;/s)
+
+  const page = freshDetailPage()
+  const ctx = Object.assign({}, page, {
+    data: {
+      blocks: [{ type: 'paragraph', text: '正文', lineNo: 1 }],
+      menus: { text: { groups: [] } },
+      inlineEditing: false
+    },
+    setData(update) { Object.assign(this.data, update) }
+  })
+  page.longpressBlock.call(ctx, { currentTarget: { dataset: { index: 0 } }, detail: { x: 24, y: 160 } })
+  assert.deepEqual(ctx.data.longpressLocalRows, [
+    { id: 'copy', label: '拷贝' },
+    { id: 'edit', label: '编辑' }
+  ])
+})
+
+test('detail inline editor starts with the measured paragraph height', () => {
+  const page = freshDetailPage()
+  const ctx = {
+    data: { articleIndex: 0 },
+    setData(update) { Object.assign(this.data, update) }
+  }
+
+  page.beginInlineParagraphEdit.call(ctx, {
+    type: 'paragraph',
+    text: '原文显示为两行',
+    lineNo: 2,
+    editorHeightPx: 74
+  })
+
+  assert.equal(ctx.data.inlineEditHeightPx, 74)
+})
+
+test('detail page starts, cancels and saves an exact inline paragraph edit', async () => {
+  const calls = []
+  const page = freshDetailPage({
+    saveArticles: async (stem, articles) => {
+      calls.push({ stem, articles })
+      return { articles }
+    }
+  })
+  const article = { title: '标题', body: '# 标题\n\n第一段\n\n[[photo:photos/a.jpg]]\n\n第二段' }
+  const ctx = Object.assign({}, page, {
+    data: {
+      rec: { stem: 'VoiceDrop-test' },
+      doc: { articles: [article], photos: [] },
+      current: article,
+      articleIndex: 0,
+      blocks: [
+        { type: 'paragraph', text: '第一段', lineNo: 1 },
+        { type: 'photo', key: 'photos/a.jpg', lineNo: 2 },
+        { type: 'paragraph', text: '第二段', lineNo: 3 }
+      ],
+      longpressTarget: { kind: 'text', block: { type: 'paragraph', text: '第二段', lineNo: 3 } },
+      inlineEditing: false,
+      inlineEditSaving: false
+    },
+    setData(update) { Object.assign(this.data, update) },
+    refreshVersionNav: async () => {},
+    applyDoc(doc) { this.data.doc = doc }
+  })
+
+  page.onLongpressLocalPick.call(ctx, { detail: { id: 'edit' } })
+  assert.equal(ctx.data.inlineEditing, true)
+  assert.equal(ctx.data.inlineEditText, '第二段')
+  page.onInlineEditInput.call(ctx, { detail: { value: '精修后的第二段' } })
+  await page.saveInlineEdit.call(ctx)
+
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].stem, 'VoiceDrop-test')
+  assert.equal(calls[0].articles[0].body, '# 标题\n\n第一段\n\n[[photo:photos/a.jpg]]\n\n精修后的第二段')
+  assert.equal(ctx.data.inlineEditing, false)
 })
 
 test('detail page recognizes image hold gestures on the regular view wrapper', () => {
@@ -863,8 +957,9 @@ test('detail style sheet keeps rows and submit button full width', () => {
 test('detail style sheet has top-right close and no cancel or grabber', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
+  const styleSheet = wxml.slice(wxml.indexOf('<view class="style-sheet-layer"'), wxml.indexOf('<view class="edit-dock"'))
 
-  assert.doesNotMatch(wxml, />取消</)
+  assert.doesNotMatch(styleSheet, />取消</)
   assert.doesNotMatch(wxml, /style-sheet-grabber/)
   assert.match(wxml, /class="style-sheet-close"/)
   assert.doesNotMatch(css, /\.style-sheet-grabber\s*\{/)
@@ -1109,7 +1204,7 @@ test('detail page renders inline photo sheet controls', () => {
   assert.match(wxml, /class="photo-sheet-thumb-delete-icon ri-close-line"/)
   assert.match(wxml, /正在上传图片\.\.\./)
   assert.match(wxml, /上传失败，请重试/)
-  assert.match(wxml, /<view class="edit-dock">[\s\S]*class="photo-insert-tip"[\s\S]*class="hold-edit-button/)
+  assert.match(wxml, /<view class="edit-dock"[^>]*>[\s\S]*class="photo-insert-tip"[\s\S]*class="hold-edit-button/)
   assert.match(wxml, /class="photo-insert-tip" wx:if="\{\{photoInsertPromptVisible\}\}"/)
   assert.match(wxml, /class="hold-edit-transcript" wx:if="\{\{holdEditBubbleVisible\}\}"/)
   assert.match(wxml, /class="paragraph-locator" wx:if="\{\{holdEditLocatorsVisible\}\}"/)
@@ -1249,6 +1344,13 @@ test('detail playback ring draws progress with miniapp canvas', () => {
     call[5] === -Math.PI / 2 + Math.PI * 2 * 0.75
   )))
   assert.equal(calls[calls.length - 1][0], 'draw')
+})
+
+test('detail explicit playback restores the speaker after audio-session reset', () => {
+  const js = fs.readFileSync(path.join(root, 'pages/detail/index.js'), 'utf8')
+  const playback = js.slice(js.indexOf('  async togglePlayback()'), js.indexOf('  stopPlayback()'))
+
+  assert.match(playback, /audioSessionReset\.preparePlayback\(\)/)
 })
 
 test('detail page numbers paragraphs and photos while holding to talk like iOS', async () => {
@@ -1652,9 +1754,14 @@ test('detail page maps edit queue and reply into iOS feedback stack', () => {
 test('detail hold edit streams ASR and submits transcript on release', async () => {
   let handlers
   const sentFrames = []
+  let frameHandler
+  let errorHandler
+  const unbound = []
   const recorder = {
-    onFrameRecorded(callback) { this.frame = callback },
-    onError(callback) { this.error = callback },
+    onFrameRecorded(callback) { frameHandler = callback; this.frame = callback },
+    offFrameRecorded(callback) { unbound.push(['frame', callback]) },
+    onError(callback) { errorHandler = callback; this.error = callback },
+    offError(callback) { unbound.push(['error', callback]) },
     start() {},
     stop() {}
   }
@@ -1682,6 +1789,94 @@ test('detail hold edit streams ASR and submits transcript on release', async () 
   assert.deepEqual(sentFrames, ['pcm'])
   assert.deepEqual(ctx.enqueued, [{ text: '把开头改短', articleIndex: 2 }])
   assert.equal(ctx.data.holdEditState, 'idle')
+  assert.deepEqual(unbound, [
+    ['frame', frameHandler],
+    ['error', errorHandler]
+  ])
+})
+
+test('detail hold edit waits for recorder stop and final ASR text before sending', async () => {
+  let handlers
+  let recorderStop
+  const events = []
+  const recorder = {
+    onFrameRecorded() {},
+    onError() {},
+    onStop(handler) { recorderStop = handler },
+    offStop() { events.push('offStop') },
+    start() {},
+    stop() { events.push('stop') }
+  }
+  const page = freshDetailPage({}, {
+    getRecorderManager: () => recorder
+  }, null, {
+    createSession(nextHandlers) {
+      handlers = nextHandlers
+      return {
+        connect() {},
+        sendAudio() {},
+        finish() { events.push('finish') },
+        close() { events.push('close') }
+      }
+    }
+  })
+  const ctx = holdEditContext(page, 1)
+
+  await page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
+  handlers.onText('把结尾改', false)
+  const finishing = page.finishHoldArticleEdit.call(ctx)
+  await Promise.resolve()
+  assert.deepEqual(events, ['stop'])
+
+  recorderStop({})
+  await Promise.resolve()
+  assert.deepEqual(events.slice(0, 3), ['stop', 'offStop', 'finish'])
+  handlers.onText('把结尾改完整', true)
+  await finishing
+
+  assert.deepEqual(ctx.enqueued, [{ text: '把结尾改完整', articleIndex: 1 }])
+  assert.equal(events.at(-1), 'close')
+})
+
+test('detail hold edit resets the host audio session before enqueueing recognized text', async () => {
+  let handlers
+  let finishReset
+  const resetStarted = []
+  const recorder = {
+    onFrameRecorded() {},
+    onError() {},
+    start() {},
+    stop() {}
+  }
+  const page = freshDetailPage({}, {
+    getRecorderManager: () => recorder
+  }, null, {
+    createSession(nextHandlers) {
+      handlers = nextHandlers
+      return { connect() {}, sendAudio() {}, finish() {}, close() {} }
+    }
+  }, null, null, {
+    resetAfterRecording() {
+      resetStarted.push(true)
+      return new Promise((resolve) => { finishReset = resolve })
+    }
+  })
+  const ctx = holdEditContext(page)
+
+  await page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
+  const finishing = page.finishHoldArticleEdit.call(ctx)
+  await Promise.resolve()
+  handlers.onText('补充最后一段', true)
+  await Promise.resolve()
+  await Promise.resolve()
+
+  assert.equal(resetStarted.length, 1)
+  assert.deepEqual(ctx.enqueued, [])
+
+  finishReset(true)
+  await finishing
+
+  assert.deepEqual(ctx.enqueued, [{ text: '补充最后一段', articleIndex: 0 }])
 })
 
 test('detail hold edit swipe-up cancel never submits', async () => {
@@ -1742,6 +1937,34 @@ test('detail hold edit starts directly after consent without platform authorizat
   assert.equal(ctx.data.holdEditState, 'talking')
 })
 
+test('detail hold edit leaves the platform speaker route unchanged', async () => {
+  const events = []
+  const recorder = {
+    onFrameRecorded() {},
+    onError() {},
+    start() { events.push(['start']) },
+    stop() {}
+  }
+  const page = freshDetailPage({}, {
+    getSystemInfoSync: () => ({ platform: 'ios' }),
+    setInnerAudioOption(options) {
+      events.push(['route', options.speakerOn, options.mixWithOther])
+    },
+    getRecorderManager: () => recorder
+  }, null, {
+    createSession() {
+      return { connect() {}, sendAudio() {}, finish() {}, close() {} }
+    }
+  })
+  const ctx = holdEditContext(page)
+
+  await page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
+
+  assert.deepEqual(events, [
+    ['start']
+  ])
+})
+
 test('detail hold edit unload stops recorder and closes ASR', () => {
   let recorderStopped = false
   let asrClosed = false
@@ -1758,6 +1981,46 @@ test('detail hold edit unload stops recorder and closes ASR', () => {
   assert.equal(recorderStopped, true)
   assert.equal(asrClosed, true)
   assert.equal(editSessionClosed, true)
+})
+
+test('detail hide exits directly without touching audio resources or sockets', () => {
+  const js = fs.readFileSync(path.join(root, 'pages/detail/index.js'), 'utf8')
+  const onHide = js.slice(js.indexOf('  onHide() {'), js.indexOf('  onShow() {'))
+  assert.doesNotMatch(onHide, /stopPlayback|pauseHoldArticleEditRecorder|stopHoldArticleEdit|editSession\.close/)
+
+  const events = []
+  const page = freshDetailPage()
+  const ctx = {
+    stopPlayback() { events.push('playback') },
+    pauseHoldArticleEditRecorder() { events.push('pause') },
+    stopHoldArticleEdit() { events.push('dictation') },
+    editSession: { close() { events.push('edit') } }
+  }
+
+  page.onHide.call(ctx)
+
+  assert.deepEqual(events, [])
+  assert.equal(ctx._detailHidden, true)
+})
+
+test('detail show reconnects edit socket only after returning from background', () => {
+  const page = freshDetailPage()
+  let connects = 0
+  const ctx = {
+    _detailHidden: true,
+    data: {
+      rec: { stem: 'VoiceDrop-test' },
+      photoInsertInstruction: '',
+      photoInsertPromptVisible: false
+    },
+    editSession: { connect() { connects++ } },
+    restorePhotoPickerDraft() {}
+  }
+
+  page.onShow.call(ctx)
+
+  assert.equal(connects, 1)
+  assert.equal(ctx._detailHidden, false)
 })
 
 test('detail hold edit ASR error stops recorder and resets state', async () => {

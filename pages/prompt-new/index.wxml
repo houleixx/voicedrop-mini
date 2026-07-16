@@ -1,6 +1,18 @@
-<view class="screen settings-screen"><page-header title="{{pageTitle}}" /><view class="prompt-new-page settings-content">
-  <text class="error" wx:if="{{error}}">{{error}}</text><text class="field-label">名称</text><input class="field" maxlength="40" value="{{label}}" bindinput="onLabel" />
-  <block wx:if="{{type === 'action'}}"><text class="field-label">提示词</text><textarea class="field prompt-field" value="{{prompt}}" bindinput="onPrompt" />
-    <view class="anchor-row"><text>应用于文字</text><switch checked="{{text}}" bindchange="onText" /></view><view class="anchor-row"><text>应用于图片</text><switch checked="{{image}}" bindchange="onImage" /></view></block>
-  <button class="save-button" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存</button>
-</view></view>
+<view class="screen settings-screen">
+  <page-header title="{{pageTitle}}" />
+  <view class="prompt-new-page settings-content">
+    <text class="error" wx:if="{{error}}">{{error}}</text>
+    <text class="field-label">{{type === 'group' ? '分组名字' : '菜单里的名字'}}</text>
+    <input class="field" maxlength="40" value="{{label}}" bindinput="onLabel" />
+    <block wx:if="{{type === 'action'}}">
+      <text class="field-label section-gap">提示词</text>
+      <textarea class="field prompt-field" value="{{prompt}}" bindinput="onPrompt" />
+      <view class="applies-head"><text class="field-label">适用于</text><text>决定在哪种长按里出现</text></view>
+      <view class="apply-options">
+        <view class="apply-option {{text ? 'selected' : ''}}" bindtap="toggleText"><text class="ri-edit-2-line"></text><text>文字</text><text class="apply-check">{{text ? '✓' : ''}}</text></view>
+        <view class="apply-option image-option {{image ? 'selected' : ''}}" bindtap="toggleImage"><text class="ri-image-line"></text><text>图片</text><text class="apply-check">{{image ? '✓' : ''}}</text></view>
+      </view>
+    </block>
+    <button class="bottom-save {{saving ? 'disabled' : ''}}" loading="{{saving}}" disabled="{{saving}}" bindtap="save">{{saving ? '保存中' : '保存'}}</button>
+  </view>
+</view>

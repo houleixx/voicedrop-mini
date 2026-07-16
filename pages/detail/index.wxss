@@ -30,7 +30,44 @@
   display: flex;
   align-items: center;
   gap: 24rpx;
-  padding-right: 178rpx;
+}
+
+.inline-edit-toolbar {
+  position: relative;
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: center;
+}
+
+.inline-edit-action {
+  min-height: 64rpx;
+  margin: 0;
+  padding: 0;
+  color: #817b72;
+  background: transparent;
+  font-size: 29rpx;
+  line-height: 64rpx;
+}
+
+.inline-edit-action.done {
+  position: absolute;
+  width: 128rpx;
+  color: #d8593b;
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.inline-edit-action.cancel {
+  position: absolute;
+  left: 0;
+  width: 80rpx;
+  text-align: left;
+}
+
+.inline-edit-action::after {
+  border: 0;
 }
 
 .history-button-group {
@@ -596,6 +633,20 @@
 .paragraph {
   display: block;
   color: #4f4942;
+  font-size: 36rpx;
+  line-height: 1.9;
+}
+
+.inline-paragraph-editor {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0 8rpx;
+  border: 2rpx solid rgba(216, 89, 59, 0.52);
+  border-radius: 14rpx;
+  color: #4f4942;
+  background: #fffdf9;
   font-size: 36rpx;
   line-height: 1.9;
 }

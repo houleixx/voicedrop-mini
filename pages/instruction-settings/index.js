@@ -33,7 +33,7 @@ function rowsFor(items, expandedGroups = []) {
 Page({
   data: {
     rows: [], expandedGroups: [], loading: true, error: '', empty: false,
-    mutating: false, reordering: false, newMenuVisible: false, importVisible: false,
+    mutating: false, reordering: false, newMenuVisible: false, groupDialogVisible: false, groupName: '', importVisible: false,
     importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', rowHeightPx: 64
   },
   onLoad() {
@@ -88,7 +88,20 @@ Page({
   closeNewMenu() { this.setData({ newMenuVisible: false }) },
   noop() {},
   createPrompt() { this.setData({ newMenuVisible: false }); wx.navigateTo({ url: '/pages/prompt-new/index?type=action' }) },
-  createGroup() { this.setData({ newMenuVisible: false }); wx.navigateTo({ url: '/pages/prompt-new/index?type=group' }) },
+  createGroup() { this.setData({ groupDialogVisible: true, groupName: '' }) },
+  closeGroupDialog() { if (!this.data.mutating) this.setData({ groupDialogVisible: false, groupName: '' }) },
+  onGroupNameInput(event) { this.setData({ groupName: event.detail.value.slice(0, 40) }) },
+  async confirmCreateGroup() {
+    if (this.data.mutating) return
+    const label = this.data.groupName.trim()
+    if (!label) { wx.showToast({ title: '请输入分组名字', icon: 'none' }); return }
+    this.setData({ mutating: true })
+    const result = await promptStore.add({ id: tree.newUserId(), type: 'group', label, origin: 'user', children: [] }, null)
+    if (!result.ok) { this.setData({ mutating: false, error: '创建失败，请重试' }); return }
+    wx.showToast({ title: '已创建' })
+    this.setData({ mutating: false, newMenuVisible: false, groupDialogVisible: false, groupName: '' })
+    await this.loadItems()
+  },
   openImport() { this.setData({ importVisible: true, importCode: '', importPreview: null, importLoading: false, importing: false, importError: '' }) },
   closeImport() { if (!this.data.importing) this.setData({ importVisible: false }) },
   onImportCodeInput(event) {

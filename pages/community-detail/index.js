@@ -8,6 +8,7 @@ const pendingReplies = require('../../utils/pending-replies')
 const prefs = require('../../utils/prefs')
 const api = require('../../services/api')
 const audioConsentFlow = require('../../utils/audio-consent-flow')
+const capsuleLayout = require('../../utils/capsule-layout')
 
 const app = getApp()
 const REPLY_WAVE_PATTERN = [0.25, 0.62, 0.38, 0.9, 0.48, 0.72, 0.34, 0.58]
@@ -35,7 +36,8 @@ Page({
     replyUploading: false,
     replyTimerDisplay: '00:00',
     replyWaveBars: REPLY_WAVE_PATTERN.map(() => 10),
-    audioConsentVisible: false
+    audioConsentVisible: false,
+    capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX
   },
 
   onLoad(options) {
@@ -46,15 +48,17 @@ Page({
     const statusBarHeight = (sysInfo && sysInfo.statusBarHeight) || 0
     let toolbarTop = statusBarHeight
     let toolbarHeight = 64
+    let capsuleSafeRightPx = capsuleLayout.FALLBACK_SAFE_RIGHT_PX
     try {
       const menu = wx.getMenuButtonBoundingClientRect()
       if (menu && menu.top != null && menu.height) {
         toolbarTop = menu.top
         toolbarHeight = menu.height
+        capsuleSafeRightPx = capsuleLayout.safeRightPx(sysInfo, menu)
       }
     } catch (_) {
     }
-    this.setData({ shareId, post: initialPost, toolbarTop, toolbarHeight })
+    this.setData({ shareId, post: initialPost, toolbarTop, toolbarHeight, capsuleSafeRightPx })
     this.setData({ liked: prefs.likedCommunityPost(this.data.shareId || (post && post.shareId)) })
     this.bindReplyRecorder()
     this.load()

@@ -40,10 +40,6 @@ async function fillArticleMeta(records) {
     if (!rec || !rec.hasArticles) return
     const key = recording.articleKey(rec.stem)
     if (!rec.articleTitle && titleCache[key]) rec.articleTitle = titleCache[key]
-    if (rec.articleTitle && rec.tags && rec.tags.length) {
-      rec.rowTitle = recording.rowTitle(rec)
-      return
-    }
     const doc = await fetchDoc(rec.stem).catch(() => null)
     if (!doc) return
     if (!rec.articleTitle && doc.articles && doc.articles.length) {
@@ -56,6 +52,13 @@ async function fillArticleMeta(records) {
       else delete tagsCache[key]
     } else if ((!rec.tags || !rec.tags.length) && tagsCache[key]) {
       rec.tags = tagsCache[key]
+    }
+    for (const item of doc.articles || []) {
+      const coverPhotoKey = article.firstPhotoKey(item.body, doc.photos)
+      if (coverPhotoKey) {
+        rec.coverPhotoKey = coverPhotoKey
+        break
+      }
     }
     rec.rowTitle = recording.rowTitle(rec)
   }))
@@ -159,6 +162,21 @@ async function saveDoc(stem, doc) {
   const saved = await fetchDoc(stem)
   const fallback = !(saved && saved.articles && saved.articles.length)
   return fallback ? doc : saved
+}
+
+async function saveArticles(stem, articles) {
+  const url = `${api.filesBase()}/articles/${api.path(stem)}`
+  const current = await http.get(url, auth.bearer())
+  if (current.statusCode < 200 || current.statusCode >= 300) throw new Error(`加载文章失败 HTTP ${current.statusCode}`)
+  let raw = current.data
+  if (typeof raw === 'string') raw = JSON.parse(raw || '{}')
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) raw = {}
+  const previousArticles = Array.isArray(raw.articles) ? raw.articles : []
+  const nextArticles = (articles || []).map((item, index) => Object.assign({}, previousArticles[index] || {}, item || {}))
+  const payload = Object.assign({}, raw, { articles: nextArticles })
+  const saved = await http.putJson(url, auth.bearer(), payload)
+  if (saved.statusCode < 200 || saved.statusCode >= 300) throw new Error(`保存文章失败 HTTP ${saved.statusCode}`)
+  return article.parseDoc(payload)
 }
 
 function downloadTempFile(key) {
@@ -365,6 +383,7 @@ module.exports = {
   versionHistory,
   patchHead,
   saveDoc,
+  saveArticles,
   ownerScope,
   normalizePhotoScope,
   scopedPhotoKey,

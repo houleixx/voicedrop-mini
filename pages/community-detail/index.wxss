@@ -21,7 +21,6 @@
   display: flex;
   align-items: center;
   gap: 22rpx;
-  padding-right: 178rpx;
 }
 
 .tool-button {
@@ -112,6 +111,13 @@
   border-radius: 999rpx;
   align-items: center;
   background: #fff1ed;
+}
+
+.reply-to-icon {
+  width: 26rpx;
+  height: 26rpx;
+  margin-right: 8rpx;
+  flex: 0 0 auto;
 }
 
 .reply-to-prefix {

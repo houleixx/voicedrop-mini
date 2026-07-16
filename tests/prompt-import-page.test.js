@@ -1,5 +1,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
 
 function loadPage(store, wxOverrides = {}) {
   let page
@@ -36,4 +38,30 @@ test('import page preserves code and exposes preview failure', async () => {
   await page.loadPreview.call(ctx, '1234567')
   assert.equal(ctx.data.code, '1234567')
   assert.equal(ctx.data.error, '分享码无效或已停止分享')
+})
+
+test('independent import page uses the shared primary action and sends header back to home', () => {
+  const root = path.join(__dirname, '..')
+  const wxml = fs.readFileSync(path.join(root, 'pages/prompt-import/index.wxml'), 'utf8')
+  assert.match(wxml, /<page-header[^>]*backToHome/)
+  assert.match(wxml, /class="primary import-button"/)
+})
+
+test('page header relaunches home only when backToHome is enabled', () => {
+  let component
+  const calls = []
+  global.Component = (definition) => { component = definition }
+  global.wx = {
+    reLaunch: ({ url }) => calls.push(['reLaunch', url]),
+    navigateBack: ({ delta }) => calls.push(['navigateBack', delta])
+  }
+  delete require.cache[require.resolve('../components/page-header/index')]
+  require('../components/page-header/index')
+
+  component.methods.goBack.call({ data: { backToHome: true } })
+  component.methods.goBack.call({ data: { backToHome: false } })
+  assert.deepEqual(calls, [
+    ['reLaunch', '/pages/recordings/index'],
+    ['navigateBack', 1]
+  ])
 })

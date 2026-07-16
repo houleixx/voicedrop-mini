@@ -4,6 +4,7 @@ const WebSocket = require('ws')
 
 // Mock wx global for asr-dictation module
 global.wx = {
+  socketUrl: (audience) => `wss://jianshuo.dev/agent/${audience}`,
   connectSocket: (options) => {
     const socket = new WebSocket(options.url)
     return {
@@ -131,5 +132,73 @@ describe('ASR WebSocket Connection', () => {
     } finally {
       global.wx = originalWx
     }
+  })
+
+  test('appends the WeChat socket error detail to the disconnect message', () => {
+    const originalWx = global.wx
+    let socketError
+    const errors = []
+    try {
+      global.wx = Object.assign({}, originalWx, {
+        connectSocket: () => ({
+          onOpen: () => {},
+          onMessage: () => {},
+          onError: (cb) => { socketError = cb },
+          onClose: () => {},
+          send: () => {},
+          close: () => {}
+        })
+      })
+
+      const session = asrDictation.createSession({
+        onError: (message) => errors.push(message)
+      })
+      session.connect()
+      socketError({ errMsg: 'connectSocket:fail websocket error' })
+
+      assert.deepStrictEqual(errors, [
+        '听写连接断开：connectSocket:fail websocket error'
+      ])
+      session.close()
+    } finally {
+      global.wx = originalWx
+    }
+  })
+
+  test('uses direct bearer authentication and buffers audio until open', async () => {
+    let open
+    const sent = []
+    const urls = []
+    const session = asrDictation.createSession({}, {
+      api: { agentWs: () => 'wss://jianshuo.dev/agent' },
+      auth: { bearer: () => 'test-token' },
+      http: {
+        authHeader: (token) => ({ Authorization: `Bearer ${token}`, 'X-VD-Platform': 'miniapp' })
+      },
+      socketUrl: () => 'wss://jianshuo.dev/agent/asr?ticket=obsolete',
+      wx: {
+        connectSocket: (options) => {
+          urls.push(options)
+          return {
+            onOpen: (cb) => { open = cb },
+            onMessage: () => {},
+            onError: () => {},
+            onClose: () => {},
+            send: (opts) => sent.push(opts.data),
+            close: () => {}
+          }
+        }
+      }
+    })
+
+    session.connect()
+    session.sendAudio(new Uint8Array([1, 2, 3]), false)
+    assert.deepStrictEqual(urls, [{
+      url: 'wss://jianshuo.dev/agent/asr',
+      header: { Authorization: 'Bearer test-token', 'X-VD-Platform': 'miniapp' }
+    }])
+    open()
+    assert.strictEqual(sent.length, 2)
+    session.close()
   })
 })

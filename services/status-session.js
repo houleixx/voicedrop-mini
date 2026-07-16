@@ -3,16 +3,60 @@ const auth = require('./auth')
 const http = require('./request')
 const agentMessage = require('../utils/agent-message')
 
-function createSession(handlers) {
+function createSession(handlers, runtime) {
+  handlers = handlers || {}
+  runtime = runtime || {}
+  const socketApi = runtime.wx || (typeof wx === 'undefined' ? null : wx)
+  const apiService = runtime.api || api
+  const authService = runtime.auth || auth
+  const httpService = runtime.http || http
+  const delay = runtime.setTimeout || setTimeout
+  const clearDelay = runtime.clearTimeout || clearTimeout
   let socket = null
+  let connecting = false
+  let generation = 0
+  let retryTimer = null
+  let closed = true
+
+  function clearRetry() {
+    if (retryTimer) clearDelay(retryTimer)
+    retryTimer = null
+  }
 
   function connect() {
-    if (typeof wx === 'undefined' || socket) return
-    socket = wx.connectSocket({
-      url: `${api.agentWs()}/status`,
-      header: http.authHeader(auth.bearer())
-    })
-    socket.onMessage((message) => {
+    if (!socketApi || socket || connecting) return Promise.resolve()
+    closed = false
+    clearRetry()
+    return open()
+  }
+
+  function open() {
+    if (closed || socket || connecting) return Promise.resolve()
+    connecting = true
+    const currentGeneration = ++generation
+    try {
+      openSocket({
+        url: `${apiService.agentWs()}/status`,
+        header: httpService.authHeader(authService.bearer())
+      }, currentGeneration)
+    } catch (_) {
+      handleOpenError(currentGeneration)
+    }
+    return Promise.resolve()
+  }
+
+  function handleOpenError(currentGeneration) {
+    connecting = false
+    if (!closed && currentGeneration === generation) scheduleReconnect(null)
+  }
+
+  function openSocket(options, currentGeneration) {
+    connecting = false
+    if (closed || socket || currentGeneration !== generation) return
+    const current = socketApi.connectSocket(options)
+    socket = current
+    current.onMessage((message) => {
+      if (closed || socket !== current) return null
       const raw = message.data
       const request = agentMessage.linkRequest(raw)
       if (request && handlers.onLinkRequest) return handlers.onLinkRequest(request)
@@ -27,18 +71,28 @@ function createSession(handlers) {
       }
       return null
     })
-    socket.onError((error) => {
-      socket = null
-      if (handlers.onError) handlers.onError(error.errMsg || 'status socket error')
-    })
-    socket.onClose(() => {
-      socket = null
-    })
+    current.onError(() => scheduleReconnect(current))
+    current.onClose(() => scheduleReconnect(current))
+  }
+
+  function scheduleReconnect(current) {
+    if (socket && socket !== current) return
+    if (socket === current) socket = null
+    if (closed || retryTimer) return
+    retryTimer = delay(() => {
+      retryTimer = null
+      if (!closed) open()
+    }, 3000)
   }
 
   function close() {
-    if (socket) socket.close({ code: 1000, reason: 'bye' })
+    closed = true
+    connecting = false
+    generation++
+    clearRetry()
+    const current = socket
     socket = null
+    if (current) current.close({ code: 1000, reason: 'bye' })
   }
 
   return { connect, close }

@@ -1,9 +1,13 @@
 <view class="screen detail-screen">
   <view class="detail-toolbar" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx;">
-    <view class="tool-button back-button" bindtap="goBack" aria-label="返回">
+    <view class="inline-edit-toolbar" wx:if="{{inlineEditing}}">
+      <button class="inline-edit-action cancel" disabled="{{inlineEditSaving}}" bindtap="cancelInlineEdit">取消</button>
+      <button class="inline-edit-action done" style="right: {{capsuleSafeRightPx}}px;" loading="{{inlineEditSaving}}" disabled="{{inlineEditSaving}}" bindtap="saveInlineEdit">完成</button>
+    </view>
+    <view wx:else class="tool-button back-button" bindtap="goBack" aria-label="返回">
       <text class="back-icon ri-arrow-left-s-line"></text>
     </view>
-    <view class="toolbar-actions">
+    <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;" wx:if="{{!inlineEditing}}">
       <button class="play-button {{playbackMode === 'playing' ? 'playing' : ''}}" bindtap="togglePlayback" aria-label="{{playbackMode === 'playing' ? '停止播放' : '播放录音'}}">
         <canvas class="playback-ring-canvas" canvas-id="playbackRingCanvas" width="72" height="72" wx:if="{{playbackMode !== 'idle'}}"></canvas>
         <text class="play-icon ri-play-fill"></text>
@@ -55,9 +59,10 @@
 
     <view class="article">
       <block wx:for="{{blocks}}" wx:key="index">
-        <view wx:if="{{item.type === 'paragraph'}}" class="paragraph-row" data-index="{{index}}" bindlongpress="longpressBlock">
+        <view wx:if="{{item.type === 'paragraph'}}" id="article-paragraph-{{index}}" class="paragraph-row" data-index="{{index}}" bindlongpress="longpressBlock">
           <text class="paragraph-locator" wx:if="{{holdEditLocatorsVisible}}">{{item.lineNo}}</text>
-          <text class="paragraph">{{item.text}}</text>
+          <textarea wx:if="{{inlineEditing && inlineEditLineNo === item.lineNo}}" class="inline-paragraph-editor" style="height: {{inlineEditHeightPx}}px;" value="{{inlineEditText}}" auto-focus maxlength="-1" bindinput="onInlineEditInput" />
+          <text wx:else class="paragraph">{{item.text}}</text>
         </view>
         <view wx:else class="photo-block" data-index="{{index}}" bindtouchstart="startImageLongpress" bindtouchmove="moveImageLongpress" bindtouchend="finishImageLongpress" bindtouchcancel="finishImageLongpress">
           <text class="photo-line-locator" wx:if="{{holdEditLocatorsVisible}}">{{item.lineNo}}</text>
@@ -166,7 +171,7 @@
     </view>
   </view>
 
-  <view class="edit-dock">
+  <view class="edit-dock" wx:if="{{!inlineEditing}}">
     <view class="photo-insert-tip" wx:if="{{photoInsertPromptVisible}}">
       <text class="photo-insert-status">{{photoInsertTip}}</text>
       <text wx:if="{{photoInsertInstruction}}" class="photo-insert-instruction">✎ {{photoInsertInstruction}}</text>

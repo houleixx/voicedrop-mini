@@ -82,6 +82,27 @@ test('plus button opens the new menu and choosing an action closes it before nav
   assert.equal(navigations[0], '/pages/prompt-new/index?type=action')
 })
 
+test('new group opens an inline naming dialog and creates the group from that dialog', async () => {
+  const added = []
+  const page = freshPage('instruction-settings', {
+    items: () => items,
+    add: async (...args) => { added.push(args); return { ok: true } }
+  }, { showToast() {} })
+  const ctx = context(page, { newMenuVisible: true })
+  page.createGroup.call(ctx)
+  assert.equal(ctx.data.newMenuVisible, true)
+  assert.equal(ctx.data.groupDialogVisible, true)
+  page.onGroupNameInput.call(ctx, { detail: { value: '  我的分组  ' } })
+  await page.confirmCreateGroup.call(ctx)
+  assert.equal(added.length, 1)
+  assert.equal(added[0][0].type, 'group')
+  assert.equal(added[0][0].label, '我的分组')
+  assert.deepEqual(added[0][0].children, [])
+  assert.equal(added[0][1], null)
+  assert.equal(ctx.data.newMenuVisible, false)
+  assert.equal(ctx.data.groupDialogVisible, false)
+})
+
 test('prompt list opens the magic-code importer as a bottom sheet', () => {
   const page = freshPage('instruction-settings')
   const ctx = context(page)
@@ -113,6 +134,8 @@ test('prompt list markup contains the screenshot hierarchy and import copy', () 
   assert.match(wxml, /恢复默认提示词/)
   assert.match(wxml, /新建动作[\s\S]*新建分组/)
   assert.match(wxml, /class="import-sheet"/)
+  assert.match(wxml, /class="group-dialog"[\s\S]*新建分组/)
+  assert.match(wxml, /placeholder="分组名字"/)
   const importSheet = wxml.match(/<view class="import-sheet"[\s\S]*?<\/view>\s*<\/view>\s*<\/view>/)
   assert.ok(importSheet)
   assert.doesNotMatch(importSheet[0], /class="sheet-handle"/)
@@ -192,6 +215,12 @@ test('prompt editor matches the iOS header and sharing layout', () => {
   assert.match(wxml, /分享这条提示词/)
   assert.match(wxml, /open-type="share"/)
   assert.match(wxml, /分享的始终是已保存的版本/)
+  assert.match(wxml, /wx:if="\{\{sharing && shareCode\}\}"/)
+  assert.match(wxml, /ri-file-copy-line[\s\S]*复制数字/)
+  assert.match(wxml, /ri-link[\s\S]*复制链接/)
+  assert.match(wxml, /ri-share-box-line[\s\S]*分享…/)
+  assert.match(css, /\.share-actions\s*\{[^}]*display:\s*flex/s)
+  assert.match(css, /\.share-action\s*\{[^}]*background:\s*#f8e1d8/s)
 })
 
 test('prompt add button matches the home settings shortcut size in the capsule-safe slot', () => {
@@ -206,4 +235,41 @@ test('prompt add button matches the home settings shortcut size in the capsule-s
   assert.match(wxml, /class="add-symbol">\+<\/text>/)
   assert.match(css, /\.add-symbol\s*\{[^}]*line-height:\s*32px;/s)
   assert.match(css, /\.add-symbol\s*\{[^}]*transform:\s*translateY\(-1px\);?/s)
+})
+
+test('new prompt uses the name, prompt, and two-card apply layout with a bottom save button', () => {
+  const root = path.join(__dirname, '..')
+  const wxml = fs.readFileSync(path.join(root, 'pages/prompt-new/index.wxml'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/prompt-new/index.wxss'), 'utf8')
+  assert.match(wxml, /菜单里的名字/)
+  assert.match(wxml, /class="field prompt-field"/)
+  assert.match(wxml, /class="apply-option[^"]*"[\s\S]*文字/)
+  assert.match(wxml, /class="apply-option[^"]*"[\s\S]*图片/)
+  assert.match(wxml, /class="bottom-save[^"]*"[\s\S]*bindtap="save"/)
+  assert.match(css, /\.apply-options\s*\{[^}]*display:\s*flex/s)
+  assert.match(css, /\.apply-option\.selected\s*\{[^}]*border/s)
+  assert.match(css, /\.bottom-save\s*\{[^}]*width:\s*320rpx;/s)
+})
+
+test('new prompt selects both text and image by default', () => {
+  const page = freshPage('prompt-new')
+  const ctx = context(page)
+  page.onLoad.call(ctx, {})
+  assert.equal(ctx.data.text, true)
+  assert.equal(ctx.data.image, true)
+})
+
+test('new prompt persists through the prompt store and returns after a successful save', async () => {
+  const added = []
+  const backs = []
+  const page = freshPage('prompt-new', {
+    add: async (...args) => { added.push(args); return { ok: true } }
+  }, { navigateBack: () => backs.push(true) })
+  const ctx = context(page, { label: '图文润色', prompt: '优化这段内容', text: true, image: true })
+  await page.save.call(ctx)
+  assert.equal(added.length, 1)
+  assert.equal(added[0][0].label, '图文润色')
+  assert.deepEqual(added[0][0].appliesTo, ['text', 'image'])
+  assert.equal(added[0][1], null)
+  assert.deepEqual(backs, [true])
 })

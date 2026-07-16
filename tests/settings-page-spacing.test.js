@@ -35,3 +35,12 @@ test('prompt and writing setting pages inherit the shared content start', () => 
 
   assert.doesNotMatch(read('pages/usage/index.wxss'), /padding-top:/)
 })
+
+test('settings card dividers start at the menu text column', () => {
+  const styles = read('pages/settings/index.wxss')
+
+  assert.match(styles, /\.menu-item\s*\{[^}]*position:\s*relative;/s)
+  assert.doesNotMatch(styles, /\.menu-item\s*\{[^}]*border-bottom:/s)
+  assert.match(styles, /\.menu-item::after\s*\{[^}]*left:\s*124rpx;[^}]*right:\s*0;[^}]*height:\s*1rpx;[^}]*background:\s*#f0e8da;/s)
+  assert.match(styles, /\.menu-item:last-child::after,\s*\.menu-item\.no-bottom-border::after\s*\{[^}]*display:\s*none;/s)
+})

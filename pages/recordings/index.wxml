@@ -1,5 +1,43 @@
+<template name="community-card">
+  <view class="community-card {{item.coverPhotoUrl ? 'has-photo' : item.paletteClass}}"
+        data-share-id="{{item.shareId}}" bindtap="openPost" bindlongpress="confirmCommunityUnshare">
+    <image wx:if="{{item.coverPhotoUrl}}" class="community-card-image"
+           src="{{item.coverPhotoUrl}}" mode="widthFix" lazy-load
+           data-cover-key="{{item.coverPhotoKey}}" bindload="onCommunityCoverLoad" />
+    <view class="community-card-body">
+      <view wx:if="{{item.isReply}}" class="community-reply-badge">
+        <view class="community-reply-badge-icon community-reply-icon-accent"></view>
+        <text>回应</text>
+      </view>
+      <text class="community-card-title">{{item.title || '(无题)'}}</text>
+      <text wx:if="{{item.preview && !item.coverPhotoUrl}}" class="community-card-preview">{{item.preview}}</text>
+      <view class="community-card-meta">
+        <text class="community-avatar" style="background: {{item.avatarColor}};">{{item.authorInitial}}</text>
+        <text class="community-author">{{item.authorDisplay}}</text>
+        <view class="community-count community-like-count">
+          <text class="community-like-icon ri-heart-fill"></text>
+          <text>{{item.likeCount}}</text>
+        </view>
+        <view wx:if="{{item.replyCount > 0}}" class="community-count community-reply-count">
+          <text class="community-reply-icon ri-chat-2-line"></text>
+          <text>{{item.replyCount}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
 <view class="screen recording-screen">
   <home-tabs current="{{currentHomeTab}}" tabs="{{homeTabs}}" bind:change="switchHomeTab" bind:settings="openSettings" />
+
+  <view wx:if="{{activeTab === 'community'}}" class="community-feed-tabs" style="top: {{scrollContentTop}}px;">
+    <view class="community-feed-tab {{communityFeedTab === 'recommended' ? 'active' : ''}}"
+          data-feed-tab="recommended" bindtap="selectCommunityFeed">推荐</view>
+    <view class="community-feed-tab {{communityFeedTab === 'latest' ? 'active' : ''}}"
+          data-feed-tab="latest" bindtap="selectCommunityFeed">最新</view>
+    <view class="community-feed-tab {{communityFeedTab === 'replies' ? 'active' : ''}}"
+          data-feed-tab="replies" bindtap="selectCommunityFeed">回应</view>
+  </view>
 
   <scroll-view
     class="scroll-content"
@@ -11,7 +49,7 @@
     refresher-threshold="60"
     refresher-background="#faf6ef"
     bindrefresherrefresh="onRefresherRefresh"
-    style="top: {{scrollContentTop}}px;"
+    style="top: {{activeTab === 'community' ? communityScrollContentTop : scrollContentTop}}px;"
     bindtouchstart="onScreenTouchStart"
   >
     <view slot="refresher" class="pull-refresh-indicator">
@@ -38,7 +76,10 @@
               data-index="{{index}}">
           <view class="record-card {{item.isEmpty ? 'silent' : ''}}" style="transform: translateX({{item._translateX || 0}}px);" data-index="{{index}}" bindtap="openDetail">
             <view class="record-icon-wrapper">
-              <view class="record-icon" aria-hidden="true">
+              <image wx:if="{{item.coverPhotoUrl}}" class="record-cover"
+                     src="{{item.coverPhotoUrl}}" mode="aspectFill" lazy-load
+                     data-stem="{{item.stem}}" binderror="onRecordCoverError" />
+              <view wx:else class="record-icon" aria-hidden="true">
                 <view class="record-wave">
                   <view class="record-wave-line record-wave-line-short"></view>
                   <view class="record-wave-line record-wave-line-tall"></view>
@@ -76,19 +117,16 @@
         <text class="empty-sub">稍后刷新，或先分享自己的文章。</text>
       </view>
 
-      <view wx:else class="post-list">
-        <view class="post" wx:for="{{communityPosts}}" wx:key="shareId" data-index="{{index}}" bindtap="openPost">
-          <view class="post-icon" aria-hidden="true">
-            <text class="doc-icon-img ri-article-line"></text>
-          </view>
-          <view class="post-main">
-            <text class="post-title">{{item.title || '社区文章'}}</text>
-            <view class="post-meta">
-              <text>{{item.author || item.authorName || '匿名作者'}}</text>
-              <text wx:if="{{item.dateLabel}}" class="post-time">{{item.dateLabel}}</text>
-            </view>
-          </view>
-          <text class="chevron" aria-hidden="true">›</text>
+      <view wx:else class="community-post-list">
+        <view class="community-post-column">
+          <block wx:for="{{communityLeftPosts}}" wx:key="shareId">
+            <template is="community-card" data="{{item: item}}" />
+          </block>
+        </view>
+        <view class="community-post-column">
+          <block wx:for="{{communityRightPosts}}" wx:key="shareId">
+            <template is="community-card" data="{{item: item}}" />
+          </block>
         </view>
       </view>
     </block>
@@ -96,8 +134,8 @@
   </scroll-view>
 
   <view wx:if="{{activeTab === 'recordings'}}" class="record-dock">
-    <!-- Transcript text above button (Android: fabStatus) -->
-    <view wx:if="{{commandStatusText}}" class="fab-status {{commandStatusOk ? '' : 'error'}}">
+    <!-- iOS VoiceFeedbackStack colors: transcript / queue / reply / error -->
+    <view wx:if="{{commandStatusText}}" class="fab-status {{commandStatusKind}}">
       {{commandStatusText}}
     </view>
 

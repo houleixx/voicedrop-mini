@@ -3,7 +3,7 @@
     <text class="header-back-icon header-back-icon-arrow"></text>
   </view>
   <text class="header-title {{titleAlign === 'left' ? 'title-left' : ''}}" style="color: {{textColor}};">{{title}}</text>
-  <view class="header-right" style="right: {{safeRightAction ? '105px' : '32rpx'}}; top: {{safeRightAction ? toolbarTop : ''}}px; bottom: {{safeRightAction ? 'auto' : '24rpx'}}; height: {{safeRightAction ? toolbarHeight : 88}}px;">
+  <view class="header-right" style="right: {{safeRightAction ? capsuleSafeRightPx + 'px' : '32rpx'}}; top: {{safeRightAction ? toolbarTop : ''}}px; bottom: {{safeRightAction ? 'auto' : '24rpx'}}; height: {{safeRightAction ? toolbarHeight : 88}}px;">
     <slot name="right" />
   </view>
 </view>
