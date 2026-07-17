@@ -4,7 +4,7 @@
       <text class="back-icon ri-arrow-left-s-line"></text>
     </view>
     <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;">
-      <button class="tool-button icon-only-button {{fed ? 'fed' : ''}}" bindtap="tip" disabled="{{fed || feeding}}" aria-label="投币">
+      <button class="tool-button icon-only-button feed-button {{fed ? 'fed' : ''}}" bindtap="tip" disabled="{{fed || feeding}}" aria-label="投币">
         <text class="action-icon {{fed ? 'ri-flashlight-fill' : 'ri-flashlight-line'}}"></text>
       </button>
       <button class="tool-button icon-only-button {{liked ? 'liked' : ''}}" bindtap="toggleLike" aria-label="喜欢">
