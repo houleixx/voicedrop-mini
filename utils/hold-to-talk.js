@@ -35,8 +35,7 @@ function stopRecorderAndWait(recorder, timeoutMs, delay, clearDelay) {
 }
 
 function createTranscript() {
-  let finalText = ''
-  let partialText = ''
+  let latestText = ''
   const listeners = []
   const finalListeners = []
 
@@ -52,24 +51,20 @@ function createTranscript() {
   }
 
   function clear() {
-    finalText = ''
-    partialText = ''
+    latestText = ''
   }
 
   function accept(text, isFinal) {
     const trimmed = String(text || '').trim()
     if (!trimmed) return
-    if (isFinal) {
-      finalText = finalText ? `${finalText} ${trimmed}` : trimmed
-      partialText = ''
-    } else {
-      partialText = trimmed
-    }
+    // Volc ASR emits cumulative transcript snapshots. Keep the newest snapshot,
+    // including a late partial that restores words missing from an early final.
+    latestText = trimmed
     notify(Boolean(isFinal))
   }
 
   function bestText() {
-    return finalText.trim() || partialText.trim()
+    return latestText
   }
 
   function bubbleText() {

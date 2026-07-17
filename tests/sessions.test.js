@@ -86,9 +86,18 @@ test('matches Android hold-to-talk transcript behavior', () => {
   transcript.accept('把标题改得更温柔', true)
   assert.equal(transcript.bestText(), '把标题改得更温柔')
   transcript.accept('第二句', true)
-  assert.equal(transcript.bestText(), '把标题改得更温柔 第二句')
+  assert.equal(transcript.bestText(), '第二句')
   transcript.clear()
   assert.equal(transcript.bestText(), '')
+})
+
+test('hold-to-talk keeps a newer partial snapshot that restores trailing words', () => {
+  const transcript = holdToTalk.createTranscript()
+  transcript.accept('帮我删除', true)
+  transcript.accept('帮我删除第三篇', false)
+
+  assert.equal(transcript.bestText(), '帮我删除第三篇')
+  assert.equal(transcript.bubbleText(), '帮我删除第三篇')
 })
 
 test('matches Android library command status text priority', () => {
