@@ -20,7 +20,7 @@
       </view>
 
       <!-- 算力 -->
-      <view class="menu-item" data-url="/pages/usage/index" bindtap="openPage">
+      <view class="menu-item no-bottom-border" data-url="/pages/usage/index" bindtap="openPage">
         <view class="menu-icon icon-amber">
           <text class="menu-icon-text">⚡</text>
         </view>
@@ -32,14 +32,6 @@
           <text class="menu-value">{{balance.suanli || 0}}</text>
           <text class="menu-arrow">›</text>
         </view>
-      </view>
-      <view class="menu-item no-bottom-border" data-url="/pages/invite/index" bindtap="openPage">
-        <view class="menu-icon icon-green"><text class="menu-icon-text">＋</text></view>
-        <view class="menu-content">
-          <text class="menu-title">邀请好友</text>
-          <text class="menu-subtitle">朋友打开，双方都得算力</text>
-        </view>
-        <view class="menu-right"><text class="menu-arrow">›</text></view>
       </view>
     </view>
 
