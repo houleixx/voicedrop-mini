@@ -233,12 +233,17 @@ test('community prompt detail uses its own iOS-aligned layout without replacing 
   assert.match(wxml, /用 \{\{post\.promptCode\}\} 改这段/)
   assert.match(wxml, /收下这条提示词/)
   assert.match(wxml, /promptImported \? '已收下'/)
+  assert.match(wxml, /<view\s+class="prompt-collect-button/)
+  assert.doesNotMatch(wxml, /<button\s+class="prompt-collect-button/)
+  assert.doesNotMatch(wxml, /loading="\{\{promptImporting\}\}"/)
+  assert.match(wxml, /ri-loader-4-line is-spinning/)
   assert.match(wxml, /<block wx:else>[\s\S]*class="article card"/)
   assert.match(wxml, /class="more-menu-row" data-action="reply"/)
   assert.doesNotMatch(wxml, /prompt-detail-badge|prompt-collect-card/)
   assert.match(wxss, /\.prompt-share-code\s*\{[\s\S]*letter-spacing:\s*16rpx;/)
   assert.match(wxss, /\.prompt-body-panel\s*\{[\s\S]*background:\s*#f0ede7;/)
   assert.match(wxss, /\.prompt-more-button\s*\{[\s\S]*background:\s*#282520;/)
+  assert.match(wxss, /\.prompt-collect-label\s*\{[\s\S]*white-space:\s*nowrap;/)
 })
 
 test('community prompt collect mirrors iOS imported state and disables repeat imports', async () => {

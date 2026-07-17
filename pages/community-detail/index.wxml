@@ -55,16 +55,17 @@
           <text class="prompt-help-copy" wx:if="{{post.mine}}">这是你分享的提示词。把分享码发给朋友，或在 设置 → 提示词 里管理。</text>
           <text class="prompt-help-copy" wx:else>想长期用：点下面「收下这条提示词」，之后长按菜单里随手可用。</text>
         </view>
-        <button
+        <view
           class="prompt-collect-button {{promptImported ? 'is-imported' : ''}}"
           wx:if="{{!post.mine && post.promptCode}}"
           bindtap="collectPrompt"
-          loading="{{promptImporting}}"
-          disabled="{{promptImported || promptImporting}}"
+          role="button"
+          aria-label="{{promptImported ? '已收下' : '收下这条提示词'}}"
+          aria-disabled="{{promptImported || promptImporting}}"
         >
-          <text wx:if="{{!promptImporting}}" class="prompt-collect-icon {{promptImported ? 'ri-check-line' : 'ri-download-2-line'}}"></text>
-          <text>{{promptImported ? '已收下' : '收下这条提示词'}}</text>
-        </button>
+          <text class="prompt-collect-icon {{promptImporting ? 'ri-loader-4-line is-spinning' : (promptImported ? 'ri-check-line' : 'ri-download-2-line')}}"></text>
+          <text class="prompt-collect-label">{{promptImported ? '已收下' : '收下这条提示词'}}</text>
+        </view>
       </view>
       <block wx:else>
         <view class="article card" wx:if="{{sections.length}}">
