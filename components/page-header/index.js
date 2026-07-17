@@ -9,6 +9,7 @@ Component({
     bgColor: { type: String, value: '#faf6ef' },
     textColor: { type: String, value: '#2a2521' },
     titleAlign: { type: String, value: 'center' },
+    hideBack: { type: Boolean, value: false },
     safeRightAction: { type: Boolean, value: false },
     backToHome: { type: Boolean, value: false }
   },

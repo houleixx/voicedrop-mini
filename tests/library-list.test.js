@@ -206,7 +206,7 @@ test('library can query the anonymous scope while a WeChat session is active', a
   assert.equal(library.__requests[0].header.Authorization, `Bearer anon_${'a'.repeat(64)}`)
 })
 
-test('library refreshes its cached owner scope after the active account changes', async () => {
+test('library refreshes its cached owner scope after the anonymous account token changes', async () => {
   const values = { 'voicedrop.auth.anon': `anon_${'a'.repeat(64)}` }
   let reads = 0
   const library = freshLibraryWithWx([], {
@@ -214,13 +214,13 @@ test('library refreshes its cached owner scope after the active account changes'
     setStorageSync: (key, value) => { values[key] = value },
     request: (options) => {
       reads += 1
-      options.success({ statusCode: 200, data: { scope: reads === 1 ? 'users/anon-current/' : 'users/wechat-existing/' } })
+      options.success({ statusCode: 200, data: { scope: reads === 1 ? 'users/anon-current/' : 'users/anon-next/' } })
     }
   })
 
   assert.equal(await library.ownerScope(), 'users/anon-current/')
-  values['voicedrop.auth.session'] = 'aaaaaaaa.bbbbbbbb.cccccccc'
-  assert.equal(await library.ownerScope(), 'users/wechat-existing/')
+  values['voicedrop.auth.anon'] = `anon_${'b'.repeat(64)}`
+  assert.equal(await library.ownerScope(), 'users/anon-next/')
   assert.equal(reads, 2)
 })
 

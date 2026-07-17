@@ -30,16 +30,28 @@ function rowsFor(items, expandedGroups = []) {
   return rows.map((row, flatIndex) => Object.assign(row, { flatIndex }))
 }
 
+function findItem(items, id) {
+  for (const item of items || []) {
+    if (item.id === id) return item
+    if (item.type === 'group') {
+      const child = findItem(item.children, id)
+      if (child) return child
+    }
+  }
+  return null
+}
+
 Page({
   data: {
     rows: [], expandedGroups: [], loading: true, error: '', empty: false,
     mutating: false, reordering: false, newMenuVisible: false, groupDialogVisible: false, groupName: '', importVisible: false,
-    importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', rowHeightPx: 64
+    importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', rowHeightPx: 64,
+    swipedRowId: '', swipeOffset: 0, swipeDeletePx: 72, swipeDragging: false
   },
   onLoad() {
     try {
       const width = Number(wx.getSystemInfoSync().windowWidth) || 375
-      this.setData({ rowHeightPx: 128 * width / 750 })
+      this.setData({ rowHeightPx: 128 * width / 750, swipeDeletePx: 144 * width / 750 })
     } catch (_) {}
   },
   onShow() { if (!this.data.reordering) this.loadItems() },
@@ -53,6 +65,7 @@ Page({
   },
   handleRowTap(event) {
     if (this.ignoreNextRowTap) { this.ignoreNextRowTap = false; return }
+    if (this.data.swipedRowId) { this.closeSwipe(); return }
     if (this.data.reordering && event.currentTarget.dataset.type !== 'group') return
     if (event.currentTarget.dataset.type === 'group') this.toggleGroup(event)
     else this.openItem(event)
@@ -69,8 +82,25 @@ Page({
     wx.navigateTo({ url: `/pages/instruction-edit/index?id=${encodeURIComponent(event.currentTarget.dataset.id)}` })
   },
   rowTouchStart(event) {
+    if (this.data.reordering || event.currentTarget.dataset.type !== 'action') { this.rowTouch = null; return }
     const touch = event.touches && event.touches[0]
-    if (touch) this.rowTouch = { x: touch.pageX, y: touch.pageY, id: event.currentTarget.dataset.id }
+    if (touch) {
+      const id = event.currentTarget.dataset.id
+      const startOffset = this.data.swipedRowId === id ? this.data.swipeOffset : 0
+      this.rowTouch = { x: touch.pageX, y: touch.pageY, id, startOffset, horizontal: false }
+      if (this.data.swipedRowId && this.data.swipedRowId !== id) this.setData({ swipedRowId: '', swipeOffset: 0 })
+    }
+  },
+  rowTouchMove(event) {
+    if (!this.rowTouch) return
+    const touch = event.touches && event.touches[0]
+    if (!touch) return
+    const dx = touch.pageX - this.rowTouch.x
+    const dy = touch.pageY - this.rowTouch.y
+    if (!this.rowTouch.horizontal && Math.abs(dx) <= Math.abs(dy)) return
+    this.rowTouch.horizontal = true
+    const swipeOffset = Math.max(-this.data.swipeDeletePx, Math.min(0, this.rowTouch.startOffset + dx))
+    this.setData({ swipedRowId: this.rowTouch.id, swipeOffset, swipeDragging: true })
   },
   rowTouchEnd(event) {
     if (!this.rowTouch || this.data.reordering) { this.rowTouch = null; return }
@@ -78,12 +108,15 @@ Page({
     const start = this.rowTouch; this.rowTouch = null
     if (!touch || start.id !== event.currentTarget.dataset.id) return
     const dx = touch.pageX - start.x; const dy = Math.abs(touch.pageY - start.y)
-    if (dx < -60 && dy < 40) {
+    if (start.horizontal || (Math.abs(dx) > 12 && Math.abs(dx) > dy)) {
       this.ignoreNextRowTap = true
       setTimeout(() => { this.ignoreNextRowTap = false }, 350)
-      this.deleteItem({ currentTarget: { dataset: { id: start.id } } })
+      const finalOffset = Math.max(-this.data.swipeDeletePx, Math.min(0, start.startOffset + dx))
+      const reveal = finalOffset <= -this.data.swipeDeletePx / 2
+      this.setData({ swipedRowId: reveal ? start.id : '', swipeOffset: reveal ? -this.data.swipeDeletePx : 0, swipeDragging: false })
     }
   },
+  closeSwipe() { this.setData({ swipedRowId: '', swipeOffset: 0, swipeDragging: false }) },
   openNewMenu() { if (!this.data.mutating && !this.data.reordering) this.setData({ newMenuVisible: true }) },
   closeNewMenu() { this.setData({ newMenuVisible: false }) },
   noop() {},
@@ -127,11 +160,21 @@ Page({
   async deleteItem(event) {
     if (this.data.mutating || this.data.reordering) return
     const id = event.currentTarget.dataset.id
-    const modal = await new Promise((resolve) => wx.showModal({ title: '删除提示词', content: '删除后无法恢复；删除分组会同时删除组内提示词。', confirmText: '删除', success: resolve }))
-    if (!modal.confirm) return
+    const item = findItem(promptStore.items(), id)
+    if (!item || item.type !== 'action') { this.closeSwipe(); return }
+    const modal = await new Promise((resolve) => wx.showModal({ title: '删除提示词', content: `确定删除“${item.label}”吗？删除后无法恢复。`, confirmText: '删除', confirmColor: '#d8593b', success: resolve }))
+    if (!modal.confirm) { this.closeSwipe(); return }
     this.setData({ mutating: true })
-    const result = await promptStore.remove(id)
-    this.setData({ mutating: false, rows: this.displayedRows(promptStore.items()), error: result.ok ? '' : '删除失败，请重试' })
+    wx.showLoading({ title: '删除中', mask: true })
+    let result
+    try {
+      result = await promptStore.remove(id)
+    } catch (_) {
+      result = { ok: false, error: 'delete_failed' }
+    } finally {
+      wx.hideLoading()
+    }
+    this.setData({ mutating: false, swipedRowId: '', swipeOffset: 0, rows: this.displayedRows(promptStore.items()), error: result.ok ? '' : '删除失败，请重试' })
   },
   async restoreDefaults() {
     if (this.data.mutating) return
@@ -143,8 +186,9 @@ Page({
   },
   startReorder() {
     if (this.data.reordering || this.data.mutating) return
+    this.rowTouch = null
     this.dragController = promptDrag.create(); this.dragController.begin(promptStore.items())
-    this.setData({ reordering: true, rows: this.displayedRows(this.dragController.draft()), error: '' })
+    this.setData({ reordering: true, swipedRowId: '', swipeOffset: 0, swipeDragging: false, rows: this.displayedRows(this.dragController.draft()), error: '' })
   },
   movePrompt(event) {
     if (!this.dragController || !this.data.reordering) return
@@ -168,11 +212,19 @@ Page({
   async finishReorder() {
     if (!this.dragController || this.data.mutating) return
     this.setData({ mutating: true })
-    const result = await this.dragController.commit(promptStore)
+    wx.showLoading({ title: '保存中', mask: true })
+    let result
+    try {
+      result = await this.dragController.commit(promptStore)
+    } catch (_) {
+      result = { ok: false, error: 'save_failed' }
+    } finally {
+      wx.hideLoading()
+    }
     if (!result.ok) { this.setData({ mutating: false, error: result.error === 'conflict' ? '列表已更新，请重新排序' : '保存失败，请重试' }); return }
     this.dragController = null
     this.setData({ mutating: false, reordering: false, rows: this.displayedRows(promptStore.items()), error: '' })
   }
 })
 
-module.exports = { rowsFor, appliesLabel }
+module.exports = { rowsFor, appliesLabel, findItem }

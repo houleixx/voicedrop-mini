@@ -112,23 +112,112 @@ test('prompt list opens the magic-code importer as a bottom sheet', () => {
   assert.equal(ctx.data.importVisible, false)
 })
 
-test('left swipe delete suppresses the tap that follows the gesture', () => {
+test('left swipe on an action reveals delete without opening or deleting it', () => {
   const navigations = []
-  const page = freshPage('instruction-settings', {}, {
-    navigateTo: ({ url }) => navigations.push(url),
-    showModal: ({ success }) => success({ confirm: false })
-  })
+  let removed = 0
+  const page = freshPage('instruction-settings', { items: () => items, remove: async () => { removed += 1; return { ok: true } } }, { navigateTo: ({ url }) => navigations.push(url) })
   const ctx = context(page)
   const target = { currentTarget: { dataset: { id: 'a', type: 'action' } } }
   page.rowTouchStart.call(ctx, Object.assign({ touches: [{ pageX: 120, pageY: 20 }] }, target))
   page.rowTouchEnd.call(ctx, Object.assign({ changedTouches: [{ pageX: 20, pageY: 22 }] }, target))
+  assert.equal(ctx.data.swipedRowId, 'a')
+  assert.equal(ctx.data.swipeOffset, -72)
   page.handleRowTap.call(ctx, target)
   assert.deepEqual(navigations, [])
+  assert.equal(removed, 0)
+  assert.equal(ctx.data.swipedRowId, 'a')
+})
+
+test('groups cannot reveal or invoke prompt deletion', async () => {
+  let modalShown = 0
+  let removed = 0
+  const page = freshPage('instruction-settings', { items: () => items, remove: async () => { removed += 1; return { ok: true } } }, {
+    showModal: () => { modalShown += 1 }
+  })
+  const ctx = context(page)
+  const target = { currentTarget: { dataset: { id: 'g', type: 'group' } } }
+  page.rowTouchStart.call(ctx, Object.assign({ touches: [{ pageX: 120, pageY: 20 }] }, target))
+  page.rowTouchEnd.call(ctx, Object.assign({ changedTouches: [{ pageX: 20, pageY: 22 }] }, target))
+  await page.deleteItem.call(ctx, target)
+  assert.equal(ctx.data.swipedRowId, '')
+  assert.equal(modalShown, 0)
+  assert.equal(removed, 0)
+})
+
+test('delete button confirms the action label before removing it', async () => {
+  const modals = []
+  const removed = []
+  const loading = []
+  let hidden = 0
+  const page = freshPage('instruction-settings', { items: () => items, remove: async (id) => { removed.push(id); return { ok: true } } }, {
+    showModal: (options) => { modals.push(options); options.success({ confirm: true }) },
+    showLoading: (options) => loading.push(options),
+    hideLoading: () => { hidden += 1 }
+  })
+  const ctx = context(page, { swipedRowId: 'a', swipeOffset: -72 })
+  await page.deleteItem.call(ctx, { currentTarget: { dataset: { id: 'a', type: 'action' } } })
+  assert.match(modals[0].content, /卡通/)
+  assert.match(modals[0].content, /无法恢复/)
+  assert.deepEqual(removed, ['a'])
+  assert.deepEqual(loading, [{ title: '删除中', mask: true }])
+  assert.equal(hidden, 1)
+  assert.equal(ctx.data.swipedRowId, '')
+})
+
+test('prompt deletion hides loading and reports failure when the store throws', async () => {
+  let hidden = 0
+  const page = freshPage('instruction-settings', { items: () => items, remove: async () => { throw new Error('offline') } }, {
+    showModal: ({ success }) => success({ confirm: true }),
+    showLoading() {},
+    hideLoading: () => { hidden += 1 }
+  })
+  const ctx = context(page, { swipedRowId: 'a', swipeOffset: -72 })
+  await page.deleteItem.call(ctx, { currentTarget: { dataset: { id: 'a', type: 'action' } } })
+  assert.equal(hidden, 1)
+  assert.equal(ctx.data.mutating, false)
+  assert.equal(ctx.data.error, '删除失败，请重试')
+})
+
+test('finishing prompt reorder shows a masked loading indicator until the network commit succeeds', async () => {
+  const loading = []
+  let hidden = 0
+  const page = freshPage('instruction-settings', { items: () => items }, {
+    showLoading: (options) => loading.push(options),
+    hideLoading: () => { hidden += 1 }
+  })
+  const ctx = context(page, { reordering: true })
+  ctx.dragController = { commit: async () => ({ ok: true }) }
+  await page.finishReorder.call(ctx)
+  assert.deepEqual(loading, [{ title: '保存中', mask: true }])
+  assert.equal(hidden, 1)
+  assert.equal(ctx.data.reordering, false)
+})
+
+test('finishing prompt reorder hides loading and keeps sorting available when the network commit throws', async () => {
+  let hidden = 0
+  const page = freshPage('instruction-settings', { items: () => items }, {
+    showLoading() {},
+    hideLoading: () => { hidden += 1 }
+  })
+  const ctx = context(page, { reordering: true })
+  ctx.dragController = { commit: async () => { throw new Error('offline') } }
+  await page.finishReorder.call(ctx)
+  assert.equal(hidden, 1)
+  assert.equal(ctx.data.mutating, false)
+  assert.equal(ctx.data.reordering, true)
+  assert.equal(ctx.data.error, '保存失败，请重试')
 })
 
 test('prompt list markup contains the screenshot hierarchy and import copy', () => {
   const root = path.join(__dirname, '..')
   const wxml = fs.readFileSync(path.join(root, 'pages/instruction-settings/index.wxml'), 'utf8')
+  const header = wxml.match(/<page-header[\s\S]*?<\/page-header>/)[0]
+  assert.match(header, /title="\{\{reordering \? '' : '提示词'\}\}"/)
+  assert.match(header, /hideBack="\{\{reordering\}\}"/)
+  assert.match(header, /slot="left"[\s\S]*wx:if="\{\{reordering\}\}"[\s\S]*bindtap="cancelReorder"[\s\S]*>取消</)
+  assert.doesNotMatch(header, />取消排序</)
+  assert.match(header, /slot="right"[\s\S]*>完成</)
+  assert.doesNotMatch(wxml.replace(header, ''), /bindtap="cancelReorder"/)
   assert.match(wxml, /slot="right"[\s\S]*class="add-button"/)
   assert.match(wxml, /输入魔法数字导入/)
   assert.match(wxml, /恢复默认提示词/)
@@ -141,8 +230,14 @@ test('prompt list markup contains the screenshot hierarchy and import copy', () 
   assert.doesNotMatch(importSheet[0], /class="sheet-handle"/)
   assert.match(wxml, /safeRightAction/)
   assert.match(wxml, /bindtouchend="rowTouchEnd"/)
+  assert.match(wxml, /bindtouchmove="rowTouchMove"/)
+  assert.match(wxml, /class="prompt-delete"[\s\S]*wx:if="\{\{item\.type === 'action'\}\}"[\s\S]*catchtap="deleteItem"/)
   const script = fs.readFileSync(path.join(root, 'pages/instruction-settings/index.js'), 'utf8')
   assert.match(script, /rowTouchEnd\(event\)/)
+  const sharedHeader = fs.readFileSync(path.join(root, 'components/page-header/index.wxml'), 'utf8')
+  assert.match(sharedHeader, /wx:if="\{\{!hideBack\}\}"/)
+  assert.match(sharedHeader, /slot name="left"/)
+  assert.match(sharedHeader, /wx:if="\{\{title\}\}"/)
 })
 
 test('prompt editor forks a system node and saves once', async () => {

@@ -456,13 +456,14 @@ test('tag-filtered command badges use the same numbering as transmitted refs', (
   ])
 })
 
-test('both home microphone paths require only audio consent', () => {
+test('both home microphone paths require audio consent and platform record permission', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
   const js = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
   const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/recordings/index.json'), 'utf8'))
 
   assert.equal(config.usingComponents['audio-consent-dialog'], '/components/audio-consent-dialog/index')
   assert.match(js, /const audioConsentFlow = require\('\.\.\/\.\.\/utils\/audio-consent-flow'\)/)
+  assert.match(js, /const recordPermission = require\('\.\.\/\.\.\/utils\/record-permission'\)/)
   assert.match(js, /audioConsentVisible:\s*false/)
   assert.match(js, /requestAudioConsent\(\)\s*\{\s*return audioConsentFlow\.request\(this\)/)
   assert.doesNotMatch(js, /audioConsentFlow\.markReady/)
@@ -477,10 +478,8 @@ test('both home microphone paths require only audio consent', () => {
   assert.match(wxml, /bind:agree="onAudioConsentAgree"/)
   assert.match(wxml, /bind:decline="onAudioConsentDecline"/)
   assert.match(wxml, /bind:viewagreement="onAudioConsentViewAgreement"/)
-  assert.match(js, /async startRecord\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\) return[\s\S]*wx\.navigateTo/)
-  assert.match(js, /async _startLibraryCommandTalk\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\)[\s\S]*this\._beginAsrSession\(\)/)
-  assert.doesNotMatch(js, /wx\.authorize/)
-  assert.doesNotMatch(js, /需要录音权限/)
+  assert.match(js, /async startRecord\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\) return[\s\S]*if \(!await recordPermission\.ensure\(wx\)\) return[\s\S]*wx\.navigateTo/)
+  assert.match(js, /async _startLibraryCommandTalk\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\)[\s\S]*if \(!await recordPermission\.ensure\(wx\)\)[\s\S]*this\._beginAsrSession\(\)/)
 })
 
 test('home voice command rechecks finger state after consent', () => {
@@ -490,10 +489,12 @@ test('home voice command rechecks finger state after consent', () => {
   assert.ok(method)
   const body = method[1]
   const consentIndex = body.indexOf('await this.requestAudioConsent()')
-  const releaseIndex = body.indexOf('this._micTouchEndedBeforeCommandStart', consentIndex)
+  const permissionIndex = body.indexOf('await recordPermission.ensure(wx)', consentIndex)
+  const releaseIndex = body.indexOf('this._micTouchEndedBeforeCommandStart', permissionIndex)
   const beginIndex = body.indexOf('this._beginAsrSession()', consentIndex)
   assert.ok(consentIndex >= 0)
-  assert.ok(releaseIndex > consentIndex)
+  assert.ok(permissionIndex > consentIndex)
+  assert.ok(releaseIndex > permissionIndex)
   assert.ok(beginIndex > releaseIndex)
 })
 

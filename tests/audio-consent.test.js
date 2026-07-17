@@ -4,7 +4,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 
 const root = path.join(__dirname, '..')
-const storageKey = 'voicedrop.audioConsent.v2'
+const storageKey = 'voicedrop.audioConsent.v3'
 const legacyStorageKey = 'voicedrop.audioConsent'
 
 function loadConsent(initial, overrides) {

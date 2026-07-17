@@ -15,6 +15,7 @@ const versionNav = require('../../utils/version-navigation')
 const asrDictation = require('../../services/asr-dictation')
 const holdToTalk = require('../../utils/hold-to-talk')
 const audioConsentFlow = require('../../utils/audio-consent-flow')
+const recordPermission = require('../../utils/record-permission')
 const capsuleLayout = require('../../utils/capsule-layout')
 const audioSessionReset = require('../../utils/audio-session-reset')
 
@@ -1159,6 +1160,11 @@ Page({
       holdEditLocatorsVisible: true
     })
     if (!await this.requestAudioConsent() || !this._holdEditTouchActive) {
+      this._pendingHoldEditStart = false
+      this.resetHoldArticleEdit()
+      return
+    }
+    if (!await recordPermission.ensure(wx) || !this._holdEditTouchActive) {
       this._pendingHoldEditStart = false
       this.resetHoldArticleEdit()
       return

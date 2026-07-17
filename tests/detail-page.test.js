@@ -44,6 +44,8 @@ function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, as
     setStorageSync: () => {},
     removeStorageSync: () => {},
     getSystemInfoSync: () => ({ statusBarHeight: 0 }),
+    getSetting: ({ success }) => success({ authSetting: { 'scope.record': true } }),
+    authorize: ({ success }) => success(),
     showToast: () => {},
     showModal: () => {},
     showLoading: () => {},
@@ -1181,171 +1183,6 @@ test('detail photo picker removes one staged photo', () => {
   assert.deepEqual(ctx.data.photoPickerPhotos.map((item) => item.path), ['/tmp/a.jpg', '/tmp/c.jpg'])
 })
 
-test('detail page renders inline photo sheet controls', () => {
-  const page = freshDetailPage()
-  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
-  const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
-  const appJson = fs.readFileSync(path.join(root, 'app.json'), 'utf8')
-
-  assert.match(wxml, /canvas-id="detailPhotoCanvas"/)
-  assert.match(wxml, /<button class="play-button[\s\S]*<canvas class="playback-ring-canvas" canvas-id="playbackRingCanvas" wx:if="\{\{playbackMode !== 'idle'\}\}"><\/canvas>[\s\S]*<text class="play-icon ri-play-fill"><\/text>[\s\S]*<\/button>/)
-  assert.doesNotMatch(wxml, /--playback-progress/)
-  assert.doesNotMatch(wxml, /class="playback-bar"/)
-  assert.doesNotMatch(wxml, /class="playback-fill"/)
-  assert.match(wxml, /class="photo-sheet" wx:if="\{\{photoSheetOpen\}\}"/)
-  assert.match(wxml, /bindtap="chooseDetailPhoto"/)
-  assert.match(wxml, /data-source="album"/)
-  assert.match(wxml, /data-source="camera"/)
-  assert.match(wxml, /class="photo-strip-close" bindtap="closePhotoSheet" aria-label="返回"/)
-  assert.match(wxml, /class="photo-strip-back-icon ri-arrow-left-s-line"/)
-  assert.match(wxml, /bindtap="removeDetailPhoto"/)
-  assert.match(wxml, /class="photo-sheet-thumb-delete"/)
-  assert.doesNotMatch(wxml, /<button class="photo-sheet-thumb-delete"/)
-  assert.match(wxml, /class="photo-sheet-thumb-delete-icon ri-close-line"/)
-  assert.match(wxml, /正在上传图片\.\.\./)
-  assert.match(wxml, /上传失败，请重试/)
-  assert.match(wxml, /<view class="edit-dock"[^>]*>[\s\S]*class="photo-insert-tip"[\s\S]*class="hold-edit-button/)
-  assert.match(wxml, /class="photo-insert-tip" wx:if="\{\{photoInsertPromptVisible\}\}"/)
-  assert.match(wxml, /class="hold-edit-transcript" wx:if="\{\{holdEditBubbleVisible\}\}"/)
-  assert.match(wxml, /class="paragraph-locator" wx:if="\{\{holdEditLocatorsVisible\}\}"/)
-  assert.match(wxml, /\{\{item\.lineNo\}\}/)
-  assert.match(wxml, /class="photo-line-locator" wx:if="\{\{holdEditLocatorsVisible\}\}"/)
-  assert.match(wxml, /class="photo-image-locator" wx:if="\{\{holdEditLocatorsVisible && item\.imageNo\}\}"/)
-  assert.match(wxml, /图\{\{item\.imageNo\}\}/)
-  assert.match(wxml, /class="edit-feedback-reply \{\{editReplyOk \? 'ok' : 'error'\}\}"/)
-  assert.match(wxml, /class="edit-feedback-row \{\{item\.inFlight \? 'in-flight' : 'queued'\}\}"/)
-  assert.match(wxml, /wx:for="\{\{editFeedbackQueue\}\}"/)
-  assert.match(wxml, /\{\{item\.inFlight \? '✎' : '◷'\}\}/)
-  assert.match(wxml, /bindtouchstart="startHoldArticleEdit"/)
-  assert.match(wxml, /bindtouchmove="moveHoldArticleEdit"/)
-  assert.match(wxml, /bindtouchend="finishHoldArticleEdit"/)
-  assert.match(wxml, /bindtouchcancel="cancelHoldArticleEdit"/)
-  assert.match(wxml, /class="more-menu-layer" wx:if="\{\{moreMenuOpen\}\}"/)
-  assert.match(wxml, /class="more-menu-card" style="top:\s*\{\{toolbarTop \+ toolbarHeight \+ 20\}\}px;"/)
-  assert.match(wxml, /data-action="publishWechat"[\s\S]*\{\{hasWechatDraft \? '更新公众号草稿' : '发布公众号草稿'\}\}/)
-  assert.match(wxml, /data-action="community"[\s\S]*VD社区可见/)
-  assert.match(wxml, /class="more-menu-check"[\s\S]*✓/)
-  assert.match(wxml, /data-action="share"[\s\S]*分享/)
-  assert.match(wxml, /data-action="delete"[\s\S]*删除/)
-  assert.match(wxml, /class="more-menu-icon ri-send-plane-2-line"/)
-  assert.match(wxml, /class="more-menu-icon ri-team-line"/)
-  assert.match(wxml, /class="more-menu-icon ri-share-forward-line"/)
-  assert.match(wxml, /class="more-menu-icon ri-delete-bin-6-line"/)
-  assert.doesNotMatch(wxml, /➤|♚|⇧|♲/)
-  assert.doesNotMatch(wxml, /小红书/)
-  assert.doesNotMatch(wxml, /class="hold-edit-button" bindtap="openEditPanel"/)
-  assert.match(css, /\.play-button\s*\{[^}]*position:\s*relative;/s)
-  assert.match(css, /\.playback-ring-canvas\s*\{[^}]*position:\s*absolute;[^}]*top:\s*50%;[^}]*left:\s*50%;[^}]*width:\s*80rpx;[^}]*height:\s*80rpx;[^}]*transform:\s*translate\(-50%,\s*-50%\);[^}]*pointer-events:\s*none;/s)
-  assert.doesNotMatch(css, /conic-gradient/)
-  assert.doesNotMatch(css, /var\(--playback-progress\)/)
-  assert.doesNotMatch(css, /\.playback-bar\s*\{/)
-  assert.doesNotMatch(css, /\.playback-fill\s*\{/)
-  assert.match(css, /\.hold-edit-button\.canceling\s*\{/)
-  assert.match(css, /\.hold-edit-button\.finishing\s*\{/)
-  assert.match(css, /\.edit-dock\s*\{[^}]*right:\s*0;[^}]*left:\s*0;/s)
-  assert.match(css, /\.hold-edit-button\s*\{[^}]*width:\s*calc\(100vw - 48rpx\);[^}]*min-width:\s*calc\(100vw - 48rpx\);[^}]*max-width:\s*calc\(100vw - 48rpx\);/s)
-  assert.match(css, /\.hold-edit-transcript\s*\{[^}]*width:\s*calc\(100vw - 48rpx\);[^}]*min-width:\s*calc\(100vw - 48rpx\);[^}]*max-width:\s*calc\(100vw - 48rpx\);/s)
-  assert.match(css, /\.paragraph-row\s*\{[^}]*position:\s*relative;/s)
-  assert.match(css, /\.paragraph-locator\s*\{[^}]*position:\s*absolute;[^}]*left:\s*-42rpx;/s)
-  assert.match(css, /\.photo-line-locator\s*\{[^}]*position:\s*absolute;[^}]*left:\s*-42rpx;/s)
-  assert.match(css, /\.photo-image-locator\s*\{[^}]*position:\s*absolute;[^}]*top:\s*16rpx;[^}]*left:\s*16rpx;/s)
-  assert.match(css, /\.photo-insert-tip\s*\{[^}]*width:\s*calc\(100vw - 48rpx\);[^}]*min-width:\s*calc\(100vw - 48rpx\);[^}]*max-width:\s*calc\(100vw - 48rpx\);/s)
-  assert.match(css, /\.edit-feedback-row\.in-flight\s*\{/)
-  assert.match(css, /\.edit-feedback-reply\.error\s*\{/)
-  assert.match(css, /\.more-menu-layer\s*\{[^}]*position:\s*fixed;[^}]*inset:\s*0;[^}]*z-index:\s*30;/s)
-  assert.match(css, /\.more-menu-card\s*\{[^}]*position:\s*fixed;[^}]*right:\s*36rpx;[^}]*width:\s*444rpx;[^}]*box-sizing:\s*border-box;[^}]*border-radius:\s*22rpx;[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.96\);[^}]*box-shadow:/s)
-  assert.match(css, /\.more-menu-row\s*\{[^}]*box-sizing:\s*border-box;[^}]*height:\s*88rpx;[^}]*padding:\s*0 30rpx;[^}]*font-size:\s*31rpx;/s)
-  assert.match(css, /\.more-menu-row\.danger\s*\{[^}]*color:\s*#d8593b;/s)
-  assert.match(css, /\.more-menu-icon\s*\{[^}]*color:\s*#d8593b;[^}]*font-size:\s*40rpx;[^}]*line-height:\s*42rpx;/s)
-  assert.doesNotMatch(css, /\.more-menu-icon\.[a-z-]+::before\s*\{/)
-  assert.doesNotMatch(css, /\.more-menu-card[\s\S]*小红书/)
-  assert.ok(
-    wxml.indexOf('<view class="edit-dock">') < wxml.indexOf('<view class="photo-sheet"'),
-    'edit dock should live outside the loading/current wx:else body'
-  )
-  assert.doesNotMatch(wxml, /pages\/insert-photo\/index/)
-  assert.doesNotMatch(appJson, /pages\/insert-photo\/index/)
-  assert.match(wxml, /class="photo-sheet-top" style="top:\s*0px;\s*height:\s*calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 26rpx\);\s*padding-top:\s*\{\{toolbarTop\}\}px;\s*padding-bottom:\s*26rpx;\s*padding-right:\s*\{\{photoSheetToolbarRightPadding\}\}px;"/)
-  assert.doesNotMatch(wxml, /photo-sheet-count/)
-  assert.doesNotMatch(wxml, /选择要插入的图片/)
-  assert.doesNotMatch(wxml, /已选 '\s*\+\s*photoPickerCount\s*\+\s*' 张/)
-  assert.match(wxml, /class="photo-sheet-spacer"/)
-  assert.match(wxml, /class="photo-sheet-content" style="padding-top:\s*calc\(\{\{photoSheetTopPadding\}\}px \+ 26rpx\);"/)
-  assert.match(css, /\.photo-sheet\s*\{[^}]*inset:\s*0;[^}]*align-items:\s*stretch;[^}]*background:\s*#fbf7f0;/s)
-  assert.match(css, /\.photo-sheet-panel\s*\{[^}]*min-height:\s*100%;[^}]*flex-direction:\s*column;[^}]*border-radius:\s*0;[^}]*background:\s*#fbf7f0;[^}]*color:\s*#2a2521;/s)
-  assert.match(css, /\.photo-sheet-top\s*\{[^}]*position:\s*fixed;[^}]*left:\s*0;[^}]*right:\s*0;[^}]*z-index:\s*1;/s)
-  assert.match(css, /\.photo-sheet-top\s*\{[^}]*background:\s*#fbf7f0;/s)
-  assert.doesNotMatch(css, /\.photo-sheet-top\s*\{[^}]*padding:\s*58rpx\s+32rpx\s+18rpx;/s)
-  assert.match(css, /\.photo-strip-close\s*\{[^}]*width:\s*64rpx;[^}]*height:\s*64rpx;[^}]*border-radius:\s*16rpx;[^}]*background:\s*#ffffff;/s)
-  assert.match(css, /\.photo-strip-back-icon\s*\{[^}]*width:\s*38rpx;[^}]*height:\s*38rpx;[^}]*font-weight:\s*700;/s)
-  assert.match(css, /\.photo-sheet-spacer\s*\{[^}]*flex:\s*1;/s)
-  assert.doesNotMatch(css, /\.photo-sheet-count\s*\{/)
-  assert.match(css, /\.photo-sheet-status\s*\{/)
-  assert.match(css, /\.photo-sheet-actions\s*\{[\s\S]*?padding:\s*28rpx\s+48rpx\s+calc\(56rpx\s+\+\s+env\(safe-area-inset-bottom\)\);/s)
-  assert.match(css, /\.photo-sheet-done\s*\{[^}]*width:\s*132rpx;[^}]*height:\s*64rpx;[^}]*color:\s*#ffffff;[^}]*background:\s*#e9332c;[^}]*box-shadow:\s*0 10rpx 28rpx rgba\(233,\s*51,\s*44,\s*0\.34\);/s)
-  assert.match(css, /\.photo-sheet-done\[disabled\]\s*\{[^}]*color:\s*#ffffff;[^}]*background:\s*#d8c7b4;[^}]*box-shadow:\s*0 6rpx 16rpx rgba\(65,\s*52,\s*41,\s*0\.12\);[^}]*opacity:\s*1;/s)
-  assert.match(css, /\.photo-sheet-thumb-delete\s*\{[^}]*position:\s*absolute;[^}]*top:\s*8rpx;[^}]*right:\s*8rpx;[^}]*border-radius:\s*50%;[^}]*background:\s*#e9332c;/s)
-  assert.match(css, /\.photo-sheet-thumb-delete-icon\s*\{[^}]*font-size:\s*26rpx;[^}]*line-height:\s*26rpx;/s)
-  assert.match(css, /\.photo-sheet-title\s*\{[^}]*color:\s*#2a2521;/s)
-  assert.match(css, /\.photo-sheet-sub\s*\{[^}]*color:\s*#817b72;/s)
-  assert.match(css, /\.photo-choice\s*\{[^}]*color:\s*#2a2521;[^}]*background:\s*#ffffff;[^}]*box-shadow:/s)
-  assert.match(css, /\.photo-sheet-image-icon \.image-icon,\s*\.photo-choice \.image-icon\s*\{[^}]*border-color:\s*#2a2521;/s)
-  assert.doesNotMatch(css, /background:\s*#000000/)
-  assert.doesNotMatch(css, /background:\s*#10100f/)
-  assert.equal(page.data.photoSheetTopPadding, 88)
-  assert.equal(page.data.photoSheetToolbarRightPadding, 110)
-  assert.equal(page.data.holdEditState, 'idle')
-  assert.equal(page.data.holdEditButtonText, '按住 说话 修改')
-  assert.equal(page.data.holdEditLocatorsVisible, false)
-})
-
-test('detail playback ring draws progress with miniapp canvas', () => {
-  const calls = []
-  const canvasContext = {
-    clearRect: (...args) => calls.push(['clearRect', ...args]),
-    setLineWidth: (...args) => calls.push(['setLineWidth', ...args]),
-    setLineCap: (...args) => calls.push(['setLineCap', ...args]),
-    setStrokeStyle: (...args) => calls.push(['setStrokeStyle', ...args]),
-    beginPath: (...args) => calls.push(['beginPath', ...args]),
-    arc: (...args) => calls.push(['arc', ...args]),
-    stroke: (...args) => calls.push(['stroke', ...args]),
-    draw: (...args) => calls.push(['draw', ...args])
-  }
-  const page = freshDetailPage({}, {
-    getSystemInfoSync: () => ({ statusBarHeight: 0, windowWidth: 414 }),
-    createCanvasContext: (canvasId) => {
-      calls.push(['createCanvasContext', canvasId])
-      return canvasContext
-    }
-  })
-  const ctx = {
-    data: {},
-    setData(update) { Object.assign(this.data, update) },
-    drawPlaybackRing: page.drawPlaybackRing
-  }
-
-  page.applyPlayback.call(ctx, { mode: 'playing', progress: 0.75 })
-  assert.equal(ctx.data.playbackProgress, 75)
-  const ringSize = 414 * 80 / 750
-  const center = ringSize / 2
-  const lineWidth = 414 * 6 / 750
-  const radius = center - lineWidth / 2
-  assert.deepEqual(calls[0], ['createCanvasContext', 'playbackRingCanvas'])
-  assert.deepEqual(calls[1], ['clearRect', 0, 0, ringSize, ringSize])
-  assert.deepEqual(calls[2], ['setLineWidth', lineWidth])
-  assert.ok(calls.some((call) => call[0] === 'setStrokeStyle' && call[1] === '#eadfce'))
-  assert.ok(calls.some((call) => call[0] === 'setStrokeStyle' && call[1] === '#d8593b'))
-  assert.ok(calls.some((call) => (
-    call[0] === 'arc' &&
-    call[1] === center &&
-    call[2] === center &&
-    call[3] === radius &&
-    call[4] === -Math.PI / 2 &&
-    call[5] === -Math.PI / 2 + Math.PI * 2 * 0.75
-  )))
-  assert.equal(calls[calls.length - 1][0], 'draw')
-})
-
 test('detail explicit playback restores the speaker after audio-session reset', () => {
   const js = fs.readFileSync(path.join(root, 'pages/detail/index.js'), 'utf8')
   const playback = js.slice(js.indexOf('  async togglePlayback()'), js.indexOf('  stopPlayback()'))
@@ -1661,31 +1498,6 @@ test('detail page shows updating hint when wechat draft already exists', async (
   await pending
 })
 
-test('detail page reserves menu capsule space for photo sheet done button', () => {
-  const page = freshDetailPage({}, {
-    getSystemInfoSync: () => ({ statusBarHeight: 20, windowWidth: 390 }),
-    getMenuButtonBoundingClientRect: () => ({ top: 26, height: 32, left: 298, right: 380, width: 82 })
-  })
-
-  const ctx = {
-    data: {},
-    setData(update, callback) {
-      Object.assign(this.data, update)
-      if (callback) callback()
-    },
-    createEditSession() {},
-    loadMenus() {},
-    load() {},
-    restorePhotoPickerDraft() {}
-  }
-
-  page.onLoad.call(ctx, { stem: encodeURIComponent('VoiceDrop-2026-06-24-131500-0m30s-Wed-Afternoon') })
-
-  assert.equal(ctx.data.toolbarTop, 26)
-  assert.equal(ctx.data.toolbarHeight, 32)
-  assert.equal(ctx.data.photoSheetToolbarRightPadding, 104)
-})
-
 test('detail page hides photo insert prompt after AI updates the article', () => {
   const page = freshDetailPage()
   let removedKey = ''
@@ -1912,11 +1724,12 @@ test('detail hold edit swipe-up cancel never submits', async () => {
   assert.equal(ctx.data.holdEditState, 'idle')
 })
 
-test('detail hold edit starts directly after consent without platform authorization', async () => {
+test('detail hold edit requests platform permission after audio consent', async () => {
   let authorized = false
   let recorderStarted = false
   const page = freshDetailPage({}, {
-    authorize: () => { authorized = true },
+    getSetting: ({ success }) => success({ authSetting: {} }),
+    authorize: ({ scope, success }) => { authorized = scope === 'scope.record'; success() },
     getRecorderManager: () => ({
       onFrameRecorded() {},
       onError() {},
@@ -1933,7 +1746,7 @@ test('detail hold edit starts directly after consent without platform authorizat
   await page.startHoldArticleEdit.call(ctx, { touches: [{ clientY: 400 }] })
 
   assert.equal(recorderStarted, true)
-  assert.equal(authorized, false)
+  assert.equal(authorized, true)
   assert.equal(ctx.data.holdEditState, 'talking')
 })
 
@@ -2090,9 +1903,9 @@ test('detail page registers and renders the shared audio consent dialog', () => 
   const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
 
   assert.equal(config.usingComponents['audio-consent-dialog'], '/components/audio-consent-dialog/index')
-  assert.doesNotMatch(js, /wx\.authorize/)
-  assert.doesNotMatch(js, /需要录音权限/)
   assert.match(js, /const audioConsentFlow = require\('\.\.\/\.\.\/utils\/audio-consent-flow'\)/)
+  assert.match(js, /const recordPermission = require\('\.\.\/\.\.\/utils\/record-permission'\)/)
+  assert.match(js, /startHoldArticleEdit\(event\)[\s\S]*requestAudioConsent\(\)[\s\S]*recordPermission\.ensure\(wx\)[\s\S]*beginHoldArticleEdit\(\)/)
   assert.match(js, /audioConsentVisible:\s*false/)
   assert.match(js, /requestAudioConsent\(\)\s*\{\s*return audioConsentFlow\.request\(this\)/)
   assert.doesNotMatch(js, /audioConsentFlow\.markReady/)

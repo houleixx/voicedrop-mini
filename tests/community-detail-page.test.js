@@ -18,6 +18,8 @@ function freshCommunityDetailPage(routes, currentCommunityPost) {
     getStorageSync: (key) => storage[key] || '',
     setStorageSync: (key, value) => { storage[key] = value },
     removeStorageSync: (key) => { delete storage[key] },
+    getSetting: ({ success }) => success({ authSetting: { 'scope.record': true } }),
+    authorize: ({ success }) => success(),
     request: (options) => {
       requests.push(options)
       const hit = routes.find((route) => options.url.endsWith(route.path) && (!route.method || route.method === options.method))
@@ -295,11 +297,12 @@ test('community reply does not request microphone permission when audio consent 
   assert.equal(started, false)
 })
 
-test('community reply starts directly after audio consent without platform authorization', async () => {
+test('community reply requests platform permission after audio consent', async () => {
   const page = freshCommunityDetailPage([], null)
   let started = ''
   let authorized = false
-  global.wx.authorize = () => { authorized = true }
+  global.wx.getSetting = ({ success }) => success({ authSetting: {} })
+  global.wx.authorize = ({ scope, success }) => { authorized = scope === 'scope.record'; success() }
   const ctx = {
     data: { shareId: 'share-1', replyRecording: false, replyUploading: false },
     requestAudioConsent: async () => true,
@@ -309,7 +312,7 @@ test('community reply starts directly after audio consent without platform autho
   await page.startReplyRecording.call(ctx)
 
   assert.equal(started, 'share-1')
-  assert.equal(authorized, false)
+  assert.equal(authorized, true)
 })
 
 test('community detail registers and renders the shared audio consent dialog', () => {
@@ -320,9 +323,9 @@ test('community detail registers and renders the shared audio consent dialog', (
   const wxml = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxml'), 'utf8')
 
   assert.equal(config.usingComponents['audio-consent-dialog'], '/components/audio-consent-dialog/index')
-  assert.doesNotMatch(js, /wx\.authorize/)
-  assert.doesNotMatch(js, /需要录音权限/)
   assert.match(js, /const audioConsentFlow = require\('\.\.\/\.\.\/utils\/audio-consent-flow'\)/)
+  assert.match(js, /const recordPermission = require\('\.\.\/\.\.\/utils\/record-permission'\)/)
+  assert.match(js, /startReplyRecording\(\)[\s\S]*requestAudioConsent\(\)[\s\S]*recordPermission\.ensure\(wx\)[\s\S]*beginReplyRecording/)
   assert.match(js, /audioConsentVisible:\s*false/)
   assert.match(js, /requestAudioConsent\(\)\s*\{\s*return audioConsentFlow\.request\(this\)/)
   assert.doesNotMatch(js, /audioConsentFlow\.markReady/)

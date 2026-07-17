@@ -6,9 +6,10 @@ function freshAccountPage(options) {
   const calls = []
   const config = options || {}
   const auth = {
-    bearer: () => 'anon-token',
-    anonymousBearer: () => 'anon-token',
+    bearer: () => config.bearer || 'anon-token',
+    anonymousBearer: () => config.anonymousBearer || 'anon-token',
     anonId: () => 'anon-current',
+    adoptToken: (credential) => { calls.push(['adoptToken', credential]); return true },
     isWechatAuthenticated: () => false,
     storeSession: (session) => { calls.push(['storeSession', session]); return true },
     signOutWechat() {}
@@ -27,13 +28,14 @@ function freshAccountPage(options) {
   global.wx = {
     login({ success }) { success({ code: 'code-1' }) },
     showToast(options) { calls.push(['toast', options.title]) },
+    setClipboardData(options) { calls.push(['clipboard', options.data]) },
     showModal(options) {
       calls.push(['modal', options])
       if (config.modalFail) {
         if (options.fail) options.fail({ errMsg: 'showModal:fail confirmText too long' })
         return
       }
-      options.success({ confirm: Boolean(config.confirmSwitch), cancel: !config.confirmSwitch })
+      if (options.success) options.success({ confirm: Boolean(config.confirmSwitch), cancel: !config.confirmSwitch })
     },
     reLaunch(options) { calls.push(['reLaunch', options.url]) }
   }
@@ -47,6 +49,36 @@ function freshAccountPage(options) {
   require('../pages/account/index')
   return { page, calls }
 }
+
+test('account page displays and copies the anonymous account id', async () => {
+  const { page, calls } = freshAccountPage({
+    currentScope: 'users/anon-current/'
+  })
+  const ctx = context(page)
+
+  await page.refresh.call(ctx)
+  page.copyId.call(ctx)
+
+  assert.equal(ctx.data.accountIdDisplay, 'anon-current')
+  assert.deepEqual(calls.find(([name]) => name === 'clipboard'), ['clipboard', 'anon-current'])
+  assert.deepEqual(calls.find(([name]) => name === 'ownerScope'), ['ownerScope', { anonymous: true }])
+})
+
+test('account page copies and imports only the anonymous account token', async () => {
+  const { page, calls } = freshAccountPage()
+  const ctx = context(page)
+  await page.refresh.call(ctx)
+  page.copyToken.call(ctx)
+  ctx.data.importToken = ` anon_${'a'.repeat(64)} `
+
+  page.confirmImport.call(ctx)
+
+  assert.deepEqual(calls.find(([name]) => name === 'clipboard'), ['clipboard', 'anon-token'])
+  assert.deepEqual(calls.find(([name]) => name === 'adoptToken'), [
+    'adoptToken',
+    `anon_${'a'.repeat(64)}`
+  ])
+})
 
 function context(page) {
   return {
@@ -71,7 +103,7 @@ test('account page stores a WeChat session immediately when scopes match', async
   assert.equal(calls.some(([name]) => name === 'modal'), false)
 })
 
-test('account page asks before switching to a different WeChat scope', async () => {
+test('account page keeps anon account when WeChat is linked to another scope', async () => {
   const { page, calls } = freshAccountPage({
     currentScope: 'users/anon-current/',
     result: { ok: true, session: 'session-token', scope: 'users/wechat-existing/' },
@@ -82,12 +114,11 @@ test('account page asks before switching to a different WeChat scope', async () 
 
   const modal = calls.find(([name]) => name === 'modal')[1]
   assert.equal(modal.title, '该微信已关联另一个云端空间')
-  assert.equal(modal.confirmText, '切换账号')
-  assert.equal(modal.cancelText, '保留当前')
+  assert.equal(modal.confirmText, '知道了')
+  assert.equal(modal.showCancel, false)
   assert.ok(modal.confirmText.length <= 4)
-  assert.ok(modal.cancelText.length <= 4)
-  assert.deepEqual(calls.filter(([name]) => name === 'storeSession'), [['storeSession', 'session-token']])
-  assert.deepEqual(calls.find(([name]) => name === 'reLaunch'), ['reLaunch', '/pages/recordings/index'])
+  assert.equal(calls.some(([name]) => name === 'storeSession'), false)
+  assert.equal(calls.some(([name]) => name === 'reLaunch'), false)
 })
 
 test('account page keeps the anonymous account when scope switch is canceled', async () => {

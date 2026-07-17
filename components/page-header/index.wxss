@@ -37,6 +37,16 @@
   background: #eadccd;
 }
 
+.header-left {
+  position: absolute;
+  left: 32rpx;
+  bottom: 24rpx;
+  z-index: 1;
+  display: flex;
+  height: 64rpx;
+  align-items: center;
+}
+
 .header-back-icon {
   width: 38rpx;
   height: 38rpx;

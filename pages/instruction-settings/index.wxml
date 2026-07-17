@@ -1,5 +1,6 @@
 <view class="screen settings-screen">
-  <page-header title="提示词" safeRightAction>
+  <page-header title="{{reordering ? '' : '提示词'}}" hideBack="{{reordering}}" safeRightAction>
+    <view slot="left" wx:if="{{reordering}}" class="cancel-sort-header" bindtap="cancelReorder">取消</view>
     <view slot="right" wx:if="{{reordering}}" class="done-button" bindtap="finishReorder">完成</view>
     <view slot="right" wx:else class="add-button" bindtap="openNewMenu" aria-label="新建"><text class="add-symbol">+</text></view>
   </page-header>
@@ -10,12 +11,15 @@
     <view class="prompt-state" wx:if="{{loading}}">正在加载...</view>
     <view class="prompt-state" wx:elif="{{empty}}">还没有提示词，可点击右上角新建</view>
     <movable-area class="prompt-card" style="height:{{rows.length * 128}}rpx" wx:else>
-      <movable-view class="prompt-row depth-{{item.depth}} {{item.type === 'group' ? 'group-row' : 'action-row'}}" style="height:128rpx" y="{{item.flatIndex * rowHeightPx}}" direction="vertical" disabled="{{!reordering}}" wx:for="{{rows}}" wx:key="id" data-id="{{item.id}}" data-type="{{item.type}}" data-group="{{item.parentId}}" data-index="{{item.index}}" bindtap="handleRowTap" bindlongpress="startReorder" bindtouchstart="rowTouchStart" bindtouchend="rowTouchEnd" bindchange="movePrompt">
-        <view class="prompt-icon {{item.imageOnly ? 'accent-icon' : ''}}"><text class="{{item.type === 'group' ? 'ri-folder-line' : (item.imageOnly ? 'ri-image-line' : 'ri-double-quotes-l')}}"></text></view>
-        <view class="group-copy" wx:if="{{item.type === 'group'}}"><text class="prompt-title">{{item.title}}</text><text class="group-meta">分组 · {{item.childCount}} 项</text></view>
-        <view class="prompt-copy" wx:else><view class="title-line"><text class="prompt-title">{{item.title}}</text><text class="origin-badge" wx:if="{{item.originLabel}}">{{item.originLabel}}</text></view><text class="applies-badge {{item.imageOnly ? 'image-badge' : ''}}" wx:if="{{item.appliesLabel}}">{{item.appliesLabel}}</text></view>
-        <text class="drag-handle" wx:if="{{reordering}}">☰</text>
-        <text class="prompt-arrow {{item.expanded ? 'expanded' : ''}}" wx:else>{{item.type === 'group' ? '›' : '›'}}</text>
+      <movable-view class="prompt-row depth-{{item.depth}} {{item.type === 'group' ? 'group-row' : 'action-row'}}" style="height:128rpx" y="{{item.flatIndex * rowHeightPx}}" direction="vertical" disabled="{{!reordering}}" wx:for="{{rows}}" wx:key="id" data-id="{{item.id}}" data-type="{{item.type}}" data-group="{{item.parentId}}" data-index="{{item.index}}" bindtap="handleRowTap" bindlongpress="startReorder" bindtouchstart="rowTouchStart" bindtouchmove="rowTouchMove" bindtouchend="rowTouchEnd" bindchange="movePrompt">
+        <view class="prompt-delete" wx:if="{{item.type === 'action'}}" data-id="{{item.id}}" catchtap="deleteItem">删除</view>
+        <view class="prompt-row-content {{swipeDragging && swipedRowId === item.id ? 'swipe-dragging' : ''}}" style="transform:translateX({{swipedRowId === item.id ? swipeOffset : 0}}px)">
+          <view class="prompt-icon {{item.imageOnly ? 'accent-icon' : ''}}"><text class="{{item.type === 'group' ? 'ri-folder-line' : (item.imageOnly ? 'ri-image-line' : 'ri-double-quotes-l')}}"></text></view>
+          <view class="group-copy" wx:if="{{item.type === 'group'}}"><text class="prompt-title">{{item.title}}</text><text class="group-meta">分组 · {{item.childCount}} 项</text></view>
+          <view class="prompt-copy" wx:else><view class="title-line"><text class="prompt-title">{{item.title}}</text><text class="origin-badge" wx:if="{{item.originLabel}}">{{item.originLabel}}</text></view><text class="applies-badge {{item.imageOnly ? 'image-badge' : ''}}" wx:if="{{item.appliesLabel}}">{{item.appliesLabel}}</text></view>
+          <text class="drag-handle" wx:if="{{reordering}}">☰</text>
+          <text class="prompt-arrow {{item.expanded ? 'expanded' : ''}}" wx:else>{{item.type === 'group' ? '›' : '›'}}</text>
+        </view>
       </movable-view>
     </movable-area>
 
@@ -24,7 +28,6 @@
       <text class="import-note">也可以在录音时直接对 VoiceDrop 说出数字，或点开 voicedrop.cn 链接自动跳转到这里。</text>
       <button class="restore-button" bindtap="restoreDefaults" disabled="{{mutating}}">恢复默认提示词</button>
     </view>
-    <button class="cancel-sort" wx:if="{{reordering}}" bindtap="cancelReorder">取消排序</button>
   </view>
 
   <view class="sheet-mask" wx:if="{{newMenuVisible}}" bindtap="closeNewMenu">

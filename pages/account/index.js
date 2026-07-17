@@ -5,7 +5,7 @@ const wechatAuth = require('../../services/wechat-auth')
 
 Page({
   data: {
-    anonId: '',
+    accountId: '',
     accountIdDisplay: '',
     token: '',
     maskedToken: '',
@@ -25,17 +25,28 @@ Page({
     this.loadStats()
   },
 
-  refresh() {
-    const token = auth.bearer()
+  async refresh() {
+    const token = auth.anonymousBearer()
     const wechatAuthed = auth.isWechatAuthenticated()
     this.setData({
-      anonId: auth.anonId(),
-      accountIdDisplay: displayAccountId(token),
+      accountId: '',
+      accountIdDisplay: '读取中…',
       token,
       maskedToken: maskToken(token),
       wechatAuthed,
       loginStatusText: wechatAuthed ? '已用微信登录' : '未登录微信'
     })
+    try {
+      const scope = await library.ownerScope({ anonymous: true })
+      if (auth.anonymousBearer() !== token) return
+      const accountId = accountIdFromScope(scope)
+      this.setData({
+        accountId,
+        accountIdDisplay: accountId || '读取失败'
+      })
+    } catch (error) {
+      if (auth.anonymousBearer() === token) this.setData({ accountId: '', accountIdDisplay: '读取失败' })
+    }
   },
 
   async loadStats() {
@@ -50,7 +61,7 @@ Page({
   },
 
   copyId() {
-    wx.setClipboardData({ data: this.data.anonId })
+    if (this.data.accountId) wx.setClipboardData({ data: this.data.accountId })
   },
 
   copyToken() {
@@ -118,7 +129,7 @@ Page({
             const currentScope = await library.ownerScope({ anonymous: true })
             if (!currentScope) throw new Error('无法确认当前账号空间')
             if (normalizeScope(currentScope) === normalizeScope(result.scope)) {
-              this.completeWechatLogin(result, false)
+              this.completeWechatLogin(result)
             } else {
               this.confirmWechatAccountSwitch(result)
             }
@@ -151,29 +162,19 @@ Page({
   confirmWechatAccountSwitch(result) {
     wx.showModal({
       title: '该微信已关联另一个云端空间',
-      content: '切换后将显示微信账号中的录音和文章。当前匿名账号的数据不会删除，退出微信登录后可以恢复。',
-      confirmText: '切换账号',
-      cancelText: '保留当前',
-      success: (res) => {
-        if (res.confirm) this.completeWechatLogin(result, true)
-      },
+      content: '为避免替换当前访问令牌，请先从已登录该账号的设备复制 anon_ 访问令牌，或使用设备配对登录。',
+      confirmText: '知道了',
+      showCancel: false,
       fail: () => wx.showToast({ title: '账号切换提示打开失败', icon: 'none' })
     })
   },
 
-  completeWechatLogin(result, switched) {
+  completeWechatLogin(result) {
     if (!auth.storeSession(result.session)) {
       wx.showModal({
         title: '微信登录失败',
         content: '无效会话',
         showCancel: false
-      })
-      return
-    }
-    if (switched) {
-      wx.reLaunch({
-        url: '/pages/recordings/index',
-        success: () => wx.showToast({ title: '已切换到微信账号，请重新选择文章分享', icon: 'none' })
       })
       return
     }
@@ -230,10 +231,8 @@ Page({
   }
 })
 
-function displayAccountId(token) {
-  const value = String(token || '').replace(/^anon_/, 'anon-')
-  if (value.length <= 34) return value
-  return `${value.slice(0, 18)}...${value.slice(-16)}`
+function accountIdFromScope(scope) {
+  return String(scope || '').trim().replace(/^users\//, '').replace(/\/$/, '')
 }
 
 function maskToken(token) {

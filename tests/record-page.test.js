@@ -44,7 +44,7 @@ function createRecorder() {
 function loadPage(overrides = {}) {
   const recorder = overrides.recorder || createRecorder()
   const app = overrides.app || { globalData: { pendingRecordTag: '', pendingReplyTo: null, ...(overrides.globalData || {}) } }
-  const calls = { uploads: [], tags: [], mixes: [], toasts: [], navigations: 0, unlinks: [], interviewerStops: 0, refreshes: 0, order: [] }
+  const calls = { uploads: [], tags: [], mixes: [], toasts: [], modals: [], navigations: 0, unlinks: [], interviewerStops: 0, refreshes: 0, order: [] }
   const upload = overrides.upload || (() => Promise.resolve(true))
   const audio = {
     recorder: () => recorder,
@@ -98,6 +98,7 @@ function loadPage(overrides = {}) {
     showLoading() {},
     hideLoading() {},
     showToast(options) { calls.toasts.push(options) },
+    showModal(options) { calls.modals.push(options) },
     navigateBack(options = {}) { calls.navigations += 1; if (options.success) options.success() }
   }
 
@@ -203,6 +204,21 @@ test('a stale shared-recorder error callback cannot navigate or toast', () => {
   assert.equal(shared.listenerCount('frame'), 0)
   assert.equal(shared.listenerCount('stop'), 0)
   assert.equal(shared.listenerCount('error'), 0)
+})
+
+test('a current recorder error exposes errMsg and stays on the record page', () => {
+  const h = loadPage()
+
+  h.recorder.emitError({ errMsg: 'operateRecorder:fail auth deny' })
+
+  assert.equal(h.app.globalData.activeRecorderSession, null)
+  assert.equal(h.calls.navigations, 0)
+  assert.equal(h.calls.modals.length, 1)
+  assert.equal(h.calls.modals[0].title, '录音失败')
+  assert.match(h.calls.modals[0].content, /operateRecorder:fail auth deny/)
+  assert.equal(h.recorder.listenerCount('frame'), 0)
+  assert.equal(h.recorder.listenerCount('stop'), 0)
+  assert.equal(h.recorder.listenerCount('error'), 0)
 })
 
 test('unload stops an owned recording and its onStop still uploads', async () => {

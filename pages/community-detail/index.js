@@ -8,6 +8,7 @@ const pendingReplies = require('../../utils/pending-replies')
 const prefs = require('../../utils/prefs')
 const api = require('../../services/api')
 const audioConsentFlow = require('../../utils/audio-consent-flow')
+const recordPermission = require('../../utils/record-permission')
 const capsuleLayout = require('../../utils/capsule-layout')
 
 const app = getApp()
@@ -253,6 +254,7 @@ Page({
     const shareId = this.data.shareId || (this.data.post && this.data.post.shareId)
     if (!shareId || this.data.replyRecording || this.data.replyUploading) return
     if (!await this.requestAudioConsent()) return
+    if (!await recordPermission.ensure(wx)) return
     this.beginReplyRecording(shareId)
   },
 

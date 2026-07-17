@@ -12,6 +12,7 @@ const recordingUtil = require('../../utils/recording')
 const resumeRefresh = require('../../utils/resume-refresh')
 const holdToTalk = require('../../utils/hold-to-talk')
 const audioConsentFlow = require('../../utils/audio-consent-flow')
+const recordPermission = require('../../utils/record-permission')
 
 const app = getApp()
 
@@ -620,6 +621,7 @@ Page({
 
   async startRecord() {
     if (!await this.requestAudioConsent()) return
+    if (!await recordPermission.ensure(wx)) return
     if (this.data.selectedTag) app.globalData.pendingRecordTag = this.data.selectedTag
     wx.navigateTo({ url: '/pages/record/index' })
   },
@@ -695,6 +697,10 @@ Page({
     this._pendingCommandTalkStart = true
 
     if (!await this.requestAudioConsent()) {
+      this._pendingCommandTalkStart = false
+      return
+    }
+    if (!await recordPermission.ensure(wx)) {
       this._pendingCommandTalkStart = false
       return
     }

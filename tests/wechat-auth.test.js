@@ -51,20 +51,34 @@ test('wechat auth exchanges mini program code without switching accounts before 
   assert.equal(storage['voicedrop.auth.session'], undefined)
 })
 
-test('auth uses a stored session for all requests and restores anonymous access after sign-out', () => {
+test('auth keeps the anonymous token as the account bearer after WeChat login', () => {
   const { storage } = freshWechatAuth()
   const auth = require('../services/auth')
   const anonymous = auth.anonymousBearer()
 
   assert.equal(auth.bearer(), anonymous)
   assert.equal(auth.storeSession('aaaaaaaa.bbbbbbbb.cccccccc'), true)
-  assert.equal(auth.bearer(), 'aaaaaaaa.bbbbbbbb.cccccccc')
+  assert.equal(auth.bearer(), anonymous)
   assert.equal(auth.communityBearer(), 'aaaaaaaa.bbbbbbbb.cccccccc')
   assert.equal(auth.anonymousBearer(), anonymous)
 
   auth.signOutWechat()
   assert.equal(storage['voicedrop.auth.session'], undefined)
   assert.equal(auth.bearer(), anonymous)
+})
+
+test('auth imports only an anonymous account token', () => {
+  const { storage } = freshWechatAuth()
+  const auth = require('../services/auth')
+  const session = 'aaaaaaaa.bbbbbbbb.cccccccc'
+
+  assert.equal(auth.adoptToken(session), false)
+  assert.equal(storage['voicedrop.auth.session'], undefined)
+
+  const anonymous = `anon_${'a'.repeat(64)}`
+  assert.equal(auth.adoptToken(anonymous), true)
+  assert.equal(auth.bearer(), anonymous)
+  assert.equal(storage['voicedrop.auth.session'], undefined)
 })
 
 test('wechat auth refuses missing login code without network request', async () => {

@@ -208,7 +208,7 @@ Page({
         .finally(() => this.cleanupWavFile(wavPath))
     }
 
-    this._errorHandler = () => {
+    this._errorHandler = (error) => {
       const sessionId = this._recordSessionId
       const active = app.globalData.activeRecorderSession || {}
       if (active.type !== 'record' || active.id !== sessionId) {
@@ -224,9 +224,16 @@ Page({
       this._recordSessionId = null
       this.unbindRecorderEvents()
       this.data.recorder = null
+      this._aiAudioSegments = []
       if (!this._alive) return
-      wx.showToast({ title: '录音失败', icon: 'error' })
-      wx.navigateBack()
+      const detail = String(error && (error.errMsg || error.message) || '请检查麦克风权限后重试')
+      this._recordErrorMessage = detail
+      wx.showModal({
+        title: '录音失败',
+        content: `无法开始录音：${detail}`,
+        showCancel: false,
+        confirmText: '知道了'
+      })
     }
 
     manager.onFrameRecorded(this._frameRecordedHandler)

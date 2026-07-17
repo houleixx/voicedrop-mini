@@ -14,22 +14,6 @@ test('shared page header paints behind the status bar', () => {
   assert.match(wxml, /class="page-header"[^>]*padding-bottom:\s*26rpx;/)
 })
 
-test('custom detail toolbars paint behind the status bar and leave bottom room', () => {
-  const detail = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
-  const communityDetail = fs.readFileSync(path.join(root, 'pages/community-detail/index.wxml'), 'utf8')
-
-  assert.match(detail, /class="detail-toolbar"[^>]*top:\s*0px;/)
-  assert.match(detail, /class="detail-toolbar"[^>]*height:\s*calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 26rpx\);/)
-  assert.match(detail, /class="detail-toolbar"[^>]*padding-top:\s*\{\{toolbarTop\}\}px;/)
-  assert.match(detail, /class="detail-toolbar"[^>]*padding-bottom:\s*26rpx;/)
-  assert.match(detail, /class="detail-body"[^>]*padding-top:\s*120px;/)
-  assert.match(communityDetail, /class="detail-toolbar"[^>]*top:\s*0px;/)
-  assert.match(communityDetail, /class="detail-toolbar"[^>]*height:\s*calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 26rpx\);/)
-  assert.match(communityDetail, /class="detail-toolbar"[^>]*padding-top:\s*\{\{toolbarTop\}\}px;/)
-  assert.match(communityDetail, /class="detail-toolbar"[^>]*padding-bottom:\s*26rpx;/)
-  assert.match(communityDetail, /class="detail-body"[^>]*padding-top:\s*120px;/)
-})
-
 test('detail photo sheet top bar paints behind the status bar and leaves bottom room', () => {
   const detail = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
 

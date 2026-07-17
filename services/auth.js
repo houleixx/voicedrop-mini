@@ -66,11 +66,11 @@ function session() {
 }
 
 function communityBearer() {
-  return bearer()
+  return session() || anonymousBearer()
 }
 
 function bearer() {
-  return session() || anonymousBearer()
+  return anonymousBearer()
 }
 
 function anonId() {

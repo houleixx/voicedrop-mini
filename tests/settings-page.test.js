@@ -68,6 +68,8 @@ test('settings page exposes Android-style profile name editor', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
 
   assert.match(wxml, /bindtap="openNameEditor"[\s\S]*名字/)
+  assert.match(wxml, /class="name-card-icon"[\s\S]*class="name-card-avatar"[\s\S]*class="name-card-lines"/)
+  assert.doesNotMatch(wxml, /<text class="menu-icon-text">人<\/text>/)
   assert.match(wxml, /文章署名，以及挖文章时对你的称呼/)
   assert.match(wxml, /\{\{profileName \|\| ''\}\}/)
   assert.match(wxml, /wx:if="\{\{nameEditorOpen\}\}"/)

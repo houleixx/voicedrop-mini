@@ -41,7 +41,13 @@
       <!-- 名字 -->
       <view class="menu-item" bindtap="openNameEditor">
         <view class="menu-icon icon-beige">
-          <text class="menu-icon-text">人</text>
+          <view class="name-card-icon" aria-hidden="true">
+            <view class="name-card-avatar"></view>
+            <view class="name-card-lines">
+              <view class="name-card-line name-card-line-short"></view>
+              <view class="name-card-line"></view>
+            </view>
+          </view>
         </view>
         <view class="menu-content">
           <text class="menu-title">名字</text>

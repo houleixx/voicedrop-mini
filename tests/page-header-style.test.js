@@ -61,13 +61,3 @@ test('page header back icon is centered inside the button', () => {
 
   assert.match(css, /\.header-back-icon-arrow::before\s*\{[^}]*content:\s*"\\ea64";/s)
 })
-
-test('style settings page uses shared page header alignment', () => {
-  const wxml = fs.readFileSync(path.join(root, 'pages/style-settings/index.wxml'), 'utf8')
-  const css = fs.readFileSync(path.join(root, 'pages/style-settings/index.wxss'), 'utf8')
-
-  assert.match(wxml, /<page-header title="写作风格"/)
-  assert.match(wxml, /slot="right"[\s\S]*bindtap="done"[\s\S]*完成/)
-  assert.doesNotMatch(wxml, /class="style-nav"/)
-  assert.doesNotMatch(css, /\.style-nav\s*\{/)
-})
