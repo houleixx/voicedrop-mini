@@ -183,7 +183,7 @@ test('community feed mirrors Android masonry tabs and keeps filters above pull r
   assert.match(wxml, /data-feed-tab="latest"/)
   assert.match(wxml, /data-feed-tab="replies"/)
   assert.match(css, /\.community-feed-tabs\s*\{[^}]*height:\s*88rpx;[^}]*padding:\s*0 32rpx;[^}]*align-items:\s*center;/s)
-  assert.match(css, /\.community-feed-tab\s*\{[^}]*font-size:\s*30rpx;[^}]*line-height:\s*1;[^}]*transform:\s*translateY\(8rpx\);/s)
+  assert.match(css, /\.community-feed-tab\s*\{[^}]*font-size:\s*30rpx;[^}]*line-height:\s*1;[^}]*transform:\s*translateY\(4rpx\);/s)
   assert.match(wxml, /top: \{\{activeTab === 'community' \? communityScrollContentTop : scrollContentTop\}\}px/)
   assert.match(wxml, /class="community-card-image"/)
   assert.match(wxml, /class="community-like-icon ri-heart-fill"/)
