@@ -10,6 +10,7 @@ const api = require('../../services/api')
 const audioConsentFlow = require('../../utils/audio-consent-flow')
 const recordPermission = require('../../utils/record-permission')
 const capsuleLayout = require('../../utils/capsule-layout')
+const promptStore = require('../../services/prompt-store')
 
 const app = getApp()
 const REPLY_WAVE_PATTERN = [0.25, 0.62, 0.38, 0.9, 0.48, 0.72, 0.34, 0.58]
@@ -136,8 +137,8 @@ Page({
       }
       const first = articleUtil.firstArticle(doc)
       const sections = this.articleSections(post, doc)
-      const replies = await this.loadFullReplies(shareId)
-      const replyToPost = post && post.replyTo ? await community.get(post.replyTo) : null
+      const replies = post.isPrompt ? [] : await this.loadFullReplies(shareId)
+      const replyToPost = !post.isPrompt && post.replyTo ? await community.get(post.replyTo) : null
       this.setData({
         post,
         article: first,
@@ -149,6 +150,24 @@ Page({
       community.engage(shareId, 'view')
     } finally {
       this.setData({ loading: false })
+    }
+  },
+
+  async collectPrompt() {
+    const post = this.data.post
+    if (!post || !post.isPrompt || !post.promptCode) return
+    wx.showLoading({ title: '正在收下...' })
+    try {
+      const result = await promptStore.importCode(post.promptCode)
+      if (result && result.ok) {
+        wx.showToast({ title: result.already ? '已经收下过了' : '已收下提示词' })
+      } else {
+        wx.showToast({ title: '导入失败，请稍后再试', icon: 'none' })
+      }
+    } catch (error) {
+      wx.showToast({ title: `导入失败：${error && error.message || '网络错误'}`, icon: 'none' })
+    } finally {
+      wx.hideLoading()
     }
   },
 
@@ -230,6 +249,7 @@ Page({
   },
 
   reply() {
+    if (this.data.post && this.data.post.isPrompt) return this.collectPrompt()
     return this.startReplyRecording()
   },
 

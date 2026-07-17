@@ -1,0 +1,17 @@
+<view class="screen invite-screen settings-page">
+  <page-header title="邀请好友" />
+  <view class="page-body">
+    <view class="invite-card card">
+      <text class="invite-mark">VD</text>
+      <text class="invite-title">把 VoiceDrop 分享给朋友</text>
+      <text class="invite-subtitle">{{rewardText}}</text>
+      <view wx:if="{{loading}}" class="invite-status">正在准备邀请...</view>
+      <view wx:elif="{{error}}" class="invite-status invite-error">{{error}}</view>
+      <block wx:else>
+        <text class="invite-code">邀请码 {{invite.code}}</text>
+        <button class="invite-share" open-type="share">邀请好友</button>
+        <button class="invite-copy" bindtap="copyLink">复制网页邀请链接</button>
+      </block>
+    </view>
+  </view>
+</view>

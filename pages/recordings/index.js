@@ -398,7 +398,7 @@ Page({
 
   selectCommunityFeed(event) {
     const tab = event.currentTarget.dataset.feedTab
-    if (!['recommended', 'latest', 'replies'].includes(tab) || tab === this.data.communityFeedTab) return
+    if (!['recommended', 'latest', 'replies', 'prompts'].includes(tab) || tab === this.data.communityFeedTab) return
     const postData = this.communityPostData(this._communityFeed, tab)
     this.setData({
       communityFeedTab: tab,

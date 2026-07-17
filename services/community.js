@@ -99,6 +99,7 @@ function postsForTab(feed, tab) {
   const value = feed || { recommended: [], latest: [] }
   if (tab === 'latest') return (value.latest || []).slice()
   if (tab === 'replies') return (value.recommended || []).filter((post) => Boolean(post.replyTo))
+  if (tab === 'prompts') return (value.recommended || []).filter((post) => post.isPrompt)
   return (value.recommended || []).slice()
 }
 
@@ -120,6 +121,7 @@ function cardPosts(feed, tab) {
       paletteClass: `community-palette-${paletteIndex(post.shareId)}`,
       coverPhotoUrl: post.coverPhotoKey ? api.photoUrl(post.coverPhotoKey) : '',
       isReply: Boolean(post.replyTo),
+      isPrompt: Boolean(post.isPrompt),
       likeCount: Number(feed && feed.likes && feed.likes[post.shareId]) || 0,
       replyCount: Number(feed && feed.replies && feed.replies[post.shareId]) || 0
     })
@@ -217,6 +219,10 @@ function normalizePost(raw) {
   post.replyTo = trim(post.replyTo)
   post.coverPhotoKey = trim(post.coverPhotoKey)
   post.preview = trim(post.preview)
+  post.kind = trim(post.kind)
+  post.promptCode = trim(post.promptCode)
+  post.appliesTo = Array.isArray(post.appliesTo) ? post.appliesTo.map(trim).filter(Boolean) : []
+  post.isPrompt = post.kind === 'prompt' && Boolean(post.promptCode)
   post.updatedAt = post.updatedAt != null ? post.updatedAt : post.firstSharedAt
   post.count = Number(post.count) || 0
   post.mine = Boolean(post.mine)

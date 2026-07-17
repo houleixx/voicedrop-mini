@@ -30,6 +30,15 @@ function payloadFor(request) {
       mediaType: 'image/jpeg'
     }))
   }
+  if (request.anchor && request.anchor.type === 'line') {
+    body.anchor = {
+      type: 'line',
+      line: Math.max(0, Number(request.anchor.line) || 0),
+      text: String(request.anchor.text || '').slice(0, 2000)
+    }
+  } else if (request.anchor && request.anchor.type === 'image' && request.anchor.key) {
+    body.anchor = { type: 'image', key: String(request.anchor.key) }
+  }
   return JSON.stringify(body)
 }
 
@@ -93,9 +102,15 @@ function createSession(stem, handlers) {
     })
   }
 
-  function enqueue(text, articleIndex, images) {
+  function enqueue(text, articleIndex, images, anchor) {
     if (!text || !text.trim()) return
-    const request = { id: uuid(), text: text.trim(), articleIndex: Math.max(0, articleIndex || 0), images: images || [] }
+    const request = {
+      id: uuid(),
+      text: text.trim(),
+      articleIndex: Math.max(0, articleIndex || 0),
+      images: images || [],
+      anchor: anchor || null
+    }
     queue.push(request)
     logEdit('enqueue', { stem, id: request.id, articleIndex: request.articleIndex, imageCount: request.images.length, text: request.text })
     persistQueue(queueKey, queue)

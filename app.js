@@ -2,6 +2,7 @@ const router = require('./utils/app-router')
 const prefs = require('./utils/prefs')
 const auth = require('./services/auth')
 const promptTree = require('./utils/prompt-tree')
+const referral = require('./services/referral')
 
 function currentPageMatchesRoute(route) {
   if (!route || route.type !== 'navigateTo' || typeof getCurrentPages !== 'function') return false
@@ -37,6 +38,7 @@ App({
   onLaunch(options) {
     console.log('VoiceDrop Mini launched')
     this.handleImportToken(options)
+    this.handleReferral(options)
     if (wx.showShareMenu) {
       wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
     }
@@ -45,7 +47,13 @@ App({
 
   onShow(options) {
     this.handleImportToken(options)
+    this.handleReferral(options)
     this.handleRouteOptions(options)
+  },
+
+  handleReferral(options) {
+    const code = referral.codeFromLaunch(options)
+    if (code) referral.claim(code).catch(() => {})
   },
 
   handleImportToken(options) {

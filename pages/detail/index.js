@@ -1466,8 +1466,11 @@ Page({
       ? uiConfig.fill(node.instruction, 'KEY', target.block.key)
       : uiConfig.fill(node.instruction, 'LINE', target.block.lineNo, 'QUOTE', uiConfig.quotePrefix(target.block.text))
     const articleIndex = this.data.articleIndex || 0
+    const anchor = target.kind === 'image'
+      ? { type: 'image', key: target.block.key }
+      : { type: 'line', line: target.block.lineNo, text: target.block.text }
     this.closeLongpressMenu()
-    this.enqueueInstruction(instruction, articleIndex)
+    this.enqueueInstruction(instruction, articleIndex, null, anchor)
   },
 
   onLongpressLocalPick(event) {
@@ -1574,13 +1577,13 @@ Page({
     }
   },
 
-  enqueueInstruction(instruction, articleIndex, images) {
+  enqueueInstruction(instruction, articleIndex, images, anchor) {
     const session = this.ensureEditSession()
     if (!session || !instruction) {
       logPhotoInsert('enqueue-skip', { hasSession: !!session, hasInstruction: !!instruction })
       return
     }
-    session.enqueue(instruction, articleIndex != null ? articleIndex : 0, images)
+    session.enqueue(instruction, articleIndex != null ? articleIndex : 0, images, anchor)
     if (this.startPhotoMakingForInstruction) this.startPhotoMakingForInstruction(instruction)
     if (isPhotoInsertInstruction(instruction, images)) {
       const data = photoInsertPromptData(instruction)

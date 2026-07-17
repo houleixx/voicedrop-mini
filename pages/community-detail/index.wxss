@@ -469,3 +469,42 @@
   font-weight: 700;
   text-align: center;
 }
+
+.prompt-detail-badge {
+  align-self: flex-start;
+  margin-bottom: 14rpx;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  color: #6f5529;
+  background: #f4dfac;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.prompt-collect-card {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24rpx;
+}
+
+.prompt-code-label {
+  color: #6f5529;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.prompt-usage {
+  margin-top: 14rpx;
+  color: #8a7b63;
+  font-size: 25rpx;
+  line-height: 1.5;
+}
+
+.prompt-collect-button {
+  width: 100%;
+  margin-top: 24rpx;
+  color: #ffffff;
+  background: #d8593b;
+  font-size: 28rpx;
+  font-weight: 700;
+}

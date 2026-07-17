@@ -735,6 +735,17 @@
   line-height: 1.3;
 }
 
+.community-prompt-badge {
+  align-self: flex-start;
+  margin-bottom: 14rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  color: #6f5529;
+  background: #f4dfac;
+  font-size: 22rpx;
+  line-height: 1.3;
+}
+
 .community-reply-badge-icon {
   width: 22rpx;
   height: 22rpx;

@@ -16,6 +16,7 @@
     "pages/instruction-edit/index",
     "pages/prompt-new/index",
     "pages/prompt-import/index",
+    "pages/invite/index",
     "pages/index/index",
     "pages/record/index"
   ],

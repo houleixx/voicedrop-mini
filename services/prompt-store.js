@@ -114,8 +114,11 @@ function createStore(deps = {}) {
     try {
       const res = await request.postJson(`${base}/prompts/import`, auth.bearer(), { code })
       if (!ok(res) || !res.data || !res.data.item) return { ok: false, error: 'import_failed' }
-      items = [...tree.clone(items), tree.cloneNode(res.data.item)]; saveCache()
-      return { ok: true, item: tree.cloneNode(res.data.item) }
+      const imported = tree.cloneNode(res.data.item)
+      const existing = tree.flattenIds(items).includes(imported.id)
+      if (!existing) items = [...tree.clone(items), imported]
+      saveCache()
+      return { ok: true, item: tree.cloneNode(imported), already: Boolean(res.data.already || existing) }
     } catch (_) { return { ok: false, error: 'network_error' } }
   }
 
@@ -127,13 +130,19 @@ function createStore(deps = {}) {
   }
 
   async function setSharing(id, on) {
+    const session = typeof auth.session === 'function' ? auth.session() : ''
+    if (!session) return { ok: false, error: 'needs_wechat_signin' }
     try {
       const res = on
-        ? await request.postJson(`${base}/prompt-share`, auth.bearer(), { id })
-        : await request.del(`${base}/prompt-share/${encodeURIComponent(id)}`, auth.bearer())
+        ? await request.postJson(`${base}/prompt-share`, session, { id })
+        : await request.del(`${base}/prompt-share/${encodeURIComponent(id)}`, session)
       if (res && res.statusCode === 429) return { ok: false, error: 'daily_cap' }
-      if (!ok(res)) return { ok: false, error: 'share_failed' }
-      return { ok: true, code: String(res.data && res.data.code || ''), sharing: Boolean(res.data && res.data.sharing), url: res.data && res.data.url }
+      if (!ok(res)) {
+        const remote = String(res && res.data && res.data.error || '')
+        const error = remote === 'needs_apple_signin' ? 'needs_wechat_signin' : (remote || 'share_failed')
+        return { ok: false, error, statusCode: res && res.statusCode }
+      }
+      return { ok: true, code: String(res.data && res.data.code || ''), sharing: Boolean(res.data && res.data.sharing), url: res.data && res.data.url, communityShareId: res.data && res.data.communityShareId }
     } catch (_) { return { ok: false, error: 'network_error' } }
   }
 

@@ -314,6 +314,20 @@ test('legacy community feed keeps latest order and exposes reply posts', () => {
   assert.equal(feed.likes.root, 3)
 })
 
+test('community keeps prompt metadata and exposes a dedicated prompt tab', () => {
+  const feed = community.legacyFeed([
+    { shareId: 'article', firstSharedAt: 2 },
+    { shareId: 'prompt', firstSharedAt: 1, kind: 'prompt', promptCode: '1234567', appliesTo: ['text'] }
+  ], { order: ['article', 'prompt'] })
+
+  const prompt = community.postsForTab(feed, 'prompts')[0]
+  assert.equal(prompt.shareId, 'prompt')
+  assert.equal(prompt.isPrompt, true)
+  assert.equal(prompt.promptCode, '1234567')
+  assert.deepEqual(prompt.appliesTo, ['text'])
+  assert.equal(community.cardPosts(feed, 'prompts')[0].isPrompt, true)
+})
+
 test('normalizes community detail posts with inline articles', () => {
   const post = community.postFromDetail({
     shareId: ' share-1 ',

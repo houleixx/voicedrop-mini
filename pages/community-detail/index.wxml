@@ -18,6 +18,7 @@
 
   <view class="detail-body" style="padding-top: 115px;">
     <view class="article-head">
+      <text wx:if="{{post.isPrompt}}" class="prompt-detail-badge">社区提示词</text>
       <text class="article-title">{{article.title || post.title || '社区文章'}}</text>
       <text class="meta">{{post.author || post.authorName || '匿名作者'}} · 社区分享</text>
       <view class="reply-to" wx:if="{{replyToPost && !loading}}" bindtap="openReplyTo">
@@ -31,6 +32,11 @@
       <text>内容加载中...</text>
     </view>
     <view class="loaded-content" wx:else>
+      <view class="prompt-collect-card card" wx:if="{{post.isPrompt}}">
+        <text class="prompt-code-label">分享码 {{post.promptCode}}</text>
+        <text class="prompt-usage">收下后可在提示词设置中编辑，并用于文字或图片处理。</text>
+        <button class="prompt-collect-button" bindtap="collectPrompt">收下这条提示词</button>
+      </view>
       <view class="article card" wx:if="{{sections.length}}">
         <block wx:for="{{sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="sectionIndex">
           <text wx:if="{{section.title}}" class="section-title">{{section.title}}</text>
@@ -63,7 +69,7 @@
 
   <view class="more-menu-layer" wx:if="{{moreMenuOpen}}" bindtap="closeMoreMenu">
     <view class="more-menu-card" style="top: {{toolbarTop + toolbarHeight + 20}}px;" catchtap="noop">
-      <view class="more-menu-row" data-action="reply" bindtap="runMoreMenuAction">
+      <view class="more-menu-row" wx:if="{{!post.isPrompt}}" data-action="reply" bindtap="runMoreMenuAction">
         <text class="more-menu-label">写回应</text>
         <text class="more-menu-icon ri-mic-line"></text>
       </view>

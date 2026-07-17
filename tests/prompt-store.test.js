@@ -13,7 +13,7 @@ function deps() {
     calls.push({ method, url, token, data })
     return queue.shift()
   }
-  return { calls, queue, request, storage: { get: (key) => values.get(key), set: (key, value) => values.set(key, value) }, auth: { bearer: () => 'token' }, base: 'https://example.test/agent' }
+  return { calls, queue, request, storage: { get: (key) => values.get(key), set: (key, value) => values.set(key, value) }, auth: { bearer: () => 'token', session: () => 'wechat.session.token' }, base: 'https://example.test/agent' }
 }
 
 test('refresh keeps cached items and exposes an error on network failure', async () => {
@@ -48,4 +48,22 @@ test('uses exact restore preview import and share endpoints', async () => {
   d.queue.push({ statusCode: 200, data: { code: '1234567', sharing: true } })
   assert.equal((await store.setSharing('p_12345678', true)).code, '1234567')
   assert.equal(d.calls.at(-1).url, 'https://example.test/agent/prompt-share')
+  assert.equal(d.calls.at(-1).token, 'wechat.session.token')
+})
+
+test('idempotent import does not append a duplicate local item', async () => {
+  const d = deps(); const store = createStore(d)
+  const item = { id: 'sys_concise', type: 'action', label: '精简', origin: 'system', prompt: 'P', appliesTo: ['text'] }
+  d.queue.push({ statusCode: 200, data: { item, already: true } })
+  const result = await store.importCode('1234567')
+  assert.equal(result.already, true)
+  assert.equal(store.items().filter((node) => node.id === 'sys_concise').length, 1)
+})
+
+test('prompt sharing exposes sign-in and remote business errors', async () => {
+  const d = deps(); d.auth.session = () => ''
+  assert.equal((await createStore(d).setSharing('p_1', true)).error, 'needs_wechat_signin')
+  d.auth.session = () => 'wechat.session.token'
+  d.queue.push({ statusCode: 403, data: { error: 'needs_apple_signin' } })
+  assert.equal((await createStore(d).setSharing('p_1', true)).error, 'needs_wechat_signin')
 })

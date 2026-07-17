@@ -5,6 +5,7 @@
            src="{{item.coverPhotoUrl}}" mode="widthFix" lazy-load
            data-cover-key="{{item.coverPhotoKey}}" bindload="onCommunityCoverLoad" />
     <view class="community-card-body">
+      <view wx:if="{{item.isPrompt}}" class="community-prompt-badge">提示词</view>
       <view wx:if="{{item.isReply}}" class="community-reply-badge">
         <view class="community-reply-badge-icon community-reply-icon-accent"></view>
         <text>回应</text>
@@ -37,6 +38,8 @@
           data-feed-tab="latest" bindtap="selectCommunityFeed">最新</view>
     <view class="community-feed-tab {{communityFeedTab === 'replies' ? 'active' : ''}}"
           data-feed-tab="replies" bindtap="selectCommunityFeed">回应</view>
+    <view class="community-feed-tab {{communityFeedTab === 'prompts' ? 'active' : ''}}"
+          data-feed-tab="prompts" bindtap="selectCommunityFeed">提示词</view>
   </view>
 
   <scroll-view

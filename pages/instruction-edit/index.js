@@ -42,10 +42,17 @@ Page({
   },
   async toggleSharing(event) {
     if (this.data.shareToggling || !this.data.item) return
+    const previous = Boolean(this.data.sharing)
     const desired = Boolean(event.detail.value); this.setData({ shareToggling: true, shareError: '' })
     const result = await promptStore.setSharing(this.data.itemId, desired)
     if (!result.ok) {
-      this.setData({ shareToggling: false, shareError: result.error === 'daily_cap' ? '今天生成分享码的次数已达上限，明天再试' : '操作失败，请重试' }); return
+      const messages = {
+        daily_cap: '今天生成分享码的次数已达上限，明天再试',
+        needs_wechat_signin: '请先微信登录后再分享提示词',
+        content_flagged: '提示词未通过社区审核，暂时不能分享',
+        'not-shareable': '这条提示词暂时不能分享'
+      }
+      this.setData({ shareToggling: false, sharing: previous, shareError: messages[result.error] || `操作失败：${result.error || '请重试'}` }); return
     }
     this.setData({ shareToggling: false, sharing: result.sharing, shareCode: result.code || this.data.shareCode })
   },

@@ -14,15 +14,38 @@ test('builds article edit websocket payload compatible with Android', () => {
     id: 'req-1',
     text: '把这一段改短',
     articleIndex: 2,
-    images: [{ key: 'photos/a.jpg', base64: 'abc' }]
+    images: [{ key: 'photos/a.jpg', base64: 'abc' }],
+    anchor: { type: 'line', line: 7, text: '完整段落' }
   })
   assert.deepEqual(JSON.parse(payload), {
     type: 'instruct',
     id: 'req-1',
     text: '把这一段改短',
     articleIndex: 2,
-    images: [{ key: 'photos/a.jpg', data: 'abc', mediaType: 'image/jpeg' }]
+    images: [{ key: 'photos/a.jpg', data: 'abc', mediaType: 'image/jpeg' }],
+    anchor: { type: 'line', line: 7, text: '完整段落' }
   })
+})
+
+test('persists and restores structured edit anchors for reconnect', () => {
+  const storage = {}
+  const previousWx = global.wx
+  global.wx = {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    connectSocket: () => ({ onOpen: () => {}, onMessage: () => {}, onError: () => {}, onClose: () => {}, send: () => {}, close: () => {} })
+  }
+  try {
+    const session = edit.createSession('VoiceDrop-anchor', {})
+    session.enqueue('改短一点', 0, [], { type: 'line', line: 3, text: '整行原文' })
+    const stored = JSON.parse(storage['voicedrop.editqueue.VoiceDrop-anchor'])
+    assert.deepEqual(stored[0].anchor, { type: 'line', line: 3, text: '整行原文' })
+    assert.deepEqual(JSON.parse(edit.payloadFor(stored[0])).anchor, { type: 'line', line: 3, text: '整行原文' })
+  } finally {
+    if (previousWx === undefined) delete global.wx
+    else global.wx = previousWx
+  }
 })
 
 test('waits for article edit socket open before sending queued image edits', () => {

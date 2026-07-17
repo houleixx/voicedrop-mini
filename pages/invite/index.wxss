@@ -1,0 +1,10 @@
+.invite-card { display: flex; padding: 48rpx 36rpx; align-items: center; flex-direction: column; text-align: center; }
+.invite-mark { display: flex; width: 112rpx; height: 112rpx; align-items: center; justify-content: center; border-radius: 28rpx; color: #fff; background: #d8593b; font-size: 38rpx; font-weight: 800; }
+.invite-title { margin-top: 30rpx; color: #27231f; font-size: 40rpx; font-weight: 800; }
+.invite-subtitle { margin-top: 16rpx; color: #8a7b63; font-size: 28rpx; }
+.invite-code { margin-top: 36rpx; color: #6f5529; font-family: ui-monospace, monospace; font-size: 28rpx; font-weight: 700; }
+.invite-share, .invite-copy { width: 100%; margin-top: 28rpx; font-size: 30rpx; font-weight: 700; }
+.invite-share { color: #fff; background: #d8593b; }
+.invite-copy { color: #6f5529; background: #f4ead8; }
+.invite-status { margin-top: 36rpx; color: #8a7b63; font-size: 28rpx; }
+.invite-error { color: #c7432f; }
