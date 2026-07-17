@@ -11,6 +11,7 @@ const audioConsentFlow = require('../../utils/audio-consent-flow')
 const recordPermission = require('../../utils/record-permission')
 const capsuleLayout = require('../../utils/capsule-layout')
 const promptStore = require('../../services/prompt-store')
+const promptTree = require('../../utils/prompt-tree')
 
 const app = getApp()
 const REPLY_WAVE_PATTERN = [0.25, 0.62, 0.38, 0.9, 0.48, 0.72, 0.34, 0.58]
@@ -30,6 +31,10 @@ Page({
     replies: [],
     replyToPost: null,
     liked: false,
+    fed: false,
+    feeding: false,
+    promptImported: false,
+    promptImporting: false,
     loading: true,
     moreMenuOpen: false,
     toolbarTop: 0,
@@ -128,6 +133,7 @@ Page({
     }
     this.setData({ loading: true })
     try {
+      const feedStatesPromise = community.feedStates([shareId]).catch(() => ({}))
       const cachedPost = this.data.post ? community.postFromDetail(this.data.post) : null
       const fullPost = await community.get(shareId).catch(() => null)
       const post = community.postFromDetail(fullPost || cachedPost)
@@ -139,13 +145,16 @@ Page({
       const sections = this.articleSections(post, doc)
       const replies = post.isPrompt ? [] : await this.loadFullReplies(shareId)
       const replyToPost = !post.isPrompt && post.replyTo ? await community.get(post.replyTo) : null
+      const feedStates = await feedStatesPromise
       this.setData({
         post,
         article: first,
         blocks: sections.length ? sections[0].blocks : [],
         sections,
         replies,
-        replyToPost
+        replyToPost,
+        fed: Boolean(feedStates[shareId] && feedStates[shareId].fed),
+        promptImported: Boolean(post.isPrompt && post.promptCode && promptTree.containsImport(promptStore.items(), post.promptCode))
       })
       community.engage(shareId, 'view')
     } finally {
@@ -155,18 +164,21 @@ Page({
 
   async collectPrompt() {
     const post = this.data.post
-    if (!post || !post.isPrompt || !post.promptCode) return
+    if (!post || !post.isPrompt || !post.promptCode || this.data.promptImported || this.data.promptImporting) return
+    this.setData({ promptImporting: true })
     wx.showLoading({ title: '正在收下...' })
     try {
       const result = await promptStore.importCode(post.promptCode)
       if (result && result.ok) {
-        wx.showToast({ title: result.already ? '已经收下过了' : '已收下提示词' })
+        this.setData({ promptImported: true })
+        wx.showToast({ title: result.already ? '这条提示词你已经收下过了' : '已加入你的提示词', icon: 'none' })
       } else {
         wx.showToast({ title: '导入失败，请稍后再试', icon: 'none' })
       }
     } catch (error) {
       wx.showToast({ title: `导入失败：${error && error.message || '网络错误'}`, icon: 'none' })
     } finally {
+      this.setData({ promptImporting: false })
       wx.hideLoading()
     }
   },
@@ -203,9 +215,12 @@ Page({
   },
 
   async tip() {
+    if (this.data.fed || this.data.feeding) return
+    this.setData({ feeding: true })
     try {
       const result = await community.feed(this.data.shareId)
       if (result.ok || result.already) {
+        this.setData({ fed: true })
         if (result.already) {
           wx.showToast({ title: '已经投过这篇了' })
         } else {
@@ -222,6 +237,8 @@ Page({
       }
     } catch (error) {
       wx.showToast({ title: `投币失败：${error && error.message || '网络错误'}`, icon: 'none' })
+    } finally {
+      this.setData({ feeding: false })
     }
   },
 
@@ -249,7 +266,6 @@ Page({
   },
 
   reply() {
-    if (this.data.post && this.data.post.isPrompt) return this.collectPrompt()
     return this.startReplyRecording()
   },
 

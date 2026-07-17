@@ -1,16 +1,16 @@
-<view class="screen community-detail-screen">
+<view class="screen community-detail-screen {{post.isPrompt ? 'prompt-detail-screen' : ''}}">
   <view class="detail-toolbar" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx;">
     <view class="tool-button back-button" bindtap="goBack" aria-label="返回">
       <text class="back-icon ri-arrow-left-s-line"></text>
     </view>
     <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;">
-      <button class="tool-button icon-only-button" bindtap="tip" aria-label="投币">
-        <text class="action-icon ri-flashlight-line"></text>
+      <button class="tool-button icon-only-button {{fed ? 'fed' : ''}}" bindtap="tip" disabled="{{fed || feeding}}" aria-label="投币">
+        <text class="action-icon {{fed ? 'ri-flashlight-fill' : 'ri-flashlight-line'}}"></text>
       </button>
       <button class="tool-button icon-only-button {{liked ? 'liked' : ''}}" bindtap="toggleLike" aria-label="喜欢">
         <text class="action-icon {{liked ? 'ri-heart-fill' : 'ri-heart-line'}}"></text>
       </button>
-      <button class="tool-button" bindtap="showMoreActions" aria-label="更多">
+      <button class="tool-button {{post.isPrompt ? 'prompt-more-button' : ''}}" bindtap="showMoreActions" aria-label="更多">
         <text class="more-icon ri-more-fill"></text>
       </button>
     </view>
@@ -18,9 +18,12 @@
 
   <view class="detail-body" style="padding-top: 115px;">
     <view class="article-head">
-      <text wx:if="{{post.isPrompt}}" class="prompt-detail-badge">社区提示词</text>
       <text class="article-title">{{article.title || post.title || '社区文章'}}</text>
-      <text class="meta">{{post.author || post.authorName || '匿名作者'}} · 社区分享</text>
+      <view class="prompt-meta" wx:if="{{post.isPrompt}}">
+        <text class="prompt-author">{{post.author || post.authorName || '匿名作者'}}</text>
+        <text class="prompt-date">{{post.dateLabel}}</text>
+      </view>
+      <text class="meta" wx:else>{{post.author || post.authorName || '匿名作者'}} · 社区分享</text>
       <view class="reply-to" wx:if="{{replyToPost && !loading}}" bindtap="openReplyTo">
         <view class="reply-to-icon community-reply-icon-accent"></view>
         <text class="reply-to-prefix">回应</text>
@@ -32,44 +35,72 @@
       <text>内容加载中...</text>
     </view>
     <view class="loaded-content" wx:else>
-      <view class="prompt-collect-card card" wx:if="{{post.isPrompt}}">
-        <text class="prompt-code-label">分享码 {{post.promptCode}}</text>
-        <text class="prompt-usage">收下后可在提示词设置中编辑，并用于文字或图片处理。</text>
-        <button class="prompt-collect-button" bindtap="collectPrompt">收下这条提示词</button>
-      </view>
-      <view class="article card" wx:if="{{sections.length}}">
-        <block wx:for="{{sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="sectionIndex">
-          <text wx:if="{{section.title}}" class="section-title">{{section.title}}</text>
-          <block wx:for="{{section.blocks}}" wx:for-item="item" wx:key="index">
-            <text wx:if="{{item.type === 'paragraph'}}" class="paragraph">{{item.text}}</text>
-            <view wx:else class="photo-block">
-              <image class="article-image" src="{{item.url}}" mode="widthFix" />
-            </view>
-          </block>
-        </block>
-      </view>
-      <view class="empty card" wx:else>社区正文暂不可读，请稍后刷新或打开分享链接查看。</view>
-
-      <view class="reply-section card" wx:if="{{replies.length}}">
-        <view class="row">
-          <text>{{replies.length}} 篇回应</text>
+      <view class="prompt-detail-content" wx:if="{{post.isPrompt}}">
+        <view class="prompt-share-code-block">
+          <text class="prompt-share-code-label">一条 VoiceDrop 提示词 · 分享码</text>
+          <text class="prompt-share-code">{{post.promptCode}}</text>
         </view>
-        <view class="reply" wx:for="{{replies}}" wx:key="shareId" data-index="{{index}}" bindtap="openReply">
-          <view class="reply-accent"></view>
-          <view class="reply-copy">
-            <text class="meta">{{item.author || item.authorName || '匿名作者'}} · {{item.replyLabel || '续文'}}</text>
-            <text class="reply-title">{{item.title || '续文'}}</text>
-            <text class="reply-preview" wx:if="{{item.preview}}">{{item.preview}}</text>
-            <text class="reply-more" wx:if="{{item.hasMore}}">继续阅读 ↓</text>
+        <view class="prompt-body-panel">
+          <block wx:for="{{sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="sectionIndex">
+            <block wx:for="{{section.blocks}}" wx:for-item="item" wx:key="index">
+              <text wx:if="{{item.type === 'paragraph'}}" class="prompt-body-text">{{item.text}}</text>
+              <image wx:else class="prompt-body-image" src="{{item.url}}" mode="widthFix" />
+            </block>
+          </block>
+          <text class="prompt-body-text" wx:if="{{!sections.length}}">提示词内容暂不可读，请稍后刷新。</text>
+        </view>
+        <view class="prompt-help">
+          <text class="prompt-help-title">怎么用</text>
+          <text class="prompt-help-copy">在任意文章里长按屏幕按住说话，说「用 {{post.promptCode}} 改这段」——AI 按这条提示词干活，只管这一次，不改你的设置。</text>
+          <text class="prompt-help-copy" wx:if="{{post.mine}}">这是你分享的提示词。把分享码发给朋友，或在 设置 → 提示词 里管理。</text>
+          <text class="prompt-help-copy" wx:else>想长期用：点下面「收下这条提示词」，之后长按菜单里随手可用。</text>
+        </view>
+        <button
+          class="prompt-collect-button {{promptImported ? 'is-imported' : ''}}"
+          wx:if="{{!post.mine && post.promptCode}}"
+          bindtap="collectPrompt"
+          loading="{{promptImporting}}"
+          disabled="{{promptImported || promptImporting}}"
+        >
+          <text wx:if="{{!promptImporting}}" class="prompt-collect-icon {{promptImported ? 'ri-check-line' : 'ri-download-2-line'}}"></text>
+          <text>{{promptImported ? '已收下' : '收下这条提示词'}}</text>
+        </button>
+      </view>
+      <block wx:else>
+        <view class="article card" wx:if="{{sections.length}}">
+          <block wx:for="{{sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="sectionIndex">
+            <text wx:if="{{section.title}}" class="section-title">{{section.title}}</text>
+            <block wx:for="{{section.blocks}}" wx:for-item="item" wx:key="index">
+              <text wx:if="{{item.type === 'paragraph'}}" class="paragraph">{{item.text}}</text>
+              <view wx:else class="photo-block">
+                <image class="article-image" src="{{item.url}}" mode="widthFix" />
+              </view>
+            </block>
+          </block>
+        </view>
+        <view class="empty card" wx:else>社区正文暂不可读，请稍后刷新或打开分享链接查看。</view>
+
+        <view class="reply-section card" wx:if="{{replies.length}}">
+          <view class="row">
+            <text>{{replies.length}} 篇回应</text>
+          </view>
+          <view class="reply" wx:for="{{replies}}" wx:key="shareId" data-index="{{index}}" bindtap="openReply">
+            <view class="reply-accent"></view>
+            <view class="reply-copy">
+              <text class="meta">{{item.author || item.authorName || '匿名作者'}} · {{item.replyLabel || '续文'}}</text>
+              <text class="reply-title">{{item.title || '续文'}}</text>
+              <text class="reply-preview" wx:if="{{item.preview}}">{{item.preview}}</text>
+              <text class="reply-more" wx:if="{{item.hasMore}}">继续阅读 ↓</text>
+            </view>
           </view>
         </view>
-      </view>
+      </block>
     </view>
   </view>
 
   <view class="more-menu-layer" wx:if="{{moreMenuOpen}}" bindtap="closeMoreMenu">
     <view class="more-menu-card" style="top: {{toolbarTop + toolbarHeight + 20}}px;" catchtap="noop">
-      <view class="more-menu-row" wx:if="{{!post.isPrompt}}" data-action="reply" bindtap="runMoreMenuAction">
+      <view class="more-menu-row" data-action="reply" bindtap="runMoreMenuAction">
         <text class="more-menu-label">写回应</text>
         <text class="more-menu-icon ri-mic-line"></text>
       </view>

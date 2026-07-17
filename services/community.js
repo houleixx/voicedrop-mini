@@ -300,6 +300,14 @@ async function feed(shareId) {
   return normalizeFeedResult(res.statusCode, res.data)
 }
 
+async function feedStates(shareIds) {
+  const ids = (shareIds || []).map(String).filter(Boolean)
+  if (!ids.length) return {}
+  const res = await http.postJson(`${api.agentBase()}/feed/state`, auth.bearer(), { share_ids: ids })
+  if (res.statusCode < 200 || res.statusCode >= 300) return {}
+  return res.data && res.data.states || {}
+}
+
 function normalizeFeedResult(statusCode, data) {
   const code = Number(statusCode) || 0
   const body = data || {}
@@ -346,6 +354,7 @@ module.exports = {
   unshare,
   report,
   feed,
+  feedStates,
   normalizeFeedResult,
   engage
 }

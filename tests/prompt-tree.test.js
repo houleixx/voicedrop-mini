@@ -33,3 +33,23 @@ test('menu filters anchors and system edits fork in place', () => {
   assert.equal(fork.forkedFrom, 'sys_concise')
   assert.equal(fork.origin, 'custom')
 })
+
+test('import provenance survives cache and server serialization', () => {
+  const imported = {
+    id: 'p_imported',
+    type: 'action',
+    label: '植物和光斑合影',
+    origin: 'user',
+    prompt: '保持人物不变，只改变视觉风格。',
+    appliesTo: ['image'],
+    kind: 'image',
+    importedFrom: '3295225'
+  }
+  const [decoded] = tree.decodeItems({ schema: 1, items: [imported] }).items
+
+  assert.equal(decoded.importedFrom, '3295225')
+  assert.equal(tree.rawItems([decoded])[0].importedFrom, '3295225')
+  assert.equal(tree.containsImport([decoded], '3295225'), true)
+  assert.equal(tree.containsImport([{ id: 'g', type: 'group', children: [decoded] }], '3295225'), true)
+  assert.equal(tree.containsImport([decoded], '7654321'), false)
+})

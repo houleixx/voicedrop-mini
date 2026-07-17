@@ -8,6 +8,7 @@ function cloneNode(node) {
     ...(node && Array.isArray(node.appliesTo) ? { appliesTo: node.appliesTo.map(String) } : {}),
     ...(node && node.kind != null ? { kind: String(node.kind) } : {}),
     ...(node && node.forkedFrom != null ? { forkedFrom: String(node.forkedFrom) } : {}),
+    ...(node && node.importedFrom != null ? { importedFrom: String(node.importedFrom) } : {}),
     ...(node && node.type === 'group' ? { children: (node.children || []).map(cloneNode) } : {})
   }
 }
@@ -26,6 +27,7 @@ function rawItem(node) {
     : { ref: node.id }
   const out = { id: node.id, type: node.type, label: node.label }
   if (node.forkedFrom) out.forkedFrom = node.forkedFrom
+  if (node.importedFrom) out.importedFrom = node.importedFrom
   if (node.type === 'group') out.children = rawItems(node.children || [])
   else {
     out.prompt = node.prompt || ''
@@ -105,6 +107,12 @@ function flattenIds(items) {
   return (items || []).flatMap((node) => [node.id, ...flattenIds(node.children || [])])
 }
 
+function containsImport(items, code) {
+  const target = String(code || '')
+  if (!target) return false
+  return (items || []).some((node) => node.importedFrom === target || containsImport(node.children || [], target))
+}
+
 function menuNode(node, anchor) {
   if (node.type === 'group') {
     const children = (node.children || []).map((child) => menuNode(child, anchor)).filter(Boolean)
@@ -145,4 +153,4 @@ function mergeCodeInput(previous, incoming) {
   return extractShareCode(next) || oldValue
 }
 
-module.exports = { cloneNode, clone, decodeItems, rawItems, fork, newUserId, replace, remove, append, move, flattenIds, menu, extractShareCode, mergeCodeInput }
+module.exports = { cloneNode, clone, decodeItems, rawItems, fork, newUserId, replace, remove, append, move, flattenIds, containsImport, menu, extractShareCode, mergeCodeInput }

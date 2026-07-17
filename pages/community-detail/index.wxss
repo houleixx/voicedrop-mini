@@ -64,6 +64,10 @@
   color: #d8593b;
 }
 
+.icon-only-button.fed {
+  color: #d49b37;
+}
+
 .action-icon {
   width: 42rpx;
   height: 42rpx;
@@ -82,6 +86,16 @@
   letter-spacing: 0;
   line-height: 42rpx;
   text-align: center;
+}
+
+.prompt-more-button {
+  color: #ffffff;
+  background: #282520;
+  box-shadow: none;
+}
+
+.prompt-more-button .more-icon {
+  color: #ffffff;
 }
 
 .article-head {
@@ -470,41 +484,138 @@
   text-align: center;
 }
 
-.prompt-detail-badge {
-  align-self: flex-start;
-  margin-bottom: 14rpx;
-  padding: 6rpx 18rpx;
-  border-radius: 999rpx;
-  color: #6f5529;
-  background: #f4dfac;
-  font-size: 24rpx;
-  font-weight: 700;
-}
-
-.prompt-collect-card {
+.prompt-meta {
   display: flex;
+  margin-top: 20rpx;
+  align-items: center;
+  gap: 18rpx;
+}
+
+.prompt-author,
+.prompt-date {
+  font-size: 28rpx;
+  line-height: 1.4;
+}
+
+.prompt-author {
+  color: #d8593b;
+}
+
+.prompt-date {
+  color: #a7a098;
+}
+
+.prompt-detail-content {
+  padding: 0 10rpx calc(36rpx + env(safe-area-inset-bottom));
+}
+
+.prompt-share-code-block {
+  display: flex;
+  margin: 22rpx 0 56rpx;
   flex-direction: column;
-  margin-bottom: 24rpx;
+  align-items: center;
 }
 
-.prompt-code-label {
-  color: #6f5529;
-  font-size: 26rpx;
-  font-weight: 700;
+.prompt-share-code-label {
+  color: #aaa49d;
+  font-size: 28rpx;
+  line-height: 1.4;
+  text-align: center;
 }
 
-.prompt-usage {
-  margin-top: 14rpx;
-  color: #8a7b63;
-  font-size: 25rpx;
+.prompt-share-code {
+  display: block;
+  margin-top: 18rpx;
+  padding-left: 16rpx;
+  color: #292620;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 76rpx;
+  font-weight: 500;
+  letter-spacing: 16rpx;
+  line-height: 1.18;
+  text-align: center;
+}
+
+.prompt-body-panel {
+  padding: 26rpx 28rpx;
+  border-radius: 22rpx;
+  background: #f0ede7;
+}
+
+.prompt-body-text {
+  display: block;
+  color: #302d28;
+  font-size: 32rpx;
+  line-height: 1.72;
+  white-space: pre-wrap;
+}
+
+.prompt-body-text + .prompt-body-text,
+.prompt-body-image + .prompt-body-text,
+.prompt-body-text + .prompt-body-image {
+  margin-top: 24rpx;
+}
+
+.prompt-body-image {
+  display: block;
+  width: 100%;
+  margin-top: 24rpx;
+  border-radius: 14rpx;
+}
+
+.prompt-help {
+  margin-top: 36rpx;
+}
+
+.prompt-help-title {
+  display: block;
+  color: #302d28;
+  font-size: 31rpx;
+  font-weight: 800;
   line-height: 1.5;
 }
 
-.prompt-collect-button {
-  width: 100%;
-  margin-top: 24rpx;
-  color: #ffffff;
-  background: #d8593b;
+.prompt-help-copy {
+  display: block;
+  margin-top: 10rpx;
+  color: #99938a;
   font-size: 28rpx;
+  line-height: 1.72;
+}
+
+.prompt-collect-button {
+  display: flex;
+  width: 100%;
+  height: 104rpx;
+  margin-top: 38rpx;
+  padding: 0 28rpx;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  border-radius: 18rpx;
+  color: #ffffff;
+  background: #df583b;
+  font-size: 32rpx;
   font-weight: 700;
+  line-height: 104rpx;
+}
+
+.prompt-collect-button.is-imported {
+  background: #b8afa4;
+}
+
+.prompt-collect-button[disabled] {
+  color: #ffffff;
+  opacity: 1;
+}
+
+.prompt-collect-button::after {
+  border: 0;
+}
+
+.prompt-collect-icon {
+  color: #ffffff;
+  font-size: 36rpx;
+  font-weight: 400;
+  line-height: 1;
 }

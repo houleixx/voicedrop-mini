@@ -20,6 +20,9 @@ function freshCommunityDetailPage(routes, currentCommunityPost) {
     removeStorageSync: (key) => { delete storage[key] },
     getSetting: ({ success }) => success({ authSetting: { 'scope.record': true } }),
     authorize: ({ success }) => success(),
+    showLoading: () => {},
+    hideLoading: () => {},
+    showToast: () => {},
     request: (options) => {
       requests.push(options)
       const hit = routes.find((route) => options.url.endsWith(route.path) && (!route.method || route.method === options.method))
@@ -215,6 +218,55 @@ test('community detail starts with article body hidden behind loading state', ()
   assert.equal(page.data.loading, true)
   assert.deepEqual(page.data.sections, [])
   assert.deepEqual(page.data.replies, [])
+  assert.equal(page.data.promptImported, false)
+  assert.equal(page.data.promptImporting, false)
+})
+
+test('community prompt detail uses its own iOS-aligned layout without replacing ordinary article markup', () => {
+  const fs = require('node:fs')
+  const path = require('node:path')
+  const wxml = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxml'), 'utf8')
+  const wxss = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxss'), 'utf8')
+
+  assert.match(wxml, /class="prompt-detail-content" wx:if="\{\{post\.isPrompt\}\}"/)
+  assert.match(wxml, /一条 VoiceDrop 提示词 · 分享码/)
+  assert.match(wxml, /用 \{\{post\.promptCode\}\} 改这段/)
+  assert.match(wxml, /收下这条提示词/)
+  assert.match(wxml, /promptImported \? '已收下'/)
+  assert.match(wxml, /<block wx:else>[\s\S]*class="article card"/)
+  assert.match(wxml, /class="more-menu-row" data-action="reply"/)
+  assert.doesNotMatch(wxml, /prompt-detail-badge|prompt-collect-card/)
+  assert.match(wxss, /\.prompt-share-code\s*\{[\s\S]*letter-spacing:\s*16rpx;/)
+  assert.match(wxss, /\.prompt-body-panel\s*\{[\s\S]*background:\s*#f0ede7;/)
+  assert.match(wxss, /\.prompt-more-button\s*\{[\s\S]*background:\s*#282520;/)
+})
+
+test('community prompt collect mirrors iOS imported state and disables repeat imports', async () => {
+  const page = freshCommunityDetailPage([], null)
+  const promptStore = require('../services/prompt-store')
+  const toasts = []
+  let imports = 0
+  promptStore.importCode = async () => {
+    imports += 1
+    return { ok: true, already: false }
+  }
+  global.wx.showToast = (options) => toasts.push(options)
+  const ctx = {
+    data: {
+      post: { isPrompt: true, promptCode: '3295225' },
+      promptImported: false,
+      promptImporting: false
+    },
+    setData(update) { Object.assign(this.data, update) }
+  }
+
+  await page.collectPrompt.call(ctx)
+  await page.collectPrompt.call(ctx)
+
+  assert.equal(imports, 1)
+  assert.equal(ctx.data.promptImported, true)
+  assert.equal(ctx.data.promptImporting, false)
+  assert.equal(toasts[0].title, '已加入你的提示词')
 })
 
 test('community detail opens custom more menu and routes actions', async () => {
@@ -389,7 +441,8 @@ test('community detail tip action feeds article like Android', async () => {
   global.wx.showToast = (options) => toasts.push(options)
   global.wx.redirectTo = ({ url }) => redirects.push(url)
   const ctx = {
-    data: { shareId: 'share-1' }
+    data: { shareId: 'share-1', fed: false, feeding: false },
+    setData(update) { Object.assign(this.data, update) }
   }
 
   await page.tip.call(ctx)
@@ -416,7 +469,11 @@ test('community detail tip action mirrors Android feed failure messages', async 
     ], null)
     const toasts = []
     global.wx.showToast = (options) => toasts.push(options)
-    await page.tip.call({ data: { shareId: `share-${name}` } })
+    const ctx = {
+      data: { shareId: `share-${name}`, fed: false, feeding: false },
+      setData(update) { Object.assign(this.data, update) }
+    }
+    await page.tip.call(ctx)
     assert.equal(toasts[0].title, expected)
   }
 })
