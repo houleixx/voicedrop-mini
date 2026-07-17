@@ -116,8 +116,8 @@
         <text>正在加载...</text>
       </view>
       <view wx:elif="{{communityPosts.length === 0}}" class="empty card">
-        <text class="empty-title">社区暂无文章</text>
-        <text class="empty-sub">稍后刷新，或先分享自己的文章。</text>
+        <text class="empty-title">{{communityFeedTab === 'prompts' ? '社区暂无提示词' : '社区暂无文章'}}</text>
+        <text class="empty-sub">{{communityFeedTab === 'prompts' ? '稍后刷新，或先分享自己的提示词。' : '稍后刷新，或先分享自己的文章。'}}</text>
       </view>
 
       <view wx:else class="community-post-list">

@@ -222,7 +222,9 @@ function normalizePost(raw) {
   post.kind = trim(post.kind)
   post.promptCode = trim(post.promptCode)
   post.appliesTo = Array.isArray(post.appliesTo) ? post.appliesTo.map(trim).filter(Boolean) : []
-  post.isPrompt = post.kind === 'prompt' && Boolean(post.promptCode)
+  // The unified /reco/feed only carries the lightweight `kind` field.
+  // promptCode is loaded from /community/get/<shareId> when opening detail.
+  post.isPrompt = post.kind === 'prompt'
   post.updatedAt = post.updatedAt != null ? post.updatedAt : post.firstSharedAt
   post.count = Number(post.count) || 0
   post.mine = Boolean(post.mine)
