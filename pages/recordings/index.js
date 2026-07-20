@@ -83,7 +83,10 @@ Page({
     this.createStatusSession()
     this.createCommandSession()
     this.load()
-    if (this.data.activeTab === 'community') this.loadCommunity()
+    if (this.data.activeTab === 'community') {
+      const restored = this.restoreCachedCommunityFeed()
+      this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
+    }
   },
 
   onShow() {
@@ -115,7 +118,9 @@ Page({
 
   onUnload() {
     audioConsentFlow.dispose(this)
+    this._communityLoadGeneration = (this._communityLoadGeneration || 0) + 1
     this.recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
+    this.recordMetaLoadId = (this.recordMetaLoadId || 0) + 1
     if (this.statusSession) this.statusSession.close()
     if (this.commandSession) this.commandSession.close()
     if (this.asrSession) this.asrSession.close()
@@ -159,7 +164,8 @@ Page({
     if (pending === this.data.activeTab) return
     this.setData({ activeTab: pending === 'community' ? 'community' : 'recordings' })
     if (this.data.activeTab === 'community') {
-      this.loadCommunity(this.data.communityLoaded ? { silent: true, keepDataOnError: true } : undefined)
+      const restored = this.data.communityLoaded || this.restoreCachedCommunityFeed()
+      this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
   },
 
@@ -188,7 +194,8 @@ Page({
       records: activeTab === 'recordings' ? this.commandRecordsFor(this.data.allRecords, '') : this.data.records
     })
     if (activeTab === 'community') {
-      this.loadCommunity(this.data.communityLoaded ? { silent: true, keepDataOnError: true } : undefined)
+      const restored = this.data.communityLoaded || this.restoreCachedCommunityFeed()
+      this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
     if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
   },
@@ -284,6 +291,8 @@ Page({
       const filteredRecords = this.commandRecordsFor(recordsWithRefs, selectedTag)
       const recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
       this.recordCoverLoadId = recordCoverLoadId
+      const recordMetaLoadId = (this.recordMetaLoadId || 0) + 1
+      this.recordMetaLoadId = recordMetaLoadId
       const currentHomeTab = this.data.activeTab === 'community'
         ? 'community'
         : (selectedTag ? `tag:${selectedTag}` : 'recordings')
@@ -299,6 +308,7 @@ Page({
         error: ''
       })
       this.loadRecordingCovers(recordsWithRefs, recordCoverLoadId)
+      this.enrichRecordingMeta(records, recordMetaLoadId)
       this.publishPendingReplies(records)
       if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
       return true
@@ -310,6 +320,36 @@ Page({
     } finally {
       this.topLevelUiRendered = true
       if (!silent) this.setData({ loading: false })
+    }
+  },
+
+  async enrichRecordingMeta(records, loadId) {
+    if (!library.enrichArticleMeta) return
+    try {
+      await library.enrichArticleMeta(records)
+      if (loadId !== this.recordMetaLoadId) return
+      const selectedTag = this.selectedTagFor(records)
+      const homeTags = recordingUtil.tagsFromRecords(records)
+      const homeTabs = this.homeTabsFor(homeTags)
+      const recordsWithRefs = this.preserveRecordingCovers(this.assignCommandRefs(records))
+      const filteredRecords = this.commandRecordsFor(recordsWithRefs, selectedTag)
+      const currentHomeTab = this.data.activeTab === 'community'
+        ? 'community'
+        : (selectedTag ? `tag:${selectedTag}` : 'recordings')
+      const recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
+      this.recordCoverLoadId = recordCoverLoadId
+      this.setData({
+        allRecords: recordsWithRefs,
+        homeTags,
+        homeTabs,
+        selectedTag,
+        selectedTagMissing: Boolean(selectedTag && !homeTags.includes(selectedTag)),
+        currentHomeTab,
+        records: filteredRecords
+      })
+      this.loadRecordingCovers(recordsWithRefs, recordCoverLoadId)
+      if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
+    } catch (_) {
     }
   },
 
@@ -369,7 +409,35 @@ Page({
     if (stem) this.updateRecordingCover(stem, '')
   },
 
-  async loadCommunity(options) {
+  restoreCachedCommunityFeed() {
+    const loaded = community.cachedFeed && community.cachedFeed()
+    if (!loaded || !loaded.latest || !loaded.latest.length) return false
+    const feed = community.filterFeed(loaded,
+      (post) => !blockStore.isBlocked(post.author || post.authorName || ''))
+    this._communityFeed = feed
+    if (feed.liked && feed.liked.length) prefs.setLikedCommunityPosts(new Set(feed.liked))
+    const postData = this.communityPostData(feed, this.data.communityFeedTab)
+    this.setData({
+      ...postData,
+      communityLoaded: true,
+      communityLoading: false,
+      communityError: ''
+    })
+    return true
+  },
+
+  loadCommunity(options) {
+    if (this._communityLoadPromise) return this._communityLoadPromise
+    const generation = (this._communityLoadGeneration || 0) + 1
+    this._communityLoadGeneration = generation
+    const task = this.fetchCommunity(options, generation)
+    this._communityLoadPromise = task
+    return task.finally(() => {
+      if (this._communityLoadPromise === task) this._communityLoadPromise = null
+    })
+  },
+
+  async fetchCommunity(options, generation) {
     const silent = Boolean(options && options.silent)
     const keepDataOnError = Boolean(options && options.keepDataOnError)
     if (!silent) this.setData({ communityLoading: true, communityError: '' })
@@ -377,6 +445,7 @@ Page({
       const loaded = await community.loadFeed()
       const feed = community.filterFeed(loaded,
         (post) => !blockStore.isBlocked(post.author || post.authorName || ''))
+      if (generation !== this._communityLoadGeneration) return false
       this._communityFeed = feed
       if (feed.liked && feed.liked.length) prefs.setLikedCommunityPosts(new Set(feed.liked))
       const postData = this.communityPostData(feed, this.data.communityFeedTab)
@@ -387,12 +456,13 @@ Page({
       })
       return true
     } catch (error) {
+      if (generation !== this._communityLoadGeneration) return false
       if (!keepDataOnError || !this.data.communityPosts.length) {
         this.setData({ communityError: this.loadErrorMessage(error) })
       }
       return false
     } finally {
-      if (!silent) this.setData({ communityLoading: false })
+      if (!silent && generation === this._communityLoadGeneration) this.setData({ communityLoading: false })
     }
   },
 
@@ -461,7 +531,10 @@ Page({
       onConfirm: (id, text) => {
         this.confirmLibraryCommand(id, text)
       },
-      onUpdate: () => this.load({ silent: true, keepDataOnError: true }),
+      onUpdate: () => {
+        if (library.invalidateArticleCaches) library.invalidateArticleCaches()
+        this.load({ silent: true, keepDataOnError: true })
+      },
       onState: (state) => {
         this.setData({ commandState: state })
       },

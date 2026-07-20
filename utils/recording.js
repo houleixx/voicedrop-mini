@@ -116,6 +116,17 @@ function fromRemoteFile(file, names) {
   return rec
 }
 
+function fromRecordingIndex(item) {
+  const source = item || {}
+  const rec = fromRemoteFile(source)
+  rec.hasArticles = Boolean(source.hasArticles)
+  rec.isEmpty = Boolean(source.isEmpty)
+  rec.blocked = Boolean(source.blocked)
+  rec.hasTags = Boolean(source.hasTags)
+  rec.statusLabel = statusLabel(rec)
+  return rec
+}
+
 function durationTag(seconds) {
   const total = Math.max(0, Math.round(Number(seconds) || 0))
   return `${Math.floor(total / 60)}m${total % 60}s`
@@ -174,6 +185,7 @@ module.exports = {
   timeLabel,
   statusLabel,
   fromRemoteFile,
+  fromRecordingIndex,
   durationTag,
   period,
   makeName,

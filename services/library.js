@@ -4,22 +4,41 @@ const http = require('./request')
 const article = require('../utils/article')
 const recording = require('../utils/recording')
 
-const titleCache = {}
-const tagsCache = {}
+const META_CACHE_PREFIX = 'voicedrop.library.meta.v1.'
+const META_CONCURRENCY = 5
+let metaCacheIdentity = ''
+let titleCache = {}
+let tagsCache = {}
+let coverCache = {}
 let cachedScope = ''
 let cachedScopeToken = ''
 
 async function list() {
+  ensureMetaCache()
+  let records = await indexedRecordings().catch(() => null)
+  if (!records) records = await legacyRecordings()
+  records.sort((a, b) => (b.uploaded || '').localeCompare(a.uploaded || '') || b.audioName.localeCompare(a.audioName))
+  applyCachedArticleMeta(records)
+  return records
+}
+
+async function indexedRecordings() {
+  const res = await http.get(`${api.filesBase()}/recordings`, auth.bearer())
+  if (res.statusCode < 200 || res.statusCode >= 300) return null
+  if (!res.data || !Array.isArray(res.data.recordings)) return null
+  return res.data.recordings
+    .filter((item) => recording.isRecordingFile(item && item.name))
+    .map(recording.fromRecordingIndex)
+}
+
+async function legacyRecordings() {
   const res = await http.get(`${api.filesBase()}/list`, auth.bearer())
   if (res.statusCode < 200 || res.statusCode >= 300) throw new Error(`加载失败 HTTP ${res.statusCode}`)
   const files = (res.data && res.data.files) || []
   const names = new Set(files.map((item) => item.name))
-  const records = files
+  return files
     .filter((item) => recording.isRecordingFile(item.name && item.name.split('/').pop()))
     .map((item) => recording.fromRemoteFile(item, names))
-    .sort((a, b) => (b.uploaded || '').localeCompare(a.uploaded || '') || b.audioName.localeCompare(a.audioName))
-  await fillArticleMeta(records)
-  return records
 }
 
 async function fetchDoc(stem) {
@@ -35,33 +54,110 @@ async function fetchDocByArticleKey(articleKey) {
   return fetchDoc(stem)
 }
 
-async function fillArticleMeta(records) {
-  await Promise.all((records || []).map(async (rec) => {
-    if (!rec || !rec.hasArticles) return
+async function enrichArticleMeta(records) {
+  ensureMetaCache()
+  const pending = (records || []).filter((rec) => rec && rec.hasArticles && !hasCompleteArticleMeta(rec))
+  if (!pending.length) return records || []
+  await mapLimit(pending, META_CONCURRENCY, async (rec) => {
     const key = recording.articleKey(rec.stem)
-    if (!rec.articleTitle && titleCache[key]) rec.articleTitle = titleCache[key]
     const doc = await fetchDoc(rec.stem).catch(() => null)
     if (!doc) return
-    if (!rec.articleTitle && doc.articles && doc.articles.length) {
-      rec.articleTitle = doc.articles[0].title || ''
-      if (rec.articleTitle) titleCache[key] = rec.articleTitle
-    }
-    if (Array.isArray(doc.tags)) {
-      rec.tags = doc.tags
-      if (doc.tags.length) tagsCache[key] = doc.tags
-      else delete tagsCache[key]
-    } else if ((!rec.tags || !rec.tags.length) && tagsCache[key]) {
-      rec.tags = tagsCache[key]
-    }
+    const title = doc.articles && doc.articles.length ? doc.articles[0].title || '' : ''
+    rec.articleTitle = title
+    titleCache[key] = title
+    rec.tags = Array.isArray(doc.tags) ? doc.tags : []
+    tagsCache[key] = rec.tags
+    let cover = ''
     for (const item of doc.articles || []) {
       const coverPhotoKey = article.firstPhotoKey(item.body, doc.photos)
       if (coverPhotoKey) {
-        rec.coverPhotoKey = coverPhotoKey
+        cover = coverPhotoKey
         break
       }
     }
+    rec.coverPhotoKey = cover
+    coverCache[key] = cover
     rec.rowTitle = recording.rowTitle(rec)
+  })
+  persistMetaCache()
+  return records || []
+}
+
+function applyCachedArticleMeta(records) {
+  for (const rec of records || []) {
+    if (!rec || !rec.hasArticles) continue
+    const key = recording.articleKey(rec.stem)
+    if (Object.prototype.hasOwnProperty.call(titleCache, key)) rec.articleTitle = titleCache[key]
+    if (Object.prototype.hasOwnProperty.call(tagsCache, key)) rec.tags = tagsCache[key]
+    if (Object.prototype.hasOwnProperty.call(coverCache, key)) rec.coverPhotoKey = coverCache[key]
+    rec.rowTitle = recording.rowTitle(rec)
+  }
+}
+
+function hasCompleteArticleMeta(rec) {
+  const key = recording.articleKey(rec.stem)
+  return Object.prototype.hasOwnProperty.call(titleCache, key) &&
+    Object.prototype.hasOwnProperty.call(tagsCache, key) &&
+    Object.prototype.hasOwnProperty.call(coverCache, key)
+}
+
+async function mapLimit(items, limit, worker) {
+  const queue = (items || []).slice()
+  const count = Math.min(Math.max(1, limit || 1), queue.length)
+  await Promise.all(Array.from({ length: count }, async () => {
+    while (queue.length) await worker(queue.shift())
   }))
+}
+
+function metaIdentity() {
+  return auth.anonId ? auth.anonId() : 'default'
+}
+
+function ensureMetaCache() {
+  const identity = metaIdentity()
+  if (identity === metaCacheIdentity) return
+  metaCacheIdentity = identity
+  titleCache = {}
+  tagsCache = {}
+  coverCache = {}
+  try {
+    const raw = wx.getStorageSync(`${META_CACHE_PREFIX}${identity}`)
+    const parsed = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+    titleCache = parsed.titles && typeof parsed.titles === 'object' ? parsed.titles : {}
+    tagsCache = parsed.tags && typeof parsed.tags === 'object' ? parsed.tags : {}
+    coverCache = parsed.covers && typeof parsed.covers === 'object' ? parsed.covers : {}
+  } catch (_) {
+  }
+}
+
+function persistMetaCache() {
+  if (!metaCacheIdentity) return
+  try {
+    wx.setStorageSync(`${META_CACHE_PREFIX}${metaCacheIdentity}`, JSON.stringify({
+      titles: titleCache,
+      tags: tagsCache,
+      covers: coverCache
+    }))
+  } catch (_) {
+  }
+}
+
+function invalidateArticleCaches(stems) {
+  ensureMetaCache()
+  const values = Array.isArray(stems) ? stems : []
+  if (!values.length) {
+    titleCache = {}
+    tagsCache = {}
+    coverCache = {}
+  } else {
+    for (const stem of values) {
+      const key = recording.articleKey(stem)
+      delete titleCache[key]
+      delete tagsCache[key]
+      delete coverCache[key]
+    }
+  }
+  persistMetaCache()
 }
 
 async function deleteRecording(rec) {
@@ -78,6 +174,7 @@ async function deleteRecording(rec) {
 async function deleteArticle(rec) {
   const keys = [recording.articleKey(rec.stem), recording.srtKey(rec.stem), recording.emptyKey(rec.stem), recording.tagsKey(rec.stem)]
   await Promise.all(keys.map((key) => http.del(`${api.filesBase()}/file/${api.path(key)}`, auth.bearer()).catch(() => null)))
+  invalidateArticleCaches([rec.stem])
   return true
 }
 
@@ -122,6 +219,7 @@ async function restyleResult(rec, styleVersion) {
   const body = restyleRequestBody(rec.stem, styleVersion)
   const res = await http.postJson(`${api.agentBase()}/restyle`, auth.bearer(), body)
   const ok = res.statusCode >= 200 && res.statusCode < 300 && (!res.data || res.data.ok !== false)
+  if (ok) invalidateArticleCaches([rec.stem])
   return {
     ok,
     statusCode: res.statusCode,
@@ -161,6 +259,7 @@ async function saveDoc(stem, doc) {
   if (res.statusCode < 200 || res.statusCode >= 300) throw new Error(`保存文章失败 HTTP ${res.statusCode}`)
   const saved = await fetchDoc(stem)
   const fallback = !(saved && saved.articles && saved.articles.length)
+  invalidateArticleCaches([stem])
   return fallback ? doc : saved
 }
 
@@ -176,6 +275,7 @@ async function saveArticles(stem, articles) {
   const payload = Object.assign({}, raw, { articles: nextArticles })
   const saved = await http.putJson(url, auth.bearer(), payload)
   if (saved.statusCode < 200 || saved.statusCode >= 300) throw new Error(`保存文章失败 HTTP ${saved.statusCode}`)
+  invalidateArticleCaches([stem])
   return article.parseDoc(payload)
 }
 
@@ -368,6 +468,8 @@ function uploadPhotoRaw(filePath, key) {
 
 module.exports = {
   list,
+  enrichArticleMeta,
+  invalidateArticleCaches,
   fetchDoc,
   fetchDocByArticleKey,
   deleteRecording,

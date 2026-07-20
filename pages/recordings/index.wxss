@@ -44,12 +44,19 @@
 }
 
 .community-feed-tab {
+  display: flex;
+  box-sizing: border-box;
+  height: 100%;
   margin-right: 36rpx;
+  padding-top: 16rpx;
+  align-items: center;
   color: #8a8175;
   font-size: 30rpx;
   font-weight: 400;
+}
+
+.community-feed-tab-label {
   line-height: 1;
-  transform: translateY(4rpx);
 }
 
 .community-feed-tab.active {

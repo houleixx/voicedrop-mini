@@ -183,7 +183,10 @@ test('community feed mirrors Android masonry tabs and keeps filters above pull r
   assert.match(wxml, /data-feed-tab="latest"/)
   assert.match(wxml, /data-feed-tab="replies"/)
   assert.match(css, /\.community-feed-tabs\s*\{[^}]*height:\s*88rpx;[^}]*padding:\s*0 32rpx;[^}]*align-items:\s*center;/s)
-  assert.match(css, /\.community-feed-tab\s*\{[^}]*font-size:\s*30rpx;[^}]*line-height:\s*1;[^}]*transform:\s*translateY\(4rpx\);/s)
+  assert.match(wxml, /class="community-feed-tab-label">推荐<\/text>/)
+  assert.match(css, /\.community-feed-tab\s*\{[^}]*display:\s*flex;[^}]*box-sizing:\s*border-box;[^}]*height:\s*100%;[^}]*padding-top:\s*16rpx;[^}]*align-items:\s*center;[^}]*font-size:\s*30rpx;/s)
+  assert.match(css, /\.community-feed-tab-label\s*\{[^}]*line-height:\s*1;/s)
+  assert.doesNotMatch(css, /\.community-feed-tab\s*\{[^}]*transform:/s)
   assert.match(wxml, /top: \{\{activeTab === 'community' \? communityScrollContentTop : scrollContentTop\}\}px/)
   assert.match(wxml, /class="community-card-image"/)
   assert.match(wxml, /class="community-like-icon ri-heart-fill"/)
@@ -293,6 +296,98 @@ test('switching back to an already loaded community refreshes the unified feed',
   assert.deepEqual(calls, [{ silent: true, keepDataOnError: true }])
 })
 
+test('community restores a cached snapshot before starting its silent refresh', () => {
+  const community = require('../services/community')
+  const originalCachedFeed = community.cachedFeed
+  community.cachedFeed = () => community.normalizeUnifiedFeed({
+    posts: [{ shareId: 'cached', title: '缓存帖子', firstSharedAt: 1 }],
+    order: ['cached']
+  })
+  try {
+    const { page } = freshRecordingsPage({
+      getStorageSync() { return '' },
+      setStorageSync() {},
+      removeStorageSync() {}
+    })
+    const ctx = Object.assign({}, page, {
+      data: Object.assign({}, page.data, { communityLoading: true }),
+      setData(update) { Object.assign(this.data, update) }
+    })
+
+    assert.equal(page.restoreCachedCommunityFeed.call(ctx), true)
+    assert.equal(ctx.data.communityLoaded, true)
+    assert.equal(ctx.data.communityLoading, false)
+    assert.deepEqual(ctx.data.communityPosts.map((post) => post.shareId), ['cached'])
+  } finally {
+    community.cachedFeed = originalCachedFeed
+  }
+})
+
+test('community combines overlapping refreshes into one network request', async () => {
+  const community = require('../services/community')
+  const originalLoadFeed = community.loadFeed
+  let calls = 0
+  let release
+  community.loadFeed = () => {
+    calls += 1
+    return new Promise((resolve) => { release = resolve })
+  }
+  try {
+    const { page } = freshRecordingsPage({
+      getStorageSync() { return '' },
+      setStorageSync() {},
+      removeStorageSync() {}
+    })
+    const ctx = Object.assign({}, page, {
+      data: Object.assign({}, page.data, { communityLoaded: true }),
+      setData(update) { Object.assign(this.data, update) }
+    })
+    const options = { silent: true, keepDataOnError: true }
+    const first = page.loadCommunity.call(ctx, options)
+    const second = page.loadCommunity.call(ctx, options)
+
+    assert.equal(calls, 1)
+    release(community.normalizeUnifiedFeed({
+      posts: [{ shareId: 'fresh', firstSharedAt: 2 }],
+      order: ['fresh']
+    }))
+    await Promise.all([first, second])
+    assert.equal(ctx._communityLoadPromise, null)
+    assert.deepEqual(ctx.data.communityPosts.map((post) => post.shareId), ['fresh'])
+  } finally {
+    community.loadFeed = originalLoadFeed
+  }
+})
+
+test('community ignores a response after the page load generation is invalidated', async () => {
+  const community = require('../services/community')
+  const originalLoadFeed = community.loadFeed
+  let release
+  community.loadFeed = () => new Promise((resolve) => { release = resolve })
+  try {
+    const { page } = freshRecordingsPage({
+      getStorageSync() { return '' },
+      setStorageSync() {},
+      removeStorageSync() {}
+    })
+    const ctx = Object.assign({}, page, {
+      data: Object.assign({}, page.data),
+      setData(update) { Object.assign(this.data, update) }
+    })
+    const pending = page.loadCommunity.call(ctx)
+    ctx._communityLoadGeneration += 1
+    release(community.normalizeUnifiedFeed({
+      posts: [{ shareId: 'stale', firstSharedAt: 1 }],
+      order: ['stale']
+    }))
+
+    assert.equal(await pending, false)
+    assert.deepEqual(ctx.data.communityPosts, [])
+  } finally {
+    community.loadFeed = originalLoadFeed
+  }
+})
+
 test('record button floats only on the recordings tab', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/recordings/index.wxss'), 'utf8')
@@ -345,7 +440,7 @@ test('record button status shows active command feedback above the button', () =
   assert.match(js, /title:\s*'确认操作'/)
   assert.match(js, /confirmText:\s*'删除'/)
   assert.match(js, /cancelText:\s*'取消'/)
-  assert.match(js, /onUpdate:\s*\(\)\s*=>\s*this\.load\(\{\s*silent:\s*true,\s*keepDataOnError:\s*true\s*\}\)/)
+  assert.match(js, /onUpdate:\s*\(\)\s*=>\s*\{[\s\S]*library\.invalidateArticleCaches\(\)[\s\S]*this\.load\(\{\s*silent:\s*true,\s*keepDataOnError:\s*true\s*\}\)/)
   const transcriptStatus = ruleBody(css, '.fab-status.transcript')
   const transcriptArrow = ruleBody(css, '.fab-status.transcript::after')
   const queueStatus = ruleBody(css, '.fab-status.queue')

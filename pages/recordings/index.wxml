@@ -33,13 +33,13 @@
 
   <view wx:if="{{activeTab === 'community'}}" class="community-feed-tabs" style="top: {{scrollContentTop}}px;">
     <view class="community-feed-tab {{communityFeedTab === 'recommended' ? 'active' : ''}}"
-          data-feed-tab="recommended" bindtap="selectCommunityFeed">推荐</view>
+          data-feed-tab="recommended" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">推荐</text></view>
     <view class="community-feed-tab {{communityFeedTab === 'latest' ? 'active' : ''}}"
-          data-feed-tab="latest" bindtap="selectCommunityFeed">最新</view>
+          data-feed-tab="latest" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">最新</text></view>
     <view class="community-feed-tab {{communityFeedTab === 'replies' ? 'active' : ''}}"
-          data-feed-tab="replies" bindtap="selectCommunityFeed">回应</view>
+          data-feed-tab="replies" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">回应</text></view>
     <view class="community-feed-tab {{communityFeedTab === 'prompts' ? 'active' : ''}}"
-          data-feed-tab="prompts" bindtap="selectCommunityFeed">提示词</view>
+          data-feed-tab="prompts" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">提示词</text></view>
   </view>
 
   <scroll-view

@@ -295,6 +295,34 @@ test('community recommendation requests keep using the anonymous token after WeC
   }
 })
 
+test('community feed snapshot survives restart and stays isolated by anonymous account', () => {
+  const originalWx = global.wx
+  const storage = {}
+  const firstToken = 'anon_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+  const secondToken = 'anon_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+  global.wx = {
+    getStorageSync(key) { return storage[key] || '' },
+    setStorageSync(key, value) { storage[key] = value },
+    removeStorageSync(key) { delete storage[key] }
+  }
+  try {
+    storage['voicedrop.auth.anon'] = firstToken
+    community.storeFeedSnapshot({
+      posts: [{ shareId: 'cached', firstSharedAt: 1, likes: 2 }],
+      order: ['cached']
+    })
+    assert.equal(community.cachedFeed().recommended[0].shareId, 'cached')
+
+    storage['voicedrop.auth.anon'] = secondToken
+    assert.equal(community.cachedFeed(), null)
+
+    storage['voicedrop.auth.anon'] = firstToken
+    assert.equal(community.cachedFeed().likes.cached, 2)
+  } finally {
+    global.wx = originalWx
+  }
+})
+
 test('splits community cards greedily without changing feed order', () => {
   const cards = [
     { shareId: 'a', title: 'A' },

@@ -3,6 +3,8 @@ const auth = require('./auth')
 const http = require('./request')
 const article = require('../utils/article')
 
+const FEED_CACHE_PREFIX = 'voicedrop.community.feed.v1.'
+
 // The standalone reco Worker intentionally has no SESSION_SECRET and therefore
 // accepts the stable anon capability token, not a WeChat session JWT.
 function recoBearer() {
@@ -27,11 +29,15 @@ async function rank(posts) {
 }
 
 async function loadFeed() {
+  const identity = auth.anonId()
   try {
     const res = await http.get(`${api.recoBase()}/feed`, recoBearer())
     if (res.statusCode >= 200 && res.statusCode < 300) {
       const unified = normalizeUnifiedFeed(res.data)
-      if (unified.latest.length) return unified
+      if (unified.latest.length) {
+        storeFeedSnapshot(res.data, identity)
+        return unified
+      }
     }
   } catch (_) {
   }
@@ -44,6 +50,28 @@ async function loadFeed() {
     ranking = { order: posts.map((post) => post.shareId), liked: [], likes: {} }
   }
   return legacyFeed(posts, ranking)
+}
+
+function cachedFeed() {
+  try {
+    if (typeof wx === 'undefined' || typeof wx.getStorageSync !== 'function') return null
+    const raw = wx.getStorageSync(`${FEED_CACHE_PREFIX}${auth.anonId()}`)
+    if (!raw) return null
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw
+    const feed = normalizeUnifiedFeed(data)
+    return feed.latest.length ? feed : null
+  } catch (_) {
+    return null
+  }
+}
+
+function storeFeedSnapshot(data, identity) {
+  try {
+    if (typeof wx === 'undefined' || typeof wx.setStorageSync !== 'function') return
+    const key = `${FEED_CACHE_PREFIX}${identity || auth.anonId()}`
+    wx.setStorageSync(key, JSON.stringify(data || {}))
+  } catch (_) {
+  }
 }
 
 function normalizeUnifiedFeed(data) {
@@ -334,6 +362,8 @@ module.exports = {
   list,
   rank,
   loadFeed,
+  cachedFeed,
+  storeFeedSnapshot,
   normalizeUnifiedFeed,
   legacyFeed,
   postsForTab,

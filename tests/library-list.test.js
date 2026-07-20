@@ -55,7 +55,53 @@ function freshLibraryWithWx(routes, wxOverrides) {
   return library
 }
 
-test('library list fills recording row title and tags from article doc like Android', async () => {
+test('library list prefers the lightweight recordings index', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const library = freshLibraryWithWx([
+    {
+      path: '/recordings',
+      data: {
+        recordings: [{
+          name: `${stem}.m4a`,
+          uploaded: '2026-06-18T06:31:00Z',
+          hasArticles: false,
+          isEmpty: true,
+          blocked: false,
+          hasTags: false
+        }]
+      }
+    }
+  ])
+
+  const records = await library.list()
+
+  assert.equal(records.length, 1)
+  assert.equal(records[0].isEmpty, true)
+  assert.equal(records[0].statusLabel, '无语音')
+  assert.equal(library.__requests[0].url, 'https://jianshuo.dev/files/api/recordings')
+  assert.equal(library.__requests.some((request) => request.url.endsWith('/list')), false)
+})
+
+test('library list falls back to the legacy full list when the recordings index is unavailable', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const library = freshLibraryWithWx([
+    { path: '/recordings', statusCode: 404, data: {} },
+    {
+      path: '/list',
+      data: { files: [{ name: `${stem}.m4a`, uploaded: '2026-06-18T06:31:00Z' }] }
+    }
+  ])
+
+  const records = await library.list()
+
+  assert.equal(records.length, 1)
+  assert.deepEqual(
+    library.__requests.slice(0, 2).map((request) => request.url),
+    ['https://jianshuo.dev/files/api/recordings', 'https://jianshuo.dev/files/api/list']
+  )
+})
+
+test('library publishes recording rows before enriching title and tags', async () => {
   const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
   const library = freshLibraryWithWx([
     {
@@ -79,6 +125,11 @@ test('library list fills recording row title and tags from article doc like Andr
   const records = await library.list()
 
   assert.equal(records.length, 1)
+  assert.equal(records[0].rowTitle, '周四·下午')
+  assert.equal(library.__requests.some((request) => request.url.endsWith(`/articles/${stem}`)), false)
+
+  await library.enrichArticleMeta(records)
+
   assert.equal(records[0].rowTitle, '重新录一个音频')
   assert.deepEqual(records[0].tags, ['work', 'idea'])
 })
@@ -108,6 +159,7 @@ test('library list exposes the first article photo used by the recording like An
   ])
 
   const records = await library.list()
+  await library.enrichArticleMeta(records)
 
   assert.equal(records[0].coverPhotoKey, 'photos/session/second.jpg')
 })
@@ -143,10 +195,71 @@ test('library list does not keep stale tag cache after tags are removed', async 
   })
 
   const first = await library.list()
+  await library.enrichArticleMeta(first)
+  library.invalidateArticleCaches([stem])
   const second = await library.list()
+  await library.enrichArticleMeta(second)
 
   assert.deepEqual(first[0].tags, ['work'])
   assert.deepEqual(second[0].tags, [])
+})
+
+test('library persists complete article metadata and skips doc requests on a new service instance', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const storage = {}
+  const overrides = {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value }
+  }
+  const routes = [
+    {
+      path: '/recordings',
+      data: { recordings: [{ name: `${stem}.m4a`, hasArticles: true, isEmpty: false }] }
+    },
+    {
+      path: `/articles/${stem}`,
+      data: { articles: [{ title: '磁盘缓存标题', body: '正文' }], tags: [] }
+    }
+  ]
+
+  const firstLibrary = freshLibraryWithWx(routes, overrides)
+  const first = await firstLibrary.list()
+  await firstLibrary.enrichArticleMeta(first)
+  const secondLibrary = freshLibraryWithWx(routes, overrides)
+  const second = await secondLibrary.list()
+
+  assert.equal(second[0].rowTitle, '磁盘缓存标题')
+  assert.equal(secondLibrary.__requests.filter((request) => request.url.endsWith(`/articles/${stem}`)).length, 0)
+})
+
+test('library bounds cold-cache article enrichment to five concurrent requests', async () => {
+  const stems = Array.from({ length: 9 }, (_, index) =>
+    `VoiceDrop-2026-06-${String(index + 1).padStart(2, '0')}-143052-0m33s-Thu-Afternoon`)
+  let active = 0
+  let peak = 0
+  const library = freshLibraryWithWx([], {
+    request: (options) => {
+      if (options.url.endsWith('/recordings')) {
+        options.success({
+          statusCode: 200,
+          data: { recordings: stems.map((stem) => ({ name: `${stem}.m4a`, hasArticles: true })) }
+        })
+        return
+      }
+      active += 1
+      peak = Math.max(peak, active)
+      setTimeout(() => {
+        active -= 1
+        options.success({ statusCode: 200, data: { articles: [{ title: '标题', body: '正文' }], tags: [] } })
+      }, 2)
+    }
+  })
+
+  const records = await library.list()
+  await library.enrichArticleMeta(records)
+
+  assert.equal(records.length, 9)
+  assert.equal(peak, 5)
 })
 
 test('library fetches community article docs by article key like Android', async () => {
