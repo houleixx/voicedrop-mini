@@ -455,14 +455,20 @@ test('detail longpress actions fill exact image key and real text line', () => {
   const ctx = Object.assign({}, page, {
     data: { articleIndex: 2, longpressMenuOpen: true, longpressTarget: { kind: 'image', block: { key: 'photos/s/1-a.jpg' } } },
     setData(update) { Object.assign(this.data, update) },
-    enqueueInstruction(text, articleIndex) { enqueued.push({ text, articleIndex }) }
+    enqueueInstruction(text, articleIndex, images, anchor, itemId) { enqueued.push({ text, articleIndex, anchor, itemId }) }
   })
-  page.onLongpressPick.call(ctx, { detail: { node: { instruction: '重画 [[photo:{{KEY}}]]' } } })
-  assert.deepEqual(enqueued[0], { text: '重画 [[photo:photos/s/1-a.jpg]]', articleIndex: 2 })
+  page.onLongpressPick.call(ctx, { detail: { node: { id: 'sys_cartoon', instruction: '重画 [[photo:{{KEY}}]]' } } })
+  assert.deepEqual(enqueued[0], {
+    text: '重画 [[photo:photos/s/1-a.jpg]]', articleIndex: 2,
+    anchor: { type: 'image', key: 'photos/s/1-a.jpg' }, itemId: 'sys_cartoon'
+  })
 
   ctx.data.longpressTarget = { kind: 'text', block: { lineNo: 7, text: '他说"你好"然后离开这里' } }
-  page.onLongpressPick.call(ctx, { detail: { node: { instruction: '把第{{LINE}}行（{{QUOTE}}）变短' } } })
-  assert.deepEqual(enqueued[1], { text: "把第7行（他说'你好'然后离开这里）变短", articleIndex: 2 })
+  page.onLongpressPick.call(ctx, { detail: { node: { id: 'sys_concise', instruction: '把第{{LINE}}行（{{QUOTE}}）变短' } } })
+  assert.deepEqual(enqueued[1], {
+    text: "把第7行（他说'你好'然后离开这里）变短", articleIndex: 2,
+    anchor: { type: 'line', line: 7, text: '他说"你好"然后离开这里' }, itemId: 'sys_concise'
+  })
 })
 
 test('detail image instruction starts grace then making state for the exact photo key', () => {

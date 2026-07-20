@@ -37,6 +37,8 @@
       <text>去哪里找 AppID / AppSecret？</text>
       <text class="help-arrow">↗</text>
     </view>
+    <text class="input-note credential-help-steps">点上方入口复制公众平台后台地址，粘贴到浏览器打开；出现登录二维码时先截屏，再打开微信「扫一扫 → 右上角相册」选中截图，选择要绑定的公众号完成登录。进入「设置与开发 → 基本配置」：AppID 直接复制；AppSecret 需点「生成」（或「重置」）并由管理员扫码确认；同时把下方 IP 加入「IP 白名单」。</text>
+    <text wx:if="{{validationError}}" class="validation-error">{{validationError}}</text>
 
     <!-- IP Whitelist section -->
     <view class="divider" />

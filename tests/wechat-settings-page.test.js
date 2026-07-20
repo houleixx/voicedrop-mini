@@ -8,16 +8,17 @@ const root = path.join(__dirname, '..')
 function freshWechatSettingsPage(settingsOverrides, wxOverrides) {
   let page
   const settings = Object.assign({
-    WECHAT_CREDENTIAL_HELP_URL: 'https://developers.weixin.qq.com/doc/offiaccount/Basic_Information/Get_access_token.html',
+    WECHAT_CREDENTIAL_HELP_URL: 'https://developers.weixin.qq.com/console/',
     loadWechat: async () => ({}),
     saveWechat: async () => true,
     validateWechatCreds(appid, secret) {
       const cleanAppid = String(appid || '').trim()
       const cleanSecret = String(secret || '').trim()
-      if (!cleanAppid.startsWith('wx') || cleanAppid.length < 8) return 'AppID 格式不对'
-      if (cleanSecret.length < 16) return 'AppSecret 太短'
+      if (!/^wx[0-9A-Za-z]{16}$/.test(cleanAppid)) return 'AppID 格式不对'
+      if (!/^[0-9a-f]{32}$/.test(cleanSecret)) return 'AppSecret 格式不对'
       return ''
-    }
+    },
+    validateWechatRemote: async () => ''
   }, settingsOverrides || {})
 
   global.Page = (definition) => {
@@ -51,8 +52,8 @@ function pageContext(page, initialData) {
 test('wechat settings enables save only after valid remote-loaded credentials exist', async () => {
   const page = freshWechatSettingsPage({
     loadWechat: async () => ({
-      appid: 'wx123456789',
-      secret: '1234567890abcdef',
+      appid: 'wx1234567890abcdef',
+      secret: '0123456789abcdef0123456789abcdef',
       enabled: true
     })
   })
@@ -60,8 +61,8 @@ test('wechat settings enables save only after valid remote-loaded credentials ex
 
   await page.load.call(ctx)
 
-  assert.equal(ctx.data.appid, 'wx123456789')
-  assert.equal(ctx.data.secret, '1234567890abcdef')
+  assert.equal(ctx.data.appid, 'wx1234567890abcdef')
+  assert.equal(ctx.data.secret, '0123456789abcdef0123456789abcdef')
   assert.equal(ctx.data.enabled, true)
   assert.equal(ctx.data.canSave, true)
   assert.equal(ctx.data.wechatConfigured, true)
@@ -71,11 +72,11 @@ test('wechat settings recomputes save availability while editing credentials', (
   const page = freshWechatSettingsPage()
   const ctx = pageContext(page)
 
-  page.onInput.call(ctx, { currentTarget: { dataset: { key: 'appid' } }, detail: { value: 'wx123456789' } })
+  page.onInput.call(ctx, { currentTarget: { dataset: { key: 'appid' } }, detail: { value: 'wx1234567890abcdef' } })
   assert.equal(ctx.data.canSave, false)
   assert.equal(ctx.data.wechatConfigured, false)
 
-  page.onInput.call(ctx, { currentTarget: { dataset: { key: 'secret' } }, detail: { value: '1234567890abcdef' } })
+  page.onInput.call(ctx, { currentTarget: { dataset: { key: 'secret' } }, detail: { value: '0123456789abcdef0123456789abcdef' } })
   assert.equal(ctx.data.canSave, true)
   assert.equal(ctx.data.wechatConfigured, true)
 })
@@ -89,15 +90,15 @@ test('wechat settings marks credentials connected after successful remote save',
     }
   })
   const ctx = pageContext(page, {
-    appid: ' wx123456789 ',
-    secret: ' 1234567890abcdef ',
+    appid: ' wx1234567890abcdef ',
+    secret: ' 0123456789abcdef0123456789abcdef ',
     enabled: true,
     canSave: true
   })
 
   await page.save.call(ctx)
 
-  assert.deepEqual(saves, [{ appid: 'wx123456789', secret: '1234567890abcdef', enabled: true }])
+  assert.deepEqual(saves, [{ appid: 'wx1234567890abcdef', secret: '0123456789abcdef0123456789abcdef', enabled: true }])
   assert.equal(ctx.data.saving, false)
   assert.equal(ctx.data.canSave, true)
   assert.equal(ctx.data.wechatConfigured, true)
@@ -112,8 +113,8 @@ test('wechat settings disconnect clears credentials and persists empty remote co
     }
   })
   const ctx = pageContext(page, {
-    appid: 'wx123456789',
-    secret: '1234567890abcdef',
+    appid: 'wx1234567890abcdef',
+    secret: '0123456789abcdef0123456789abcdef',
     enabled: true,
     canSave: true,
     wechatConfigured: true
@@ -141,4 +142,28 @@ test('wechat settings binds iOS-style banner, save, and disconnect states', () =
   assert.match(wxml, /disabled="\{\{!canSave \|\| saving\}\}"/)
   assert.match(wxml, /loading="\{\{saving\}\}"/)
   assert.match(wxml, /wx:if="\{\{wechatConfigured\}\}"[\s\S]*bindtap="disconnectWechat"[\s\S]*断开连接/)
+  assert.match(wxml, /扫一扫 → 右上角相册/)
+  assert.match(wxml, /IP 白名单/)
+  assert.match(wxml, /wx:if="\{\{validationError\}\}"/)
+})
+
+test('wechat settings blocks persistence when remote validation fails', async () => {
+  let saved = false
+  const toasts = []
+  const page = freshWechatSettingsPage({
+    validateWechatRemote: async () => 'AppSecret 无效',
+    saveWechat: async () => { saved = true; return true }
+  }, { showToast: (toast) => toasts.push(toast) })
+  const ctx = pageContext(page, {
+    appid: 'wx1234567890abcdef',
+    secret: '0123456789abcdef0123456789abcdef',
+    canSave: true
+  })
+
+  await page.save.call(ctx)
+
+  assert.equal(saved, false)
+  assert.equal(ctx.data.saving, false)
+  assert.equal(ctx.data.validationError, 'AppSecret 无效')
+  assert.equal(toasts[0].title, 'AppSecret 无效')
 })

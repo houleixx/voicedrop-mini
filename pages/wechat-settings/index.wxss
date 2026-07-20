@@ -151,6 +151,18 @@
   line-height: 1.45;
 }
 
+.credential-help-steps {
+  line-height: 1.65;
+}
+
+.validation-error {
+  display: block;
+  margin: 18rpx 8rpx 0;
+  color: #c66a35;
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
 /* Help row */
 .help-row {
   display: flex;

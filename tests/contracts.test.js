@@ -257,8 +257,20 @@ test('normalizes Android-compatible style response values', () => {
 test('exposes official WeChat credential help URL like Android', () => {
   assert.equal(
     settings.WECHAT_CREDENTIAL_HELP_URL,
-    'https://developers.weixin.qq.com/doc/offiaccount/Basic_Information/Get_access_token.html'
+    'https://developers.weixin.qq.com/console/'
   )
+})
+
+test('validates WeChat credential formats and relay errors like iOS', () => {
+  assert.equal(settings.validateWechatCreds(
+    'wx1234567890abcdef', '0123456789abcdef0123456789abcdef'), '')
+  assert.match(settings.validateWechatCreds(
+    'wx123', '0123456789abcdef0123456789abcdef'), /AppID/)
+  assert.match(settings.validateWechatCreds(
+    'wx1234567890abcdef', 'ABCDEF0123456789ABCDEF0123456789'), /AppSecret/)
+  assert.equal(settings.wechatValidationMessage({ ok: true }), '')
+  assert.match(settings.wechatValidationMessage({ ok: false, errcode: 40164 }), /IP 白名单/)
+  assert.equal(settings.wechatValidationMessage({ ok: false, errcode: 40125 }), 'AppSecret 无效')
 })
 
 test('matches Android theme color tokens', () => {

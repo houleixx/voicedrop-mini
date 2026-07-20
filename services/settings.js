@@ -2,7 +2,7 @@ const api = require('./api')
 const auth = require('./auth')
 const http = require('./request')
 
-const WECHAT_CREDENTIAL_HELP_URL = 'https://developers.weixin.qq.com/doc/offiaccount/Basic_Information/Get_access_token.html'
+const WECHAT_CREDENTIAL_HELP_URL = 'https://developers.weixin.qq.com/console/'
 
 async function loadStyle() {
   const res = await http.get(`${api.filesBase()}/style`, auth.bearer())
@@ -67,9 +67,40 @@ async function saveWechat(appid, secret, enabled) {
 function validateWechatCreds(appid, secret) {
   const cleanAppid = String(appid || '').trim()
   const cleanSecret = String(secret || '').trim()
-  if (!cleanAppid.startsWith('wx') || cleanAppid.length < 8) return 'AppID 格式不对'
-  if (cleanSecret.length < 16) return 'AppSecret 太短'
+  if (!/^wx[0-9A-Za-z]{16}$/.test(cleanAppid)) return 'AppID 格式不对（应以 wx 开头，共 18 位）'
+  if (!/^[0-9a-f]{32}$/.test(cleanSecret)) return 'AppSecret 格式不对（应为 32 位小写十六进制，别把 AppID 填进来）'
   return ''
+}
+
+function wechatValidationMessage(data) {
+  const result = data || {}
+  if (result.ok === true) return ''
+  switch (Number(result.errcode)) {
+    case 40164:
+      return '服务器 IP 还没生效：把下方 IP 加入公众号后台的「IP 白名单」，保存白名单后等一两分钟再点保存'
+    case 40013: return 'AppID 无效，找不到这个公众号'
+    case 40125: return 'AppSecret 无效'
+    case 41002: return '缺少 AppID'
+    case 41004: return '缺少 AppSecret'
+    default: return `验证失败：${result.errmsg || '未知错误'}`
+  }
+}
+
+async function validateWechatRemote(appid, secret) {
+  const localError = validateWechatCreds(appid, secret)
+  if (localError) return localError
+  try {
+    const res = await http.postJson(`${api.filesBase()}/wechat-validate`, auth.bearer(), {
+      appid: String(appid || '').trim(),
+      secret: String(secret || '').trim()
+    })
+    if (!res || res.statusCode < 200 || res.statusCode >= 300) {
+      return '暂时连不上验证服务，请稍后再试（配置未保存）'
+    }
+    return wechatValidationMessage(res.data)
+  } catch (_) {
+    return '暂时连不上验证服务，请稍后再试（配置未保存）'
+  }
 }
 
 async function loadConfig() {
@@ -101,6 +132,8 @@ module.exports = {
   loadWechat,
   saveWechat,
   validateWechatCreds,
+  validateWechatRemote,
+  wechatValidationMessage,
   loadConfig,
   saveConfig,
   articlesPageUrl

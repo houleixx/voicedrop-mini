@@ -9,7 +9,8 @@ Page({
     canSave: false,
     saving: false,
     savedWechat: false,
-    wechatConfigured: false
+    wechatConfigured: false,
+    validationError: ''
   },
 
   onLoad() {
@@ -40,7 +41,7 @@ Page({
       [event.currentTarget.dataset.key]: event.detail.value
     }
     this.setData(next)
-    this.refreshFormState({ savedWechat: false })
+    this.refreshFormState({ savedWechat: false, validationError: '' })
   },
 
   onEnabled(event) {
@@ -75,15 +76,21 @@ Page({
     const secret = String(this.data.secret || '').trim()
     const message = settings.validateWechatCreds(appid, secret)
     if (message) {
-      this.setData({ canSave: false, savedWechat: false })
+      this.setData({ canSave: false, savedWechat: false, validationError: message })
       wx.showToast({ title: message, icon: 'error' })
       return
     }
-    this.setData({ saving: true, canSave: false, savedWechat: false })
+    this.setData({ saving: true, canSave: false, savedWechat: false, validationError: '' })
     try {
+      const validation = await settings.validateWechatRemote(appid, secret)
+      if (validation) {
+        this.setData({ validationError: validation })
+        wx.showToast({ title: validation, icon: 'none' })
+        return
+      }
       const ok = await settings.saveWechat(appid, secret, this.data.enabled)
       if (ok) {
-        this.setData({ appid, secret, savedWechat: true, wechatConfigured: true })
+        this.setData({ appid, secret, savedWechat: true, wechatConfigured: true, validationError: '' })
       }
       wx.showToast({ title: ok ? '已保存' : '保存失败', icon: ok ? 'success' : 'error' })
     } finally {
@@ -104,7 +111,8 @@ Page({
           enabled: false,
           canSave: false,
           wechatConfigured: false,
-          savedWechat: true
+          savedWechat: true,
+          validationError: ''
         })
       }
       wx.showToast({ title: ok ? '已断开' : '保存失败', icon: ok ? 'success' : 'error' })

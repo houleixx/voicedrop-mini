@@ -1470,7 +1470,7 @@ Page({
       ? { type: 'image', key: target.block.key }
       : { type: 'line', line: target.block.lineNo, text: target.block.text }
     this.closeLongpressMenu()
-    this.enqueueInstruction(instruction, articleIndex, null, anchor)
+    this.enqueueInstruction(instruction, articleIndex, null, anchor, node.id)
   },
 
   onLongpressLocalPick(event) {
@@ -1577,13 +1577,13 @@ Page({
     }
   },
 
-  enqueueInstruction(instruction, articleIndex, images, anchor) {
+  enqueueInstruction(instruction, articleIndex, images, anchor, itemId) {
     const session = this.ensureEditSession()
     if (!session || !instruction) {
       logPhotoInsert('enqueue-skip', { hasSession: !!session, hasInstruction: !!instruction })
       return
     }
-    session.enqueue(instruction, articleIndex != null ? articleIndex : 0, images, anchor)
+    session.enqueue(instruction, articleIndex != null ? articleIndex : 0, images, anchor, itemId)
     if (this.startPhotoMakingForInstruction) this.startPhotoMakingForInstruction(instruction)
     if (isPhotoInsertInstruction(instruction, images)) {
       const data = photoInsertPromptData(instruction)

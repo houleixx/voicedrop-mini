@@ -118,6 +118,7 @@ function createStore(deps = {}) {
       const existing = tree.flattenIds(items).includes(imported.id)
       if (!existing) items = [...tree.clone(items), imported]
       saveCache()
+      await refresh() // 服务端可能按 groupPath 放进分组；失败时 refresh 会保留当前本地回退。
       return { ok: true, item: tree.cloneNode(imported), already: Boolean(res.data.already || existing) }
     } catch (_) { return { ok: false, error: 'network_error' } }
   }

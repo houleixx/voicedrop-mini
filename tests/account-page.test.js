@@ -18,6 +18,7 @@ function freshAccountPage(options) {
     list: async () => [],
     ownerScope: async (settings) => {
       calls.push(['ownerScope', settings])
+      if (config.ownerScope) return config.ownerScope(settings)
       return config.currentScope || 'users/anon-current/'
     }
   }
@@ -62,6 +63,33 @@ test('account page displays and copies the anonymous account id', async () => {
   assert.equal(ctx.data.accountIdDisplay, 'anon-current')
   assert.deepEqual(calls.find(([name]) => name === 'clipboard'), ['clipboard', 'anon-current'])
   assert.deepEqual(calls.find(([name]) => name === 'ownerScope'), ['ownerScope', { anonymous: true }])
+})
+
+test('account page keeps the id blank until the account scope loads', async () => {
+  let resolveScope
+  const { page } = freshAccountPage({
+    ownerScope: () => new Promise((resolve) => { resolveScope = resolve })
+  })
+  const ctx = context(page)
+
+  const refreshing = page.refresh.call(ctx)
+  assert.equal(ctx.data.accountIdDisplay, '')
+
+  resolveScope('users/anon-current/')
+  await refreshing
+  assert.equal(ctx.data.accountIdDisplay, 'anon-current')
+})
+
+test('account page keeps the id blank when the account scope cannot be read', async () => {
+  const { page } = freshAccountPage({
+    ownerScope: async () => { throw new Error('network unavailable') }
+  })
+  const ctx = context(page)
+
+  await page.refresh.call(ctx)
+
+  assert.equal(ctx.data.accountId, '')
+  assert.equal(ctx.data.accountIdDisplay, '')
 })
 
 test('account page copies and imports only the anonymous account token', async () => {

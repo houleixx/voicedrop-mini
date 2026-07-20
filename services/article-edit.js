@@ -39,6 +39,7 @@ function payloadFor(request) {
   } else if (request.anchor && request.anchor.type === 'image' && request.anchor.key) {
     body.anchor = { type: 'image', key: String(request.anchor.key) }
   }
+  if (request.itemId) body.itemId = String(request.itemId)
   return JSON.stringify(body)
 }
 
@@ -102,14 +103,15 @@ function createSession(stem, handlers) {
     })
   }
 
-  function enqueue(text, articleIndex, images, anchor) {
+  function enqueue(text, articleIndex, images, anchor, itemId) {
     if (!text || !text.trim()) return
     const request = {
       id: uuid(),
       text: text.trim(),
       articleIndex: Math.max(0, articleIndex || 0),
       images: images || [],
-      anchor: anchor || null
+      anchor: anchor || null,
+      itemId: itemId || null
     }
     queue.push(request)
     logEdit('enqueue', { stem, id: request.id, articleIndex: request.articleIndex, imageCount: request.images.length, text: request.text })

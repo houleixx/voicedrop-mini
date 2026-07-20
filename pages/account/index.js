@@ -30,7 +30,7 @@ Page({
     const wechatAuthed = auth.isWechatAuthenticated()
     this.setData({
       accountId: '',
-      accountIdDisplay: '读取中…',
+      accountIdDisplay: '',
       token,
       maskedToken: maskToken(token),
       wechatAuthed,
@@ -42,10 +42,10 @@ Page({
       const accountId = accountIdFromScope(scope)
       this.setData({
         accountId,
-        accountIdDisplay: accountId || '读取失败'
+        accountIdDisplay: accountId
       })
     } catch (error) {
-      if (auth.anonymousBearer() === token) this.setData({ accountId: '', accountIdDisplay: '读取失败' })
+      if (auth.anonymousBearer() === token) this.setData({ accountId: '', accountIdDisplay: '' })
     }
   },
 

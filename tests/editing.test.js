@@ -15,7 +15,8 @@ test('builds article edit websocket payload compatible with Android', () => {
     text: '把这一段改短',
     articleIndex: 2,
     images: [{ key: 'photos/a.jpg', base64: 'abc' }],
-    anchor: { type: 'line', line: 7, text: '完整段落' }
+    anchor: { type: 'line', line: 7, text: '完整段落' },
+    itemId: 'sys_concise'
   })
   assert.deepEqual(JSON.parse(payload), {
     type: 'instruct',
@@ -23,7 +24,8 @@ test('builds article edit websocket payload compatible with Android', () => {
     text: '把这一段改短',
     articleIndex: 2,
     images: [{ key: 'photos/a.jpg', data: 'abc', mediaType: 'image/jpeg' }],
-    anchor: { type: 'line', line: 7, text: '完整段落' }
+    anchor: { type: 'line', line: 7, text: '完整段落' },
+    itemId: 'sys_concise'
   })
 })
 
@@ -38,10 +40,12 @@ test('persists and restores structured edit anchors for reconnect', () => {
   }
   try {
     const session = edit.createSession('VoiceDrop-anchor', {})
-    session.enqueue('改短一点', 0, [], { type: 'line', line: 3, text: '整行原文' })
+    session.enqueue('改短一点', 0, [], { type: 'line', line: 3, text: '整行原文' }, 'sys_concise')
     const stored = JSON.parse(storage['voicedrop.editqueue.VoiceDrop-anchor'])
     assert.deepEqual(stored[0].anchor, { type: 'line', line: 3, text: '整行原文' })
+    assert.equal(stored[0].itemId, 'sys_concise')
     assert.deepEqual(JSON.parse(edit.payloadFor(stored[0])).anchor, { type: 'line', line: 3, text: '整行原文' })
+    assert.equal(JSON.parse(edit.payloadFor(stored[0])).itemId, 'sys_concise')
   } finally {
     if (previousWx === undefined) delete global.wx
     else global.wx = previousWx
