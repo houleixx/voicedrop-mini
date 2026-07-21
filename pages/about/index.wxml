@@ -4,6 +4,7 @@
     <view class="about-card card">
       <text class="logo">VoiceDrop 口述</text>
       <text class="desc">把口述录音自动变成文章的小程序客户端。</text>
+      <text class="version">当前版本 {{appVersion}}</text>
     </view>
 
     <view class="card menu">

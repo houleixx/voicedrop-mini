@@ -112,6 +112,22 @@ test('prompt list opens the magic-code importer as a bottom sheet', () => {
   assert.equal(ctx.data.importVisible, false)
 })
 
+test('magic-code importer lifts its actions above the keyboard', () => {
+  const root = path.join(__dirname, '..')
+  const wxml = fs.readFileSync(path.join(root, 'pages/instruction-settings/index.wxml'), 'utf8')
+  const page = freshPage('instruction-settings')
+  const ctx = context(page)
+
+  page.onImportKeyboardHeightChange.call(ctx, { detail: { height: 312 } })
+  assert.equal(ctx.data.importKeyboardHeight, 312)
+  assert.match(wxml, /class="sheet-mask"[^>]*style="bottom: \{\{importKeyboardHeight\}\}px;"/)
+  assert.match(wxml, /class="import-code-input"[^>]*bindkeyboardheightchange="onImportKeyboardHeightChange"/)
+  assert.match(wxml, /class="import-code-input"[^>]*adjust-position="\{\{false\}\}"/)
+
+  page.closeImport.call(ctx)
+  assert.equal(ctx.data.importKeyboardHeight, 0)
+})
+
 test('left swipe on an action reveals delete without opening or deleting it', () => {
   const navigations = []
   let removed = 0

@@ -2,6 +2,7 @@ const settings = require('../../services/settings')
 const auth = require('../../services/auth')
 const usage = require('../../services/usage')
 const prefs = require('../../utils/prefs')
+const appVersion = require('../../utils/app-version')
 
 Page({
   data: {
@@ -17,7 +18,8 @@ Page({
     shortAnonId: '',
     autoShareCommunity: false,
     followUpEnabled: true,
-    wechatConfigured: false
+    wechatConfigured: false,
+    appVersion: '开发版'
   },
 
   onShow() {
@@ -39,6 +41,7 @@ Page({
   },
 
   async load() {
+    this.setData({ appVersion: appVersion.label() })
     try {
       const [styleResult, configResult, balanceResult, wechatResult] = await Promise.all([
         settings.loadStyle(),

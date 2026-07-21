@@ -29,6 +29,12 @@ function freshAbout(options) {
     },
     navigateTo: ({ url }) => navigations.push(url),
     showToast: (toast) => toasts.push(toast),
+    getAccountInfoSync: () => ({
+      miniProgram: {
+        version: config.version == null ? '' : config.version,
+        envVersion: config.envVersion || 'develop'
+      }
+    }),
     showModal: (modal) => {
       modals.push(modal)
       if (modal.success) modal.success({ confirm: config.confirm !== false })
@@ -37,7 +43,8 @@ function freshAbout(options) {
   ;[
     '../pages/about/index',
     '../utils/audio-consent',
-    '../utils/block-store'
+    '../utils/block-store',
+    '../utils/app-version'
   ].forEach((id) => { delete require.cache[require.resolve(id)] })
   require('../pages/about/index')
   const ctx = Object.assign({}, page, {
@@ -48,13 +55,32 @@ function freshAbout(options) {
 }
 
 test('about page shows current audio consent state and opens the independent agreement', () => {
-  const h = freshAbout({ granted: true })
+  const h = freshAbout({ granted: true, version: '1.2.3' })
 
   h.page.onShow.call(h.ctx)
   h.page.openAudioConsent.call(h.ctx)
 
   assert.equal(h.ctx.data.audioConsentGranted, true)
+  assert.equal(h.ctx.data.appVersion, '1.2.3')
   assert.deepEqual(h.navigations, ['/pages/audio-consent/index'])
+})
+
+test('about page labels builds without a published version as development builds', () => {
+  const h = freshAbout()
+
+  h.page.onShow.call(h.ctx)
+
+  assert.equal(h.ctx.data.appVersion, '开发版')
+  const wxml = fs.readFileSync(path.join(root, 'pages/about/index.wxml'), 'utf8')
+  assert.match(wxml, /当前版本\s+\{\{appVersion\}\}/)
+})
+
+test('about page identifies a trial build without claiming a version number', () => {
+  const h = freshAbout({ envVersion: 'trial' })
+
+  h.page.onShow.call(h.ctx)
+
+  assert.equal(h.ctx.data.appVersion, '体验版')
 })
 
 test('about page keeps the agreement row without a withdrawal action', () => {

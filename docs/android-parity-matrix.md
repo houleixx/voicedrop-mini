@@ -47,7 +47,7 @@ Source: the VoiceDrop Android client implementation.
 | Library natural-language command | Implemented with `/agent/command` WebSocket | `services/library-command`, `pages/recordings` |
 | Account token display/import | Implemented | `services/auth`, `pages/account` |
 | WeChat login session exchange | Implemented with `wx.login` and `/files/api/auth/wechat` | `services/wechat-auth`, `pages/account` |
-| Device link start/verify/cancel | Implemented | `services/device-link`, `pages/account`, `services/status-session` |
+| Device link start/verify/cancel | Service retained; account-page entry removed by product decision | `services/device-link`, `services/status-session` |
 | Usage balance and ledger | Implemented | `services/usage`, `pages/usage` |
 | About/privacy/community terms/support | Implemented | `pages/about`, `utils/community-terms` |
 | Independent audio information agreement | Implemented: versioned explicit consent before every microphone entry, standalone agreement page, and local withdrawal; copy states audio purposes and explicitly excludes voiceprint identification | `utils/audio-consent`, `components/audio-consent-dialog`, `pages/audio-consent`, `pages/about` |
@@ -82,7 +82,7 @@ for f in $(rg --files -g '*.js'); do node --check "$f" || exit 1; done
 Required before claiming full parity:
 
 - Import the project in WeChat Developer Tools.
-- Configure request/download/upload/socket legal domains for `https://jianshuo.dev` and `wss://jianshuo.dev`.
+- Configure request/download/upload/socket legal domains for `https://jianshuo.dev` and `wss://jianshuo.dev`; add `https://voicedrop.cn` as a downloadFile legal domain to enable the photo CDN (downloads fall back to `jianshuo.dev` while it is unavailable).
 - Test recording upload on a real device.
 - Test first-use audio agreement view/decline/agree actions and confirm that merely viewing does not grant consent.
 - Test main recording, home voice commands, article voice editing, and community voice replies all remain blocked before agreement.

@@ -1,3 +1,5 @@
+@import '../../styles/remixicon.wxss';
+
 .account-screen {
   padding: 0 32rpx;
 }
@@ -8,7 +10,6 @@
 
 .account-card,
 .stats-card,
-.sync-card,
 .delete-card {
   border: 1rpx solid #efe4d4;
   border-radius: 24rpx;
@@ -38,10 +39,14 @@
 }
 
 .account-badge-icon {
+  display: block;
+  width: 42rpx;
+  height: 42rpx;
   color: #ffffff;
   font-size: 42rpx;
-  font-weight: 900;
-  line-height: 1;
+  line-height: 42rpx;
+  text-align: center;
+  vertical-align: 0;
 }
 
 .account-intro-copy {
@@ -154,39 +159,6 @@
   font-weight: 800;
 }
 
-.import-input {
-  width: 100%;
-  min-height: 74rpx;
-  padding: 0 22rpx;
-  border: 1rpx solid #eadccd;
-  border-radius: 10rpx;
-  background: #fffaf3;
-  color: #2a2521;
-  font-size: 26rpx;
-}
-
-.import-button,
-.cancel-button {
-  display: flex;
-  min-height: 74rpx;
-  align-items: center;
-  justify-content: center;
-  margin-top: 16rpx;
-  border-radius: 10rpx;
-  font-size: 27rpx;
-  font-weight: 900;
-}
-
-.import-button {
-  color: #ffffff;
-  background: #c7432f;
-}
-
-.cancel-button {
-  color: #c7432f;
-  background: #fae7e2;
-}
-
 .login-row {
   display: flex;
   min-height: 82rpx;
@@ -237,13 +209,11 @@
   font-weight: 900;
 }
 
-.stats-card,
-.sync-card {
+.stats-card {
   overflow: hidden;
 }
 
-.stat-row,
-.sync-row {
+.stat-row {
   display: flex;
   min-height: 82rpx;
   align-items: center;
@@ -255,8 +225,7 @@
   border-top: 1rpx solid #f0e5d7;
 }
 
-.stat-title,
-.sync-title {
+.stat-title {
   color: #2a2521;
   font-size: 30rpx;
   font-weight: 800;
@@ -266,53 +235,6 @@
   color: #8a8175;
   font-size: 28rpx;
   font-weight: 800;
-}
-
-.sync-state {
-  display: flex;
-  align-items: center;
-  color: #7d8b77;
-  font-size: 27rpx;
-  font-weight: 800;
-}
-
-.sync-dot {
-  display: block;
-  width: 12rpx;
-  height: 12rpx;
-  margin-right: 12rpx;
-  border-radius: 999rpx;
-  background: #5e8a6a;
-}
-
-.sync-action {
-  color: #c7432f;
-  font-size: 27rpx;
-  font-weight: 900;
-}
-
-.pairing-card {
-  min-height: 84rpx;
-}
-
-.pairing-card .sync-row {
-  min-height: 84rpx;
-}
-
-.pairing-card.pairing-open {
-  padding-bottom: 20rpx;
-}
-
-.pairing-card.pairing-open .sync-row {
-  min-height: 88rpx;
-}
-
-.pairing-input,
-.pairing-card .import-button,
-.pairing-card .cancel-button {
-  width: auto;
-  margin-right: 24rpx;
-  margin-left: 24rpx;
 }
 
 .section-note {
@@ -376,16 +298,28 @@
   padding: 0 8rpx;
 }
 
-.dialog-input {
+.dialog-input-shell {
+  display: flex;
   width: 100%;
-  min-height: 74rpx;
+  height: 88rpx;
+  align-items: center;
+  margin-bottom: 24rpx;
   padding: 0 22rpx;
   border: 1rpx solid #eadccd;
-  border-radius: 10rpx;
+  border-radius: 14rpx;
   background: #fffaf3;
+  box-sizing: border-box;
+}
+
+.dialog-input {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
   color: #2a2521;
   font-size: 26rpx;
-  margin-bottom: 0;
   box-sizing: border-box;
 }
 

@@ -296,23 +296,35 @@ function downloadTempFile(key) {
 function downloadPhotoTemp(key, scope, options) {
   const scopedKey = scopedPhotoKey(key, scope)
   return new Promise((resolve, reject) => {
-    const baseUrl = api.photoUrl(scopedKey)
     const cacheBust = options && options.cacheBust
-    const url = cacheBust ? `${baseUrl}?v=${encodeURIComponent(cacheBust)}` : baseUrl
-    logPhotoUpload('download-photo-start', { key, scope, scopedKey, url, hasToken: !!auth.bearer() })
-    wx.downloadFile({
-      url,
-      header: http.authHeader(auth.bearer()),
-      success: (res) => {
-        logPhotoUpload('download-photo-response', { key, scope, scopedKey, statusCode: res.statusCode, tempFilePath: res.tempFilePath || '' })
-        if (res.statusCode >= 200 && res.statusCode < 300 && res.tempFilePath) resolve(res.tempFilePath)
-        else reject(new Error(`photo download HTTP ${res.statusCode}`))
-      },
-      fail: (error) => {
-        logPhotoUpload('download-photo-fail', { key, scope, scopedKey, error })
-        reject(error)
-      }
-    })
+    const urls = [api.photoCdnUrl(scopedKey), api.photoUrl(scopedKey)]
+      .map((baseUrl) => cacheBust ? `${baseUrl}?v=${encodeURIComponent(cacheBust)}` : baseUrl)
+    const attempt = (index, previousError) => {
+      const url = urls[index]
+      logPhotoUpload('download-photo-start', { key, scope, scopedKey, url, authenticated: false, fallback: index > 0 })
+      wx.downloadFile({
+        url,
+        // 照片读取是公开接口。不要把用户 Token 带到 CDN，避免鉴权头降低缓存命中率；
+        // 保留平台标识用于后端诊断。
+        header: http.authHeader(''),
+        success: (res) => {
+          logPhotoUpload('download-photo-response', { key, scope, scopedKey, url, statusCode: res.statusCode, tempFilePath: res.tempFilePath || '' })
+          if (res.statusCode >= 200 && res.statusCode < 300 && res.tempFilePath) {
+            resolve(res.tempFilePath)
+            return
+          }
+          const error = new Error(`photo download HTTP ${res.statusCode}`)
+          if (index + 1 < urls.length) attempt(index + 1, error)
+          else reject(previousError || error)
+        },
+        fail: (error) => {
+          logPhotoUpload('download-photo-fail', { key, scope, scopedKey, url, error })
+          if (index + 1 < urls.length) attempt(index + 1, error)
+          else reject(previousError || error)
+        }
+      })
+    }
+    attempt(0)
   })
 }
 

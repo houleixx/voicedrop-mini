@@ -62,8 +62,13 @@
 }
 
 .menu-icon-text {
+  display: block;
+  width: 36rpx;
+  height: 36rpx;
   font-size: 36rpx;
-  line-height: 1;
+  line-height: 36rpx;
+  text-align: center;
+  vertical-align: 0;
 }
 
 .name-card-icon {
@@ -214,10 +219,14 @@
 }
 
 .menu-arrow {
+  display: block;
+  width: 36rpx;
+  height: 36rpx;
   color: #d0c5b4;
   font-size: 36rpx;
-  font-weight: 300;
-  line-height: 1;
+  line-height: 36rpx;
+  text-align: center;
+  vertical-align: 0;
 }
 
 .dialog-overlay {

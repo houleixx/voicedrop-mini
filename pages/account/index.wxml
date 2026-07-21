@@ -4,7 +4,7 @@
     <view class="account-card">
       <view class="account-intro">
         <view class="account-badge">
-          <text class="account-badge-icon">✓</text>
+          <text class="account-badge-icon ri-user-line"></text>
         </view>
         <view class="account-intro-copy">
           <text class="account-intro-title">账户</text>
@@ -56,19 +56,6 @@
       </view>
     </view>
 
-    <view class="section-label">转移与登录</view>
-    <view class="sync-card pairing-card {{pairing ? 'pairing-open' : ''}}">
-      <view class="sync-row" bindtap="startDeviceLink">
-        <text class="sync-title">设备配对登录</text>
-        <text class="sync-action">发起</text>
-      </view>
-      <block wx:if="{{pairing}}">
-        <input class="import-input pairing-input" value="{{pairingCode}}" bindinput="onPairingCodeInput" placeholder="输入验证码" />
-        <button class="import-button" bindtap="verifyDeviceLink">验证</button>
-        <button class="cancel-button" bindtap="cancelDeviceLink">取消配对</button>
-      </block>
-    </view>
-
     <view class="section-label">账户管理</view>
     <view class="delete-card" bindtap="deleteAccount">
       <text>删除账户</text>
@@ -80,7 +67,9 @@
       <view class="dialog-card" catchtap="preventClose">
         <text class="dialog-title">输入访问令牌</text>
         <text class="dialog-desc">粘贴另一台设备「账户 → 访问令牌」复制的 anon_ 令牌，本机将切换到该账号（当前身份会被替换）。</text>
-        <input class="dialog-input" value="{{importToken}}" bindinput="onImportInput" placeholder="anon_..." />
+        <view class="dialog-input-shell">
+          <input class="dialog-input" value="{{importToken}}" bindinput="onImportInput" placeholder="anon_..." />
+        </view>
         <view class="dialog-actions">
           <view class="dialog-divider" />
           <view class="dialog-btn dialog-btn-cancel" bindtap="cancelImport">

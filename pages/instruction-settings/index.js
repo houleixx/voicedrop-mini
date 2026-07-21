@@ -45,7 +45,7 @@ Page({
   data: {
     rows: [], expandedGroups: [], loading: true, error: '', empty: false,
     mutating: false, reordering: false, newMenuVisible: false, groupDialogVisible: false, groupName: '', importVisible: false,
-    importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', rowHeightPx: 64,
+    importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', importKeyboardHeight: 0, rowHeightPx: 64,
     swipedRowId: '', swipeOffset: 0, swipeDeletePx: 72, swipeDragging: false
   },
   onLoad() {
@@ -135,8 +135,12 @@ Page({
     this.setData({ mutating: false, newMenuVisible: false, groupDialogVisible: false, groupName: '' })
     await this.loadItems()
   },
-  openImport() { this.setData({ importVisible: true, importCode: '', importPreview: null, importLoading: false, importing: false, importError: '' }) },
-  closeImport() { if (!this.data.importing) this.setData({ importVisible: false }) },
+  openImport() { this.setData({ importVisible: true, importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', importKeyboardHeight: 0 }) },
+  closeImport() { if (!this.data.importing) this.setData({ importVisible: false, importKeyboardHeight: 0 }) },
+  onImportKeyboardHeightChange(event) {
+    const height = Number(event && event.detail && event.detail.height) || 0
+    this.setData({ importKeyboardHeight: Math.max(0, height) })
+  },
   onImportCodeInput(event) {
     const importCode = tree.mergeCodeInput(this.data.importCode, event.detail.value)
     this.setData({ importCode, importPreview: null, importError: '' })
@@ -154,7 +158,7 @@ Page({
     const result = await promptStore.importCode(this.data.importCode)
     if (!result.ok) { this.setData({ importing: false, importError: '导入失败，请重试' }); return }
     wx.showToast({ title: '已导入' })
-    this.setData({ importVisible: false, importing: false })
+    this.setData({ importVisible: false, importing: false, importKeyboardHeight: 0 })
     await this.loadItems()
   },
   async deleteItem(event) {

@@ -7,7 +7,7 @@
       <!-- 账户 -->
       <view class="menu-item" data-url="/pages/account/index" bindtap="openPage">
         <view class="menu-icon icon-dark">
-          <text class="menu-icon-text">✓</text>
+          <text class="menu-icon-text ri-user-line"></text>
         </view>
         <view class="menu-content">
           <text class="menu-title">账户</text>
@@ -15,14 +15,14 @@
         </view>
         <view class="menu-right">
           <text class="menu-value menu-id">{{shortAnonId}}</text>
-          <text class="menu-arrow">›</text>
+          <text class="menu-arrow ri-arrow-right-s-line"></text>
         </view>
       </view>
 
       <!-- 算力 -->
       <view class="menu-item no-bottom-border" data-url="/pages/usage/index" bindtap="openPage">
         <view class="menu-icon icon-amber">
-          <text class="menu-icon-text">⚡</text>
+          <text class="menu-icon-text ri-flashlight-line"></text>
         </view>
         <view class="menu-content">
           <text class="menu-title">算力</text>
@@ -30,7 +30,7 @@
         </view>
         <view class="menu-right">
           <text class="menu-value">{{balance.suanli || 0}}</text>
-          <text class="menu-arrow">›</text>
+          <text class="menu-arrow ri-arrow-right-s-line"></text>
         </view>
       </view>
     </view>
@@ -55,32 +55,32 @@
         </view>
         <view class="menu-right">
           <text class="menu-status">{{profileName || ''}}</text>
-          <text class="menu-arrow">›</text>
+          <text class="menu-arrow ri-arrow-right-s-line"></text>
         </view>
       </view>
 
       <!-- 写作风格 -->
       <view class="menu-item" data-url="/pages/style-settings/index" bindtap="openPage">
         <view class="menu-icon icon-beige">
-          <text class="menu-icon-text">✎</text>
+          <text class="menu-icon-text ri-quill-pen-line"></text>
         </view>
         <view class="menu-content">
           <text class="menu-title">写作风格</text>
           <text class="menu-subtitle">成文时模仿这套语气</text>
         </view>
         <view class="menu-right">
-          <text class="menu-arrow">›</text>
+          <text class="menu-arrow ri-arrow-right-s-line"></text>
         </view>
       </view>
 
       <!-- 提示词 -->
       <view class="menu-item no-bottom-border" data-url="/pages/instruction-settings/index" bindtap="openPage">
-        <view class="menu-icon icon-beige"><text class="menu-icon-text">✦</text></view>
+        <view class="menu-icon icon-beige"><text class="menu-icon-text ri-magic-line"></text></view>
         <view class="menu-content">
           <text class="menu-title">提示词</text>
           <text class="menu-subtitle">自定义长按菜单里的每个动作</text>
         </view>
-        <view class="menu-right"><text class="menu-arrow">›</text></view>
+        <view class="menu-right"><text class="menu-arrow ri-arrow-right-s-line"></text></view>
       </view>
     </view>
 
@@ -90,7 +90,7 @@
       <!-- 微信公众号 -->
       <view class="menu-item" data-url="/pages/wechat-settings/index" bindtap="openPage">
         <view class="menu-icon icon-pink">
-          <text class="menu-icon-text">➤</text>
+          <text class="menu-icon-text ri-wechat-line"></text>
         </view>
         <view class="menu-content">
           <text class="menu-title">微信公众号</text>
@@ -98,14 +98,14 @@
         </view>
         <view class="menu-right">
           <text class="menu-status {{wechatConfigured ? '' : 'menu-status-empty'}}">{{wechatConfigured ? '已配置' : '未配置'}}</text>
-          <text class="menu-arrow">›</text>
+          <text class="menu-arrow ri-arrow-right-s-line"></text>
         </view>
       </view>
 
       <!-- 自动分享到 VD 社区 -->
       <view class="menu-item no-bottom-border">
         <view class="menu-icon icon-green">
-          <text class="menu-icon-text">☻</text>
+          <text class="menu-icon-text ri-team-line"></text>
         </view>
         <view class="menu-content">
           <text class="menu-title">自动分享到 VD 社区</text>
@@ -123,14 +123,14 @@
       <!-- 关于 -->
       <view class="menu-item no-bottom-border" data-url="/pages/about/index" bindtap="openPage">
         <view class="menu-icon icon-beige">
-          <text class="menu-icon-text">ℹ</text>
+          <text class="menu-icon-text ri-information-line"></text>
         </view>
         <view class="menu-content">
           <text class="menu-title">关于</text>
-          <text class="menu-subtitle"></text>
+          <text class="menu-subtitle">当前版本 {{appVersion}}</text>
         </view>
         <view class="menu-right">
-          <text class="menu-arrow">›</text>
+          <text class="menu-arrow ri-arrow-right-s-line"></text>
         </view>
       </view>
     </view>

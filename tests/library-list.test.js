@@ -337,7 +337,7 @@ test('library refreshes its cached owner scope after the anonymous account token
   assert.equal(reads, 2)
 })
 
-test('library downloads scoped photos with auth like Android photoData', async () => {
+test('library downloads public scoped photos from the photo CDN without a user token', async () => {
   const library = freshLibraryWithWx([
     {
       path: '/photo/users/anon-1/photos/a.jpg',
@@ -349,9 +349,31 @@ test('library downloads scoped photos with auth like Android photoData', async (
 
   assert.equal(tempPath, 'wxfile://photo-a.jpg')
   assert.equal(library.__downloads.length, 1)
-  assert.equal(library.__downloads[0].url, 'https://jianshuo.dev/files/api/photo/users/anon-1/photos/a.jpg')
+  assert.equal(library.__downloads[0].url, 'https://voicedrop.cn/files/api/photo/users/anon-1/photos/a.jpg')
   assert.equal(library.__downloads[0].header['X-VD-Platform'], 'miniapp')
-  assert.match(library.__downloads[0].header.Authorization, /^Bearer /)
+  assert.equal(library.__downloads[0].header.Authorization, undefined)
+})
+
+test('library falls back to the API host when the photo CDN domain is unavailable', async () => {
+  const downloads = []
+  const library = freshLibraryWithWx([], {
+    downloadFile: (options) => {
+      downloads.push(options.url)
+      if (options.url.startsWith('https://voicedrop.cn/')) {
+        options.fail({ errMsg: 'downloadFile:fail url not in domain list' })
+        return
+      }
+      options.success({ statusCode: 200, tempFilePath: 'wxfile://fallback.jpg' })
+    }
+  })
+
+  const tempPath = await library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/')
+
+  assert.equal(tempPath, 'wxfile://fallback.jpg')
+  assert.deepEqual(downloads, [
+    'https://voicedrop.cn/files/api/photo/users/anon-1/photos/a.jpg',
+    'https://jianshuo.dev/files/api/photo/users/anon-1/photos/a.jpg'
+  ])
 })
 
 test('library upload photo reports failing HTTP status', async () => {

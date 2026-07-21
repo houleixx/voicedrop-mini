@@ -57,7 +57,7 @@ npm run validate:miniapp
 
 然后在微信开发者工具中导入仓库根目录。请在开发者工具或本机的 `project.private.config.json` 中设置自己的小程序 AppID；微信登录会通过 `wx.getAccountInfoSync()` 读取当前运行环境的 AppID，不应在源码中硬编码。
 
-后端默认使用 `https://jianshuo.dev`。真机调试和发布前，请在微信公众平台配置所需的 request、uploadFile、downloadFile 与 WebSocket 合法域名（WebSocket 使用 `wss://jianshuo.dev`）。
+后端默认使用 `https://jianshuo.dev`。可控的照片原图下载会优先使用 `https://voicedrop.cn` 的国内边缘缓存，域名不可用时自动回退 `jianshuo.dev`；直接交给 `<image>` 的远程地址使用 `jianshuo.dev`。真机调试和发布前，请在微信公众平台配置所需的 request、uploadFile、downloadFile 与 WebSocket 合法域名：API 与 WebSocket 使用 `jianshuo.dev`；若要命中照片 CDN，还需把 `https://voicedrop.cn` 加入 downloadFile 合法域名。
 
 ## 敏感配置
 

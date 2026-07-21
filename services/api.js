@@ -1,7 +1,12 @@
 const HOST = 'jianshuo.dev'
+const PHOTO_HOST = 'voicedrop.cn'
 
 function filesBase() {
   return `https://${HOST}/files/api`
+}
+
+function photoBase() {
+  return `https://${PHOTO_HOST}/files/api`
 }
 
 function agentBase() {
@@ -28,6 +33,10 @@ function photoUrl(key) {
   return `${filesBase()}/photo/${path(key)}`
 }
 
+function photoCdnUrl(key) {
+  return `${photoBase()}/photo/${path(key)}`
+}
+
 function path(key) {
   return String(key || '')
     .split('/')
@@ -37,12 +46,15 @@ function path(key) {
 
 module.exports = {
   HOST,
+  PHOTO_HOST,
   filesBase,
+  photoBase,
   agentBase,
   recoBase,
   agentWs,
   sharePage,
   downloadUrl,
   photoUrl,
+  photoCdnUrl,
   path
 }

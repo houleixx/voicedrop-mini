@@ -1,18 +1,21 @@
 const terms = require('../../utils/community-terms')
 const blockStore = require('../../utils/block-store')
 const audioConsent = require('../../utils/audio-consent')
+const appVersion = require('../../utils/app-version')
 
 Page({
   data: {
     supportEmail: terms.SUPPORT_EMAIL,
     blockedAuthors: [],
-    audioConsentGranted: false
+    audioConsentGranted: false,
+    appVersion: '开发版'
   },
 
   onShow() {
     this.setData({
       blockedAuthors: blockStore.blockedList(),
-      audioConsentGranted: audioConsent.isGranted()
+      audioConsentGranted: audioConsent.isGranted(),
+      appVersion: appVersion.label()
     })
   },
 

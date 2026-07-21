@@ -1,5 +1,4 @@
 const auth = require('../../services/auth')
-const deviceLink = require('../../services/device-link')
 const library = require('../../services/library')
 const wechatAuth = require('../../services/wechat-auth')
 
@@ -15,9 +14,7 @@ Page({
     wechatLoggingIn: false,
     loginStatusText: '未登录微信',
     recordCount: 0,
-    articleCount: 0,
-    pairing: null,
-    pairingCode: ''
+    articleCount: 0
   },
 
   onShow() {
@@ -162,7 +159,7 @@ Page({
   confirmWechatAccountSwitch(result) {
     wx.showModal({
       title: '该微信已关联另一个云端空间',
-      content: '为避免替换当前访问令牌，请先从已登录该账号的设备复制 anon_ 访问令牌，或使用设备配对登录。',
+      content: '为避免替换当前访问令牌，请先从已登录该账号的设备复制 anon_ 访问令牌，再回到这里切换。',
       confirmText: '知道了',
       showCancel: false,
       fail: () => wx.showToast({ title: '账号切换提示打开失败', icon: 'none' })
@@ -195,39 +192,6 @@ Page({
       confirmText: '知道了',
       showCancel: false
     })
-  },
-
-  async startDeviceLink() {
-    try {
-      const pairing = await deviceLink.start(auth.anonId(), 'mini-program')
-      this.setData({ pairing })
-      wx.showModal({
-        title: '设备登录请求',
-        content: `配对已发起。\n\n验证码：${pairing.code || pairing.pairingCode || '请查看另一台设备'}`,
-        showCancel: false
-      })
-    } catch (error) {
-      wx.showToast({ title: '发起失败', icon: 'error' })
-    }
-  },
-
-  onPairingCodeInput(event) {
-    this.setData({ pairingCode: event.detail.value })
-  },
-
-  async verifyDeviceLink() {
-    if (!this.data.pairing || !this.data.pairingCode) return
-    try {
-      await deviceLink.verify(this.data.pairing.pairingId || this.data.pairing.id, this.data.pairingCode)
-      wx.showToast({ title: '验证成功' })
-    } catch (error) {
-      wx.showToast({ title: '验证失败', icon: 'error' })
-    }
-  },
-
-  async cancelDeviceLink() {
-    if (this.data.pairing) await deviceLink.cancel(this.data.pairing.pairingId || this.data.pairing.id)
-    this.setData({ pairing: null, pairingCode: '' })
   }
 })
 

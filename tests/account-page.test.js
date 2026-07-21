@@ -1,5 +1,9 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('fs')
+const path = require('path')
+
+const root = path.join(__dirname, '..')
 
 function freshAccountPage(options) {
   let page
@@ -40,13 +44,12 @@ function freshAccountPage(options) {
     },
     reLaunch(options) { calls.push(['reLaunch', options.url]) }
   }
-  ;['../pages/account/index', '../services/auth', '../services/library', '../services/wechat-auth', '../services/device-link'].forEach((id) => {
+  ;['../pages/account/index', '../services/auth', '../services/library', '../services/wechat-auth'].forEach((id) => {
     delete require.cache[require.resolve(id)]
   })
   require.cache[require.resolve('../services/auth')] = { exports: auth }
   require.cache[require.resolve('../services/library')] = { exports: library }
   require.cache[require.resolve('../services/wechat-auth')] = { exports: wechatAuth }
-  require.cache[require.resolve('../services/device-link')] = { exports: {} }
   require('../pages/account/index')
   return { page, calls }
 }
@@ -63,6 +66,35 @@ test('account page displays and copies the anonymous account id', async () => {
   assert.equal(ctx.data.accountIdDisplay, 'anon-current')
   assert.deepEqual(calls.find(([name]) => name === 'clipboard'), ['clipboard', 'anon-current'])
   assert.deepEqual(calls.find(([name]) => name === 'ownerScope'), ['ownerScope', { anonymous: true }])
+})
+
+test('account detail uses the same Remix account icon as settings', () => {
+  const accountWxml = fs.readFileSync(path.join(root, 'pages/account/index.wxml'), 'utf8')
+  const settingsWxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
+
+  assert.match(accountWxml, /class="account-badge-icon ri-user-line"/)
+  assert.match(settingsWxml, /class="menu-icon-text ri-user-line"/)
+  assert.doesNotMatch(accountWxml, />✓</)
+})
+
+test('account page does not expose device pairing login', () => {
+  const accountJs = fs.readFileSync(path.join(root, 'pages/account/index.js'), 'utf8')
+  const accountWxml = fs.readFileSync(path.join(root, 'pages/account/index.wxml'), 'utf8')
+
+  assert.doesNotMatch(accountWxml, /转移与登录|设备配对登录|startDeviceLink|pairing/)
+  assert.doesNotMatch(accountJs, /device-link|startDeviceLink|verifyDeviceLink|cancelDeviceLink|pairingCode/)
+})
+
+test('token import dialog keeps the native input inside a styled field shell', () => {
+  const accountWxml = fs.readFileSync(path.join(root, 'pages/account/index.wxml'), 'utf8')
+  const accountWxss = fs.readFileSync(path.join(root, 'pages/account/index.wxss'), 'utf8')
+
+  assert.match(
+    accountWxml,
+    /<view class="dialog-input-shell">\s*<input class="dialog-input"[^>]*>\s*<\/view>/
+  )
+  assert.match(accountWxss, /\.dialog-input-shell\s*{[^}]*height:\s*88rpx;/s)
+  assert.match(accountWxss, /\.dialog-input\s*{[^}]*height:\s*100%;/s)
 })
 
 test('account page keeps the id blank until the account scope loads', async () => {

@@ -39,6 +39,7 @@ function freshSettingsPage(settingsOverrides, wxOverrides) {
   delete require.cache[require.resolve('../services/usage')]
   delete require.cache[require.resolve('../services/auth')]
   delete require.cache[require.resolve('../utils/prefs')]
+  delete require.cache[require.resolve('../utils/app-version')]
   require.cache[require.resolve('../services/settings')] = { exports: settings }
   require.cache[require.resolve('../services/usage')] = { exports: usage }
   require.cache[require.resolve('../services/auth')] = { exports: auth }
@@ -83,6 +84,23 @@ test('settings page links to prompt customization', () => {
   assert.match(wxml, /自定义长按菜单里的每个动作/)
 })
 
+test('settings page uses Remix Icon instead of platform glyphs', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
+  const expectedIcons = [
+    'ri-user-line',
+    'ri-flashlight-line',
+    'ri-quill-pen-line',
+    'ri-magic-line',
+    'ri-wechat-line',
+    'ri-team-line',
+    'ri-information-line',
+    'ri-arrow-right-s-line'
+  ]
+
+  expectedIcons.forEach((icon) => assert.match(wxml, new RegExp(`\\b${icon}\\b`)))
+  assert.doesNotMatch(wxml, /[✓⚡✎✦➤☻ℹ›]/)
+})
+
 test('profile name editor lifts above the keyboard while focused', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
 
@@ -101,6 +119,21 @@ test('settings page loads current profile name from style endpoint', async () =>
 
   assert.equal(ctx.data.profileName, '王小明')
   assert.equal(ctx.data.nameInput, '王小明')
+})
+
+test('settings about entry shows the current release version', async () => {
+  const page = freshSettingsPage({}, {
+    getAccountInfoSync: () => ({
+      miniProgram: { envVersion: 'release', version: '1.2.3' }
+    })
+  })
+  const ctx = pageContext(page)
+
+  await page.load.call(ctx)
+
+  assert.equal(ctx.data.appVersion, '1.2.3')
+  const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
+  assert.match(wxml, />当前版本\s+\{\{appVersion\}\}</)
 })
 
 test('settings page trims and limits profile name before saving', async () => {

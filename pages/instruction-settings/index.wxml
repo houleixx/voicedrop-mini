@@ -46,10 +46,10 @@
       </view>
     </view>
   </view>
-  <view class="sheet-mask" wx:if="{{importVisible}}" bindtap="closeImport">
+  <view class="sheet-mask" wx:if="{{importVisible}}" bindtap="closeImport" style="bottom: {{importKeyboardHeight}}px;">
     <view class="import-sheet" catchtap="noop">
       <text class="import-sheet-title">导入提示词</text><text class="import-sheet-subtitle">输入 7 位魔法数字，或粘贴分享链接</text>
-      <input class="import-code-input" value="{{importCode}}" bindinput="onImportCodeInput" maxlength="80" />
+      <input class="import-code-input" value="{{importCode}}" bindinput="onImportCodeInput" bindkeyboardheightchange="onImportKeyboardHeightChange" adjust-position="{{false}}" maxlength="80" />
       <text class="import-sheet-error" wx:if="{{importError}}">{{importError}}</text>
       <view class="import-preview" wx:if="{{importPreview}}"><text>{{importPreview.label}}</text><text wx:if="{{importPreview.author}}">分享者：{{importPreview.author}}</text></view>
       <button class="import-confirm" disabled="{{!importPreview || importing}}" loading="{{importing}}" bindtap="confirmImportSheet">加入我的提示词</button>
