@@ -31,7 +31,7 @@
 <view class="screen recording-screen">
   <home-tabs current="{{currentHomeTab}}" tabs="{{homeTabs}}" bind:change="switchHomeTab" bind:settings="openSettings" />
 
-  <view wx:if="{{activeTab === 'community'}}" class="community-feed-tabs {{communityFeedDevtools ? 'devtools-baseline' : ''}}" style="top: {{scrollContentTop}}px;">
+  <view wx:if="{{activeTab === 'community'}}" class="community-feed-tabs {{communityFeedBaselineFix ? 'baseline-fix' : ''}} {{communityFeedHarmony ? 'harmony-baseline' : ''}}" style="top: {{scrollContentTop}}px;">
     <view class="community-feed-tab {{communityFeedTab === 'recommended' ? 'active' : ''}}"
           data-feed-tab="recommended" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">推荐</text></view>
     <view class="community-feed-tab {{communityFeedTab === 'latest' ? 'active' : ''}}"

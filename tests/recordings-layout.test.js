@@ -45,13 +45,23 @@ test('home loading states show a spinner above the loading text', () => {
   assert.match(css, /@keyframes loading-spin\s*\{[\s\S]*transform:\s*rotate\(360deg\);[\s\S]*\}/)
 })
 
-test('community tab baseline compensation applies only to developer tools runtimes', () => {
+test('community tab baseline compensation defaults on except for real iOS runtimes', () => {
   const { helpers } = freshRecordingsPage()
 
   assert.equal(helpers.isDevtoolsRuntime({ platform: 'devtools' }, {}), true)
   assert.equal(helpers.isDevtoolsRuntime({ platform: 'ios' }, { brand: 'devtools' }), true)
   assert.equal(helpers.isDevtoolsRuntime({ platform: 'ios', brand: 'Apple', model: 'iPhone' }, {}), false)
   assert.equal(helpers.isDevtoolsRuntime({ platform: 'android', brand: 'Google', model: 'Pixel' }, {}), false)
+  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'devtools' }, {}), true)
+  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'android' }, {}), true)
+  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'ohos' }, {}), true)
+  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'harmonyos' }, {}), true)
+  assert.equal(helpers.needsCommunityFeedBaselineFix({}, {}), true)
+  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'ios' }, { brand: 'Apple', model: 'iPhone' }), false)
+  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'ios' }, { brand: 'devtools' }), true)
+  assert.equal(helpers.isHarmonyRuntime({ system: 'HarmonyOS 5.0' }, {}), true)
+  assert.equal(helpers.isHarmonyRuntime({ platform: 'ohos' }, {}), true)
+  assert.equal(helpers.isHarmonyRuntime({ platform: 'android', system: 'Android 15' }, {}), false)
 })
 
 test('successful recording deletion removes local data without reloading the list', async () => {
@@ -194,7 +204,7 @@ test('community feed mirrors Android masonry tabs and keeps filters above pull r
   assert.doesNotMatch(wxml, /data-feed-tab="prompts"/)
   assert.doesNotMatch(wxml, /communityFeedTab === 'prompts'/)
   assert.match(css, /\.community-feed-tabs\s*\{[^}]*height:\s*88rpx;[^}]*padding:\s*0 32rpx;[^}]*align-items:\s*center;/s)
-  assert.match(wxml, /class="community-feed-tabs \{\{communityFeedDevtools \? 'devtools-baseline' : ''\}\}"/)
+  assert.match(wxml, /class="community-feed-tabs \{\{communityFeedBaselineFix \? 'baseline-fix' : ''\}\} \{\{communityFeedHarmony \? 'harmony-baseline' : ''\}\}"/)
   assert.match(wxml, /<text class="community-feed-tab-label">推荐<\/text>/)
   assert.match(css, /\.community-feed-tab\s*\{[^}]*display:\s*flex;[^}]*box-sizing:\s*border-box;[^}]*height:\s*88rpx;[^}]*align-items:\s*center;[^}]*font-size:\s*30rpx;/s)
   assert.doesNotMatch(css, /\.community-feed-tab\s*\{[^}]*padding-top:/s)
@@ -202,8 +212,10 @@ test('community feed mirrors Android masonry tabs and keeps filters above pull r
   assert.doesNotMatch(css, /\.community-feed-tab(?:-label)?\s*\{[^}]*height:\s*100%;/s)
   assert.doesNotMatch(ruleBody(css, '.community-feed-tab'), /transform:/)
   assert.doesNotMatch(ruleBody(css, '.community-feed-tab-label'), /transform:/)
-  assert.match(css, /\.community-feed-tabs\.devtools-baseline \.community-feed-tab-label\s*\{[^}]*transform:\s*translateY\(10rpx\);/s)
-  assert.match(js, /communityFeedDevtools:\s*isDevtoolsRuntime\(info, deviceInfo\)/)
+  assert.match(css, /\.community-feed-tabs\.baseline-fix \.community-feed-tab-label\s*\{[^}]*transform:\s*translateY\(9rpx\);/s)
+  assert.match(css, /\.community-feed-tabs\.harmony-baseline \.community-feed-tab-label\s*\{[^}]*transform:\s*translateY\(14rpx\);/s)
+  assert.match(js, /communityFeedBaselineFix:\s*needsCommunityFeedBaselineFix\(info, deviceInfo\)/)
+  assert.match(js, /communityFeedHarmony:\s*isHarmonyRuntime\(info, deviceInfo\)/)
   assert.match(js, /typeof wx\.getDeviceInfo === 'function' \? wx\.getDeviceInfo\(\) : \{\}/)
   assert.match(wxml, /top: \{\{activeTab === 'community' \? communityScrollContentTop : scrollContentTop\}\}px/)
   assert.match(wxml, /class="community-card-image"/)

@@ -61,8 +61,12 @@
   white-space: nowrap;
 }
 
-.community-feed-tabs.devtools-baseline .community-feed-tab-label {
-  transform: translateY(10rpx);
+.community-feed-tabs.baseline-fix .community-feed-tab-label {
+  transform: translateY(9rpx);
+}
+
+.community-feed-tabs.harmony-baseline .community-feed-tab-label {
+  transform: translateY(14rpx);
 }
 
 .community-feed-tab.active {

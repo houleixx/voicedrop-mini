@@ -20,6 +20,18 @@ function isDevtoolsRuntime(systemInfo, deviceInfo) {
   return [systemInfo, deviceInfo].some((info) => Object.values(info || {}).some((value) => /devtools|wechatdevtools|微信开发者工具/i.test(String(value || ''))))
 }
 
+function isHarmonyRuntime(systemInfo, deviceInfo) {
+  return [systemInfo, deviceInfo].some((info) => Object.values(info || {}).some((value) => /harmony|ohos|openharmony/i.test(String(value || ''))))
+}
+
+function needsCommunityFeedBaselineFix(systemInfo, deviceInfo) {
+  if (isDevtoolsRuntime(systemInfo, deviceInfo)) return true
+  const platforms = [systemInfo, deviceInfo]
+    .map((info) => String(info?.platform || '').toLowerCase())
+    .filter(Boolean)
+  return !platforms.includes('ios')
+}
+
 Page({
   data: {
     activeTab: 'recordings',
@@ -59,7 +71,8 @@ Page({
     communityLoaded: false,
     refreshing: false,
     audioConsentVisible: false,
-    communityFeedDevtools: false,
+    communityFeedBaselineFix: false,
+    communityFeedHarmony: false,
     scrollContentTop: 0,
     communityScrollContentTop: 0
   },
@@ -78,7 +91,8 @@ Page({
       const pxPerRpx = info.windowWidth / 750
       const scrollContentTop = statusBarPx + topRpx * pxPerRpx
       this.setData({
-        communityFeedDevtools: isDevtoolsRuntime(info, deviceInfo),
+        communityFeedBaselineFix: needsCommunityFeedBaselineFix(info, deviceInfo),
+        communityFeedHarmony: isHarmonyRuntime(info, deviceInfo),
         scrollContentTop,
         communityScrollContentTop: scrollContentTop + 88 * pxPerRpx
       })
@@ -1118,4 +1132,4 @@ Page({
   }
 })
 
-module.exports = { isDevtoolsRuntime }
+module.exports = { isDevtoolsRuntime, isHarmonyRuntime, needsCommunityFeedBaselineFix }
