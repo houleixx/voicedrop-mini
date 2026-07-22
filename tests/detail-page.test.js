@@ -148,9 +148,13 @@ test('detail page switches multi-article content like Android chips', () => {
 
 test('detail page renders the custom configurable longpress menu', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+  const source = fs.readFileSync(path.join(root, 'pages/detail/index.js'), 'utf8')
   const json = JSON.parse(fs.readFileSync(path.join(root, 'pages/detail/index.json'), 'utf8'))
   assert.equal(json.usingComponents['config-menu'], '../../components/config-menu/index')
   assert.match(wxml, /<config-menu[\s\S]*bindpick="onLongpressPick"/)
+  assert.match(source, /const menuWidth = Math\.min\(340, windowWidth - 32\)/)
+  assert.match(source, /const placeBelow = menuHeight <= belowHeight \|\| belowHeight >= aboveHeight/)
+  assert.match(source, /menuMaxHeight = Math\.max\(48, Math\.min\(menuCapacity, availableHeight\)\)/)
 })
 
 test('detail page exposes inline paragraph editing from the text longpress menu', () => {
@@ -300,7 +304,8 @@ test('detail image longpress anchors the menu to the measured image rect', () =>
     width: 320,
     height: 180,
     menuTop: 132,
-    menuMaxHeight: 696,
+    menuMaxHeight: 520,
+    menuWidth: 340,
     menuLeft: 20,
     url: 'wxfile://photo.jpg',
     text: ''
@@ -419,6 +424,31 @@ test('detail text longpress keeps the menu outside the paragraph', () => {
     data: {
       blocks: [{ type: 'paragraph', text: '正文', lineNo: 1 }],
       menus: { text: { groups: [[{ id: 'polish', label: '润色', instruction: '润色 {{LINE}}' }]] } }
+    },
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  page.longpressBlock.call(ctx, {
+    currentTarget: { dataset: { index: 0 } },
+    detail: { x: 24, y: 160, rect: { top: 160, left: 24, width: 342, height: 76 } }
+  })
+
+  assert.equal(ctx.data.longpressAnchor.menuTop, 248)
+  assert.equal(ctx.data.longpressAnchor.menuMaxHeight, 403)
+})
+
+test('detail tall text menu stays beside the paragraph and scrolls in the larger available side', () => {
+  const page = freshDetailPage(null, { getSystemInfoSync: () => ({ windowWidth: 390, windowHeight: 667 }) })
+  const customRows = Array.from({ length: 10 }, (_, index) => ({
+    id: `custom-${index}`,
+    label: `自定义 ${index}`,
+    origin: 'user',
+    instruction: `处理 ${index}`
+  }))
+  const ctx = Object.assign({}, page, {
+    data: {
+      blocks: [{ type: 'paragraph', text: '正文', lineNo: 1 }],
+      menus: { text: { groups: [customRows] } }
     },
     setData(update) { Object.assign(this.data, update) }
   })

@@ -167,6 +167,25 @@ test('ignores malformed, non-object, and unknown relay events', () => {
   assert.deepEqual(events, [])
 })
 
+test('quota error and 1013 close become terminal unavailable states', () => {
+  const h = harness()
+  const session = realtime.createSession({}, h.deps)
+  session.connect()
+  h.sockets[0].handlers.open()
+  h.sockets[0].handlers.message({ data: JSON.stringify({ type: 'error', error: { code: 'insufficient_quota', message: 'billing required' } }) })
+  assert.equal(session.state(), 'unavailable')
+  session.appendAudio(new Uint8Array([1, 2]))
+  assert.equal(h.sockets[0].sent.length, 0)
+  h.sockets[0].handlers.error({ errMsg: 'server closed after fatal event' })
+  assert.equal(session.state(), 'unavailable')
+
+  session.disconnect()
+  session.connect()
+  h.sockets[1].handlers.open()
+  h.sockets[1].handlers.close({ code: 1013, reason: 'insufficient_quota' })
+  assert.equal(session.state(), 'unavailable')
+})
+
 test('silently ignores an audio delta when base64 decoding throws', () => {
   const h = harness()
   const events = []

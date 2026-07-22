@@ -156,6 +156,21 @@ test('a live connection resets reconnect backoff', () => {
   assert.equal(h.timers.at(-1).delay, 1000)
 })
 
+test('unavailable stops reconnect, playback, and microphone uplink while recording can continue', () => {
+  const h = harness()
+  h.interviewer.start()
+  h.callbacks().onState('degraded')
+  const reconnect = h.timers.at(-1)
+
+  h.callbacks().onState('unavailable')
+  h.interviewer.onPcm16(new ArrayBuffer(2), 16000)
+
+  assert.equal(reconnect.canceled, true)
+  assert.equal(h.player.stopCount, 1)
+  assert.equal(h.session.sent.length, 0)
+  assert.equal(h.interviewer.stateText(), 'AI 采访暂不可用 · 录音继续')
+})
+
 test('reconnect clears a mute left behind by the failed AI turn', () => {
   const h = harness()
   h.interviewer.start()

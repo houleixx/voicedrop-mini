@@ -12,6 +12,19 @@ function createSession(handlers, injected) {
   let generation = 0
   let currentState = 'idle'
   let open = false
+  let fatal = false
+
+  function isFatalReason(reason) {
+    const value = String(reason || '').toLowerCase()
+    return value.includes('insufficient_quota') || value.includes('exceeded_current_quota') ||
+      value.includes('account_deactivated') || value.includes('billing')
+  }
+
+  function markUnavailable() {
+    fatal = true
+    open = false
+    setState('unavailable')
+  }
 
   function setState(next) {
     if (currentState === next) return
@@ -35,7 +48,7 @@ function createSession(handlers, injected) {
     generation += 1
     socket = null
     open = false
-    setState('degraded')
+    setState(fatal ? 'unavailable' : 'degraded')
   }
 
   function failCurrentSocket(localSocket, localGeneration) {
@@ -44,11 +57,12 @@ function createSession(handlers, injected) {
     socket = null
     open = false
     safeClose(localSocket, { code: RECONNECT_CLOSE_CODE, reason: 'retry' })
-    setState('degraded')
+    setState(fatal ? 'unavailable' : 'degraded')
   }
 
   function connect() {
     if (socket) return
+    fatal = false
     const token = auth.bearer()
     if (!token) { setState('degraded'); return }
     setState('connecting')
@@ -85,11 +99,12 @@ function createSession(handlers, injected) {
       // wx has already invalidated this task; closing it again rejects with taskID not exist.
       markCurrentSocketFailed(localSocket, localGeneration)
     })
-    localSocket.onClose(() => {
+    localSocket.onClose((event) => {
       if (!current(localSocket, localGeneration)) return
       socket = null
       open = false
-      setState('degraded')
+      if (fatal || Number(event && event.code) === 1013 || isFatalReason(event && event.reason)) markUnavailable()
+      else setState('degraded')
     })
   }
 
@@ -109,11 +124,15 @@ function createSession(handlers, injected) {
       if (callbacks.onAudioDelta) callbacks.onAudioDelta(audio)
     } else if (event.type === 'response.done') {
       if (callbacks.onResponseDone) callbacks.onResponseDone()
+    } else if (event.type === 'error') {
+      const error = event.error || event
+      const reason = `${error.code || ''} ${error.type || ''} ${error.message || ''}`
+      if (isFatalReason(reason)) markUnavailable()
     }
   }
 
   function appendAudio(bytes) {
-    if (!socket || !open || !bytes || !bytes.byteLength) return
+    if (!socket || !open || fatal || !bytes || !bytes.byteLength) return
     const localSocket = socket
     const localGeneration = generation
     try {
@@ -150,6 +169,7 @@ function createSession(handlers, injected) {
     const old = socket
     socket = null
     open = false
+    fatal = false
     if (old) safeClose(old, { code: 1000, reason: 'done' })
     setState('idle')
   }

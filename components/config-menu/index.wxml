@@ -4,22 +4,29 @@
     <image wx:if="{{anchorType === 'image'}}" src="{{anchor.url}}" mode="widthFix" />
     <text wx:else>{{anchor.text}}</text>
   </view>
-  <view class="config-menu-card" style="top:{{anchor.menuTop}}px;left:{{anchor.menuLeft}}px;max-height:{{anchor.menuMaxHeight}}px;" catchtap="stop">
+  <view class="config-menu-card" style="top:{{anchor.menuTop}}px;left:{{anchor.menuLeft}}px;width:{{anchor.menuWidth}}px;max-height:{{anchor.menuMaxHeight}}px;" catchtap="stop">
     <block wx:if="{{openNode}}">
-      <view class="config-menu-back" bindtap="back"><text>‹</text><text>{{openNode.label}}</text></view>
-      <view class="config-menu-row" wx:for="{{openNode.children}}" wx:key="id" data-index="{{index}}" bindtap="pickChild"><text>{{item.label}}</text></view>
+      <view class="config-menu-back" bindtap="back"><text class="config-menu-back-icon" aria-hidden="true">‹</text><text>{{openNode.label}}</text></view>
+      <scroll-view class="config-menu-scroll" style="height:{{submenuScrollHeight}}px;" scroll-y="{{true}}" enhanced="{{true}}" show-scrollbar="{{true}}">
+        <view class="config-menu-row" wx:for="{{openNode.children}}" wx:key="id" data-index="{{index}}" bindtap="pickChild"><text>{{item.label}}</text></view>
+      </scroll-view>
     </block>
     <block wx:else>
-      <block wx:for="{{groups}}" wx:key="index" wx:for-item="group" wx:for-index="groupIndex">
-        <view class="config-menu-group-separator" wx:if="{{groupIndex}}"></view>
-        <block wx:for="{{group}}" wx:key="id">
-          <view wx:if="{{item.type === 'submenu'}}" class="config-menu-row" data-group="{{groupIndex}}" data-index="{{index}}" bindtap="openSubmenu">
-            <text>{{item.label}}</text><text class="config-menu-preview">{{item.children[0].label}} · {{item.children[1].label || ''}} ›</text>
-          </view>
-          <view wx:else class="config-menu-row" data-group="{{groupIndex}}" data-index="{{index}}" bindtap="pickRoot"><text>{{item.label}}</text></view>
-        </block>
+      <block wx:for="{{fixedNodes}}" wx:key="id">
+        <view wx:if="{{item.type === 'submenu'}}" class="config-menu-row config-menu-submenu" data-zone="fixed" data-index="{{index}}" bindtap="openSubmenu">
+          <text>{{item.label}}</text><text class="config-menu-chevron" aria-hidden="true">›</text>
+        </view>
+        <view wx:else class="config-menu-row" data-zone="fixed" data-index="{{index}}" bindtap="pickRoot"><text>{{item.label}}</text></view>
       </block>
-      <view class="config-menu-group-separator" wx:if="{{localRows.length}}"></view>
+      <scroll-view wx:if="{{customNodes.length}}" class="config-menu-scroll" style="height:{{rootScrollHeight}}px;" scroll-y="{{true}}" enhanced="{{true}}" show-scrollbar="{{true}}">
+        <block wx:for="{{customNodes}}" wx:key="id">
+          <view wx:if="{{item.type === 'submenu'}}" class="config-menu-row config-menu-submenu" data-zone="custom" data-index="{{index}}" bindtap="openSubmenu">
+            <text>{{item.label}}</text><text class="config-menu-chevron" aria-hidden="true">›</text>
+          </view>
+          <view wx:else class="config-menu-row" data-zone="custom" data-index="{{index}}" bindtap="pickRoot"><text>{{item.label}}</text></view>
+        </block>
+      </scroll-view>
+      <view class="config-menu-section-divider" wx:if="{{localRows.length && customNodes.length}}"></view>
       <view class="config-menu-row" wx:for="{{localRows}}" wx:key="id" data-index="{{index}}" bindtap="pickLocal"><text>{{item.label}}</text></view>
     </block>
   </view>

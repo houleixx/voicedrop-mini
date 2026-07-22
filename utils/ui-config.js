@@ -2,7 +2,7 @@ const CACHE_KEY = 'voicedrop.uiconfig.cache.v1'
 const MAX_SCHEMA = 1
 
 function node(id, label, type, instruction, children) {
-  return { id: id || '', label: label || '', type: type || '', instruction: instruction || '', children: children || [] }
+  return { id: id || '', label: label || '', type: type || '', origin: 'system', instruction: instruction || '', children: children || [] }
 }
 
 function builtin() {
@@ -70,13 +70,14 @@ function renderableNode(raw) {
   const id = String(raw.id || '')
   const label = String(raw.label || '')
   if (!id || !label) return null
+  const origin = String(raw.origin || 'system')
   if (raw.type === 'submenu') {
     const children = (Array.isArray(raw.children) ? raw.children : []).map(renderableNode).filter(Boolean)
-    return children.length ? { id, label, type: 'submenu', children } : null
+    return children.length ? { id, label, type: 'submenu', origin, children } : null
   }
   if (raw.type) return null
   const instruction = String(raw.instruction || '')
-  return instruction ? { id, label, instruction } : null
+  return instruction ? { id, label, origin, instruction } : null
 }
 
 function renderableGroups(menuConfig) {

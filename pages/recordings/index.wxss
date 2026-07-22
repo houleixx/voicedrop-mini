@@ -46,9 +46,8 @@
 .community-feed-tab {
   display: flex;
   box-sizing: border-box;
-  height: 100%;
+  height: 88rpx;
   margin-right: 36rpx;
-  padding-top: 16rpx;
   align-items: center;
   color: #8a8175;
   font-size: 30rpx;
@@ -56,7 +55,14 @@
 }
 
 .community-feed-tab-label {
-  line-height: 1;
+  display: block;
+  height: 30rpx;
+  line-height: 30rpx;
+  white-space: nowrap;
+}
+
+.community-feed-tabs.devtools-baseline .community-feed-tab-label {
+  transform: translateY(10rpx);
 }
 
 .community-feed-tab.active {

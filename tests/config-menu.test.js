@@ -17,8 +17,11 @@ function ctx(component) {
   return {
     data: {
       groups: [[{ id: 'style', label: '图片风格', type: 'submenu', children: [{ id: 'cartoon', label: '卡通', instruction: '画图' }] }]],
+      fixedNodes: [{ id: 'style', label: '图片风格', type: 'submenu', children: [{ id: 'cartoon', label: '卡通', instruction: '画图' }] }],
+      customNodes: [],
       openNode: null
     },
+    properties: { anchor: { menuMaxHeight: 320 } },
     setData(update) { Object.assign(this.data, update) },
     triggerEvent(name, detail) { events.push({ name, detail }) },
     events
@@ -28,7 +31,7 @@ function ctx(component) {
 test('config menu enters and returns from a submenu', () => {
   const component = freshComponent()
   const state = ctx(component)
-  component.methods.openSubmenu.call(state, { currentTarget: { dataset: { group: 0, index: 0 } } })
+  component.methods.openSubmenu.call(state, { currentTarget: { dataset: { zone: 'fixed', index: 0 } } })
   assert.equal(state.data.openNode.id, 'style')
   component.methods.back.call(state)
   assert.equal(state.data.openNode, null)
@@ -44,15 +47,36 @@ test('config menu emits a picked leaf and lets the parent close after consuming 
   assert.equal(state.events.length, 1)
 })
 
-test('config menu renders an overlay, lifted target, and submenu back row', () => {
+test('config menu keeps system rows fixed and allocates overflow only to custom rows', () => {
+  const component = freshComponent()
+  const state = ctx(component)
+  component.observers['open,menu,anchor,localRows'].call(state, true, { groups: [[
+    { id: 'sys', label: '系统', origin: 'system', instruction: 'S' },
+    { id: 'custom-a', label: '自定义 A', origin: 'user', instruction: 'A' },
+    { id: 'custom-b', label: '自定义 B', origin: 'custom', instruction: 'B' }
+  ]] }, { menuMaxHeight: 200 }, [{ id: 'copy', label: '拷贝' }, { id: 'edit', label: '编辑' }])
+
+  assert.deepEqual(state.data.fixedNodes.map((node) => node.id), ['sys'])
+  assert.deepEqual(state.data.customNodes.map((node) => node.id), ['custom-a', 'custom-b'])
+  assert.equal(state.data.rootScrollHeight, 55)
+})
+
+test('config menu renders fixed actions outside custom and second-level scroll regions', () => {
   const root = path.join(__dirname, '..')
   const wxml = fs.readFileSync(path.join(root, 'components/config-menu/index.wxml'), 'utf8')
   const wxss = fs.readFileSync(path.join(root, 'components/config-menu/index.wxss'), 'utf8')
   assert.match(wxml, /config-menu-scrim/)
   assert.match(wxml, /config-menu-anchor/)
   assert.match(wxml, /bindtap="back"/)
-  assert.match(wxml, /class="config-menu-card"[^>]*max-height:\{\{anchor\.menuMaxHeight\}\}px;[^>]*>[\s\S]*wx:if="\{\{openNode\}\}"[\s\S]*wx:else/)
-  assert.match(wxss, /#faf6ef/i)
-  assert.match(wxss, /border-radius:\s*13px/)
-  assert.match(wxss, /\.config-menu-card\{[^}]*overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch/s)
+  assert.match(wxml, /class="config-menu-back-icon"[^>]*>‹<\/text>/)
+  assert.doesNotMatch(wxml, /config-menu-back[^>]*[\s\S]*ri-arrow-left-s-line/)
+  assert.match(wxml, /class="config-menu-card"[^>]*width:\{\{anchor\.menuWidth\}\}px;[^>]*max-height:\{\{anchor\.menuMaxHeight\}\}px;/)
+  assert.match(wxml, /class="config-menu-scroll"[^>]*height:\{\{submenuScrollHeight\}\}px;[^>]*scroll-y="\{\{true\}\}"[^>]*show-scrollbar="\{\{true\}\}"/)
+  assert.match(wxml, /wx:if="\{\{customNodes\.length\}\}" class="config-menu-scroll"[^>]*height:\{\{rootScrollHeight\}\}px;[^>]*scroll-y="\{\{true\}\}"[^>]*show-scrollbar="\{\{true\}\}"/)
+  assert.match(wxml, /data-zone="fixed"[^>]*bindtap="openSubmenu"[\s\S]*class="config-menu-chevron"[^>]*>›<\/text>/)
+  assert.doesNotMatch(wxml, /config-menu-chevron ri-arrow-right-s-line/)
+  assert.match(wxss, /border-radius:\s*14px/)
+  assert.match(wxss, /box-shadow:\s*0 0 16px/)
+  assert.match(wxss, /\.config-menu-card\{[^}]*overflow:hidden/s)
+  assert.match(wxss, /\.config-menu-row::after,\.config-menu-back::after\{[^}]*right:18px;[^}]*left:18px;[^}]*height:1px/s)
 })

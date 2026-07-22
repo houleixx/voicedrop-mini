@@ -127,7 +127,6 @@ function postsForTab(feed, tab) {
   const value = feed || { recommended: [], latest: [] }
   if (tab === 'latest') return (value.latest || []).slice()
   if (tab === 'replies') return (value.recommended || []).filter((post) => Boolean(post.replyTo))
-  if (tab === 'prompts') return (value.recommended || []).filter((post) => post.isPrompt)
   return (value.recommended || []).slice()
 }
 

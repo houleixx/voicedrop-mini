@@ -31,15 +31,13 @@
 <view class="screen recording-screen">
   <home-tabs current="{{currentHomeTab}}" tabs="{{homeTabs}}" bind:change="switchHomeTab" bind:settings="openSettings" />
 
-  <view wx:if="{{activeTab === 'community'}}" class="community-feed-tabs" style="top: {{scrollContentTop}}px;">
+  <view wx:if="{{activeTab === 'community'}}" class="community-feed-tabs {{communityFeedDevtools ? 'devtools-baseline' : ''}}" style="top: {{scrollContentTop}}px;">
     <view class="community-feed-tab {{communityFeedTab === 'recommended' ? 'active' : ''}}"
           data-feed-tab="recommended" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">推荐</text></view>
     <view class="community-feed-tab {{communityFeedTab === 'latest' ? 'active' : ''}}"
           data-feed-tab="latest" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">最新</text></view>
     <view class="community-feed-tab {{communityFeedTab === 'replies' ? 'active' : ''}}"
           data-feed-tab="replies" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">回应</text></view>
-    <view class="community-feed-tab {{communityFeedTab === 'prompts' ? 'active' : ''}}"
-          data-feed-tab="prompts" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">提示词</text></view>
   </view>
 
   <scroll-view
@@ -116,8 +114,8 @@
         <text>正在加载...</text>
       </view>
       <view wx:elif="{{communityPosts.length === 0}}" class="empty card">
-        <text class="empty-title">{{communityFeedTab === 'prompts' ? '社区暂无提示词' : '社区暂无文章'}}</text>
-        <text class="empty-sub">{{communityFeedTab === 'prompts' ? '稍后刷新，或先分享自己的提示词。' : '稍后刷新，或先分享自己的文章。'}}</text>
+        <text class="empty-title">社区暂无文章</text>
+        <text class="empty-sub">稍后刷新，或先分享自己的文章。</text>
       </view>
 
       <view wx:else class="community-post-list">

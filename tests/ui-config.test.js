@@ -13,8 +13,8 @@ test('filters invalid leaves, empty submenus, and empty groups', () => {
   ], [{ id: 'unknown', label: '未知', type: 'future' }]] })
 
   assert.deepEqual(groups, [[{
-    id: 'style', label: '图片风格', type: 'submenu', children: [
-      { id: 'cartoon', label: '卡通', instruction: '画 {{KEY}}' }
+    id: 'style', label: '图片风格', type: 'submenu', origin: 'system', children: [
+      { id: 'cartoon', label: '卡通', origin: 'system', instruction: '画 {{KEY}}' }
     ]
   }]])
 })

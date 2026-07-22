@@ -19,8 +19,8 @@ function freshRecordingsPage(wxOverrides) {
   }, wxOverrides || {})
   const pagePath = require.resolve('../pages/recordings/index')
   delete require.cache[pagePath]
-  require(pagePath)
-  return { page, app }
+  const helpers = require(pagePath)
+  return { page, app, helpers }
 }
 
 function ruleBody(css, selector) {
@@ -43,6 +43,15 @@ test('home loading states show a spinner above the loading text', () => {
   assert.match(spinner, /border-top-color:\s*#c7432f;/)
   assert.match(spinner, /animation:\s*loading-spin\s+0\.8s\s+linear\s+infinite;/)
   assert.match(css, /@keyframes loading-spin\s*\{[\s\S]*transform:\s*rotate\(360deg\);[\s\S]*\}/)
+})
+
+test('community tab baseline compensation applies only to developer tools runtimes', () => {
+  const { helpers } = freshRecordingsPage()
+
+  assert.equal(helpers.isDevtoolsRuntime({ platform: 'devtools' }, {}), true)
+  assert.equal(helpers.isDevtoolsRuntime({ platform: 'ios' }, { brand: 'devtools' }), true)
+  assert.equal(helpers.isDevtoolsRuntime({ platform: 'ios', brand: 'Apple', model: 'iPhone' }, {}), false)
+  assert.equal(helpers.isDevtoolsRuntime({ platform: 'android', brand: 'Google', model: 'Pixel' }, {}), false)
 })
 
 test('successful recording deletion removes local data without reloading the list', async () => {
@@ -176,17 +185,26 @@ test('community feed mirrors Android masonry tabs and keeps filters above pull r
   const detail = fs.readFileSync(path.join(root, 'pages/community-detail/index.wxml'), 'utf8')
   const appWxss = fs.readFileSync(path.join(root, 'app.wxss'), 'utf8')
 
-  const filters = wxml.indexOf('class="community-feed-tabs"')
+  const filters = wxml.indexOf('class="community-feed-tabs ')
   const scroller = wxml.indexOf('<scroll-view')
   assert.ok(filters >= 0 && filters < scroller)
   assert.match(wxml, /data-feed-tab="recommended"/)
   assert.match(wxml, /data-feed-tab="latest"/)
   assert.match(wxml, /data-feed-tab="replies"/)
+  assert.doesNotMatch(wxml, /data-feed-tab="prompts"/)
+  assert.doesNotMatch(wxml, /communityFeedTab === 'prompts'/)
   assert.match(css, /\.community-feed-tabs\s*\{[^}]*height:\s*88rpx;[^}]*padding:\s*0 32rpx;[^}]*align-items:\s*center;/s)
-  assert.match(wxml, /class="community-feed-tab-label">推荐<\/text>/)
-  assert.match(css, /\.community-feed-tab\s*\{[^}]*display:\s*flex;[^}]*box-sizing:\s*border-box;[^}]*height:\s*100%;[^}]*padding-top:\s*16rpx;[^}]*align-items:\s*center;[^}]*font-size:\s*30rpx;/s)
-  assert.match(css, /\.community-feed-tab-label\s*\{[^}]*line-height:\s*1;/s)
-  assert.doesNotMatch(css, /\.community-feed-tab\s*\{[^}]*transform:/s)
+  assert.match(wxml, /class="community-feed-tabs \{\{communityFeedDevtools \? 'devtools-baseline' : ''\}\}"/)
+  assert.match(wxml, /<text class="community-feed-tab-label">推荐<\/text>/)
+  assert.match(css, /\.community-feed-tab\s*\{[^}]*display:\s*flex;[^}]*box-sizing:\s*border-box;[^}]*height:\s*88rpx;[^}]*align-items:\s*center;[^}]*font-size:\s*30rpx;/s)
+  assert.doesNotMatch(css, /\.community-feed-tab\s*\{[^}]*padding-top:/s)
+  assert.match(css, /\.community-feed-tab-label\s*\{[^}]*display:\s*block;[^}]*height:\s*30rpx;[^}]*line-height:\s*30rpx;[^}]*white-space:\s*nowrap;/s)
+  assert.doesNotMatch(css, /\.community-feed-tab(?:-label)?\s*\{[^}]*height:\s*100%;/s)
+  assert.doesNotMatch(ruleBody(css, '.community-feed-tab'), /transform:/)
+  assert.doesNotMatch(ruleBody(css, '.community-feed-tab-label'), /transform:/)
+  assert.match(css, /\.community-feed-tabs\.devtools-baseline \.community-feed-tab-label\s*\{[^}]*transform:\s*translateY\(10rpx\);/s)
+  assert.match(js, /communityFeedDevtools:\s*isDevtoolsRuntime\(info, deviceInfo\)/)
+  assert.match(js, /typeof wx\.getDeviceInfo === 'function' \? wx\.getDeviceInfo\(\) : \{\}/)
   assert.match(wxml, /top: \{\{activeTab === 'community' \? communityScrollContentTop : scrollContentTop\}\}px/)
   assert.match(wxml, /class="community-card-image"/)
   assert.match(wxml, /class="community-like-icon ri-heart-fill"/)

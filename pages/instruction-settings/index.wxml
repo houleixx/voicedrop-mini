@@ -8,15 +8,15 @@
     <text class="prompt-intro" wx:if="{{!reordering}}">一套指令，长按文字或图片时按『适用于』自动筛选。改过的系统项标『已自定义』，自己建的标『自建』。</text>
     <text class="prompt-intro" wx:else>长按提示词并拖动排序；拖到分组行可收进该组。</text>
     <view class="prompt-error" wx:if="{{error}}">{{error}}</view>
-    <view class="prompt-state" wx:if="{{loading}}">正在加载...</view>
+    <view class="prompt-state prompt-loading-state" wx:if="{{loading}}"><view class="prompt-loading-spinner" aria-hidden="true"></view><text>正在加载提示词…</text></view>
     <view class="prompt-state" wx:elif="{{empty}}">还没有提示词，可点击右上角新建</view>
-    <movable-area class="prompt-card" style="height:{{rows.length * 128}}rpx" wx:else>
-      <movable-view class="prompt-row depth-{{item.depth}} {{item.type === 'group' ? 'group-row' : 'action-row'}}" style="height:128rpx" y="{{item.flatIndex * rowHeightPx}}" direction="vertical" disabled="{{!reordering}}" wx:for="{{rows}}" wx:key="id" data-id="{{item.id}}" data-type="{{item.type}}" data-group="{{item.parentId}}" data-index="{{item.index}}" bindtap="handleRowTap" bindlongpress="startReorder" bindtouchstart="rowTouchStart" bindtouchmove="rowTouchMove" bindtouchend="rowTouchEnd" bindchange="movePrompt">
+    <movable-area class="prompt-card" style="height:{{rows.length * 112}}rpx" wx:else>
+      <movable-view class="prompt-row depth-{{item.depth}} {{item.type === 'group' ? 'group-row' : 'action-row'}}" style="height:112rpx" y="{{item.flatIndex * rowHeightPx}}" direction="vertical" disabled="{{!reordering}}" wx:for="{{rows}}" wx:key="id" data-id="{{item.id}}" data-type="{{item.type}}" data-group="{{item.parentId}}" data-index="{{item.index}}" bindtap="handleRowTap" bindlongpress="startReorder" bindtouchstart="rowTouchStart" bindtouchmove="rowTouchMove" bindtouchend="rowTouchEnd" bindchange="movePrompt">
         <view class="prompt-delete" wx:if="{{item.type === 'action'}}" data-id="{{item.id}}" catchtap="deleteItem">删除</view>
         <view class="prompt-row-content {{swipeDragging && swipedRowId === item.id ? 'swipe-dragging' : ''}}" style="transform:translateX({{swipedRowId === item.id ? swipeOffset : 0}}px)">
-          <view class="prompt-icon {{item.imageOnly ? 'accent-icon' : ''}}"><text class="{{item.type === 'group' ? 'ri-folder-line' : (item.imageOnly ? 'ri-image-line' : 'ri-double-quotes-l')}}"></text></view>
+          <view class="prompt-icon {{item.type === 'group' ? 'group-icon' : (item.imageOnly ? 'accent-icon' : 'text-icon')}}"><text class="{{item.type === 'group' ? 'ri-folder-line' : (item.imageOnly ? 'ri-image-line' : 'ri-file-text-line')}}"></text></view>
           <view class="group-copy" wx:if="{{item.type === 'group'}}"><text class="prompt-title">{{item.title}}</text><text class="group-meta">分组 · {{item.childCount}} 项</text></view>
-          <view class="prompt-copy" wx:else><view class="title-line"><text class="prompt-title">{{item.title}}</text><text class="origin-badge" wx:if="{{item.originLabel}}">{{item.originLabel}}</text></view><text class="applies-badge {{item.imageOnly ? 'image-badge' : ''}}" wx:if="{{item.appliesLabel}}">{{item.appliesLabel}}</text></view>
+          <view class="prompt-copy" wx:else><view class="title-line"><text class="prompt-title">{{item.title}}</text><text class="origin-badge {{item.originLabel === '已自定义' ? 'custom-origin' : 'user-origin'}}" wx:if="{{item.originLabel}}">{{item.originLabel}}</text></view><text class="applies-badge {{item.imageOnly ? 'image-badge' : ''}}" wx:if="{{item.appliesLabel}}">{{item.appliesLabel}}</text></view>
           <text class="drag-handle" wx:if="{{reordering}}">☰</text>
           <text class="prompt-arrow {{item.expanded ? 'expanded' : ''}}" wx:else>{{item.type === 'group' ? '›' : '›'}}</text>
         </view>
@@ -24,13 +24,29 @@
     </movable-area>
 
     <view wx:if="{{!reordering}}">
+      <view class="market-section">
+        <text class="market-heading">社区提示词</text>
+        <view class="market-filters">
+          <view wx:for="{{marketFilters}}" wx:key="key" class="market-filter {{marketFilter === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectMarketFilter">{{item.label}}</view>
+        </view>
+        <view class="market-state market-loading-state" wx:if="{{marketLoading && !marketItems.length}}"><view class="prompt-loading-spinner" aria-hidden="true"></view><text>正在加载社区提示词…</text></view>
+        <view class="market-state retry" wx:elif="{{marketError}}" bindtap="retryMarket">{{marketError}}</view>
+        <view class="market-state" wx:elif="{{!marketItems.length}}">暂时没有可用的社区提示词</view>
+        <view class="market-card" wx:else>
+          <view class="market-row" wx:for="{{marketItems}}" wx:key="code" data-code="{{item.code}}" bindtap="openMarketDetail">
+            <view class="prompt-icon {{item.imageOnly ? 'accent-icon' : 'text-icon'}}"><text class="{{item.imageOnly ? 'ri-image-line' : 'ri-file-text-line'}}"></text></view>
+            <view class="market-copy"><text class="market-title">{{item.label}}</text><text class="market-meta">{{item.author || '匿名'}} · 导入 {{item.importCount}}</text></view>
+            <view class="market-import {{item.imported ? 'imported' : ''}}" data-code="{{item.code}}" catchtap="quickImportMarket"><text>{{item.imported ? '已导入' : (marketImportingCode === item.code ? '导入中…' : '导入')}}</text><text class="market-row-arrow" wx:if="{{item.imported}}">›</text></view>
+          </view>
+        </view>
+      </view>
       <view class="import-card" bindtap="openImport"><view class="prompt-icon accent-icon import-icon"><text class="ri-download-2-line"></text></view><view class="import-copy"><text class="import-title">输入魔法数字导入</text><text class="import-subtitle">把别人分享的提示词存进你的菜单</text></view><text class="prompt-arrow">›</text></view>
       <text class="import-note">也可以在录音时直接对 VoiceDrop 说出数字，或点开 voicedrop.cn 链接自动跳转到这里。</text>
       <button class="restore-button" bindtap="restoreDefaults" disabled="{{mutating}}">恢复默认提示词</button>
     </view>
   </view>
 
-  <view class="sheet-mask" wx:if="{{newMenuVisible}}" bindtap="closeNewMenu">
+  <view class="sheet-mask {{newMenuClosing ? 'sheet-closing' : ''}}" wx:if="{{newMenuVisible}}" bindtap="closeNewMenu">
     <view class="new-sheet" catchtap="noop"><view class="sheet-handle"></view><text class="sheet-title">新建</text>
       <view class="new-row" bindtap="createPrompt"><view class="new-icon action-new"><text class="ri-edit-2-line"></text></view><view class="new-copy"><text class="new-title">新建动作</text><text class="new-subtitle">一条提示词指令</text></view><text class="prompt-arrow">›</text></view>
       <view class="new-row" bindtap="createGroup"><view class="new-icon"><text class="ri-folder-line"></text></view><view class="new-copy"><text class="new-title">新建分组</text><text class="new-subtitle">收纳几个动作，菜单里成二级子菜单</text></view><text class="prompt-arrow">›</text></view>
@@ -46,7 +62,7 @@
       </view>
     </view>
   </view>
-  <view class="sheet-mask" wx:if="{{importVisible}}" bindtap="closeImport" style="bottom: {{importKeyboardHeight}}px;">
+  <view class="sheet-mask {{importClosing ? 'sheet-closing' : ''}}" wx:if="{{importVisible}}" bindtap="closeImport" style="bottom: {{importKeyboardHeight}}px;">
     <view class="import-sheet" catchtap="noop">
       <text class="import-sheet-title">导入提示词</text><text class="import-sheet-subtitle">输入 7 位魔法数字，或粘贴分享链接</text>
       <input class="import-code-input" value="{{importCode}}" bindinput="onImportCodeInput" bindkeyboardheightchange="onImportKeyboardHeightChange" adjust-position="{{false}}" maxlength="80" />
@@ -54,6 +70,33 @@
       <view class="import-preview" wx:if="{{importPreview}}"><text>{{importPreview.label}}</text><text wx:if="{{importPreview.author}}">分享者：{{importPreview.author}}</text></view>
       <button class="import-confirm" disabled="{{!importPreview || importing}}" loading="{{importing}}" bindtap="confirmImportSheet">加入我的提示词</button>
       <text class="import-sheet-note">导入后是你自己的副本，可改名、改内容、随时删除；原作者之后的修改不影响你。</text>
+    </view>
+  </view>
+  <view class="sheet-mask {{marketDetailClosing ? 'sheet-closing' : ''}}" wx:if="{{marketDetail}}" bindtap="closeMarketDetail">
+    <view class="market-detail-sheet" catchtap="noop">
+      <view class="market-detail-close" bindtap="closeMarketDetail" aria-label="关闭"><text class="ri-close-line"></text></view>
+      <scroll-view scroll-y enhanced show-scrollbar class="market-detail-scroll">
+        <view class="market-detail-content">
+          <text class="market-detail-kind {{marketDetail.imageOnly ? 'image-kind' : ''}}">{{marketDetail.detailKindLabel}}</text>
+          <text class="market-detail-title">{{marketDetail.label}}</text>
+          <view class="market-detail-author-row"><view class="market-detail-avatar"><text>{{marketDetail.authorInitial}}</text></view><text class="market-detail-author">{{marketDetail.author || '匿名'}}</text></view>
+          <view class="market-detail-stats">
+            <view class="market-stat"><text class="market-stat-value">{{marketDetail.importCount}}</text><text class="market-stat-label">被导入</text></view>
+            <view class="market-stat"><text class="market-stat-value">{{marketDetail.appliesLabel}}</text><text class="market-stat-label">适用于</text></view>
+          </view>
+          <text class="market-detail-prompt-heading">提示词全文</text>
+          <view class="market-detail-prompt">
+            <view class="market-detail-loading" wx:if="{{marketDetailLoading}}"><view class="prompt-loading-spinner" aria-hidden="true"></view><text>正在加载提示词全文…</text></view>
+            <text wx:else selectable>{{marketDetailPrompt}}</text>
+          </view>
+          <view class="market-example" wx:if="{{marketDetail.example && (marketDetail.example.output || marketDetail.example.imageKey)}}">
+            <text class="market-example-heading">效果示例</text>
+            <text class="market-example-input" wx:if="{{marketDetail.example.input}}">{{marketDetail.example.input}}</text>
+            <text class="market-example-output" wx:if="{{marketDetail.example.output}}">{{marketDetail.example.output}}</text>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="market-detail-footer"><button class="market-detail-import" disabled="{{marketDetail.imported || marketImportingCode}}" loading="{{marketImportingCode === marketDetail.code}}" bindtap="importMarketDetail">{{marketDetail.imported ? '已在我的提示词里' : '加入我的提示词'}}</button></view>
     </view>
   </view>
 </view>

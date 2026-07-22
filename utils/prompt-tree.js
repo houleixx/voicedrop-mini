@@ -116,10 +116,10 @@ function containsImport(items, code) {
 function menuNode(node, anchor) {
   if (node.type === 'group') {
     const children = (node.children || []).map((child) => menuNode(child, anchor)).filter(Boolean)
-    return children.length ? { id: node.id, label: node.label, type: 'submenu', children } : null
+    return children.length ? { id: node.id, label: node.label, type: 'submenu', origin: node.origin || 'user', children } : null
   }
   return (node.appliesTo || []).includes(anchor)
-    ? { id: node.id, label: node.label, instruction: node.prompt || '' }
+    ? { id: node.id, label: node.label, origin: node.origin || 'user', instruction: node.prompt || '' }
     : null
 }
 

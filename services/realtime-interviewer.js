@@ -6,6 +6,7 @@ function stateText(active, state, muted, playbackError) {
   if (!active) return ''
   if (state === 'connecting') return 'AI 连接中…'
   if (state === 'degraded') return 'AI 已断开 · 录音继续'
+  if (state === 'unavailable') return 'AI 采访暂不可用 · 录音继续'
   if (playbackError) return 'AI 语音播放异常 · 采访仍在进行'
   if (state === 'live') return muted ? 'AI 正在说话' : 'AI 采访中 · 再点一下结束'
   return 'AI 采访中'
@@ -44,6 +45,17 @@ function createInterviewer(handlers, injected) {
       connectionState = state
       if (state === 'live') reconnectAttempt = 0
       if (state === 'degraded') scheduleReconnect()
+      if (state === 'unavailable') {
+        if (reconnectTimer) cancel(reconnectTimer)
+        if (resumeTimer) cancel(resumeTimer)
+        if (watchdog) cancel(watchdog)
+        reconnectTimer = null
+        resumeTimer = null
+        watchdog = null
+        muted = true
+        responseDone = false
+        player.stop()
+      }
       changed()
     },
     onResponseCreated: () => beginAiTurn(),
@@ -107,7 +119,7 @@ function createInterviewer(handlers, injected) {
   }
 
   function onPcm16(frame, sampleRate) {
-    if (!active || muted) return
+    if (!active || muted || connectionState === 'unavailable') return
     const encoded = convert(frame, sampleRate)
     if (encoded.byteLength) session.appendAudio(encoded)
   }

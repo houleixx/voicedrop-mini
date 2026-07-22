@@ -10,6 +10,14 @@ function appliesLabel(item) {
   return ''
 }
 
+function marketKindLabel(item) {
+  return appliesLabel(item) === '仅图片' ? '配图提示词' : '文字提示词'
+}
+
+function authorInitial(author) {
+  return String(author || '匿名').trim().slice(0, 1) || '匿'
+}
+
 function rowFor(item, depth, parentId, index, expanded) {
   return {
     id: item.id, type: item.type, title: item.label, depth, parentId, index,
@@ -44,24 +52,107 @@ function findItem(items, id) {
 Page({
   data: {
     rows: [], expandedGroups: [], loading: true, error: '', empty: false,
-    mutating: false, reordering: false, newMenuVisible: false, groupDialogVisible: false, groupName: '', importVisible: false,
-    importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', importKeyboardHeight: 0, rowHeightPx: 64,
-    swipedRowId: '', swipeOffset: 0, swipeDeletePx: 72, swipeDragging: false
+    mutating: false, reordering: false, newMenuVisible: false, newMenuClosing: false, groupDialogVisible: false, groupName: '', importVisible: false, importClosing: false,
+    importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', importKeyboardHeight: 0, rowHeightPx: 56,
+    swipedRowId: '', swipeOffset: 0, swipeDeletePx: 72, swipeDragging: false,
+    marketFilters: [
+      { key: 'hot', label: '热门', sort: 'hot', scope: '' },
+      { key: 'new', label: '最新', sort: 'new', scope: '' },
+      { key: 'text', label: '文字', sort: 'hot', scope: 'text' },
+      { key: 'image', label: '配图', sort: 'hot', scope: 'image' }
+    ],
+    marketFilter: 'hot', marketItems: [], marketLoading: false, marketError: '', marketImportingCode: '',
+    marketDetail: null, marketDetailPrompt: '', marketDetailLoading: false, marketDetailClosing: false
   },
   onLoad() {
+    this._sheetClosingDisposed = false
+    this._sheetCloseTimers = []
     try {
       const width = Number(wx.getSystemInfoSync().windowWidth) || 375
-      this.setData({ rowHeightPx: 128 * width / 750, swipeDeletePx: 144 * width / 750 })
+      this.setData({ rowHeightPx: 112 * width / 750, swipeDeletePx: 144 * width / 750 })
     } catch (_) {}
   },
-  onShow() { if (!this.data.reordering) this.loadItems() },
+  onUnload() {
+    this._sheetClosingDisposed = true
+    ;(this._sheetCloseTimers || []).forEach((timer) => clearTimeout(timer))
+    this._sheetCloseTimers = []
+  },
+  onShow() {
+    if (!this.data.reordering) {
+      this.loadItems()
+      if (!this.data.marketItems.length && !this.data.marketLoading) this.loadMarket()
+    }
+  },
   displayedRows(items) { return rowsFor(items, this.data.expandedGroups) },
   async loadItems() {
     const cached = promptStore.items()
     this.setData({ rows: this.displayedRows(cached), loading: !cached.length, error: '', empty: !cached.length })
     const result = await promptStore.refresh()
     const items = promptStore.items()
-    this.setData({ rows: this.displayedRows(items), loading: false, empty: !items.length, error: result.ok ? '' : '加载失败，正在显示上次内容' })
+    this.setData({ rows: this.displayedRows(items), loading: false, empty: !items.length,
+      marketItems: this.decorateMarket(this.data.marketItems), error: result.ok ? '' : '加载失败，正在显示上次内容' })
+  },
+  decorateMarket(items) {
+    return (items || []).map((item) => Object.assign({}, item, {
+      appliesLabel: appliesLabel(item).replace('仅', '') || '全部',
+      detailKindLabel: marketKindLabel(item),
+      authorInitial: authorInitial(item.author),
+      imageOnly: appliesLabel(item) === '仅图片',
+      imported: tree.containsImport(promptStore.items(), item.code)
+    }))
+  },
+  async loadMarket() {
+    if (this.data.marketLoading) return
+    const filter = this.data.marketFilters.find((item) => item.key === this.data.marketFilter) || this.data.marketFilters[0]
+    const requestKey = filter.key
+    this.setData({ marketLoading: true, marketError: '' })
+    const result = await promptStore.market({ sort: filter.sort, scope: filter.scope, limit: 30 })
+    if (requestKey !== this.data.marketFilter) return
+    this.setData({ marketLoading: false, marketItems: result.ok ? this.decorateMarket(result.items) : [],
+      marketError: result.ok ? '' : '社区提示词加载失败，点此重试' })
+  },
+  selectMarketFilter(event) {
+    const key = event.currentTarget.dataset.key
+    if (!this.data.marketFilters.some((item) => item.key === key) || key === this.data.marketFilter || this.data.marketLoading) return
+    this.setData({ marketFilter: key, marketItems: [], marketError: '' })
+    this.loadMarket()
+  },
+  retryMarket() { this.loadMarket() },
+  openMarketDetail(event) {
+    const code = event.currentTarget.dataset.code
+    const item = this.data.marketItems.find((entry) => entry.code === code)
+    if (!item) return
+    this.setData({ marketDetail: item, marketDetailPrompt: '', marketDetailLoading: true, marketDetailClosing: false })
+    this.loadMarketDetail(code)
+  },
+  closeMarketDetail() {
+    if (!this.data.marketImportingCode) this.closeBottomSheet('marketDetailClosing', { marketDetail: null, marketDetailPrompt: '', marketDetailLoading: false })
+  },
+  async loadMarketDetail(code) {
+    const result = await promptStore.preview(code)
+    if (!this.data.marketDetail || this.data.marketDetail.code !== code) return
+    this.setData({ marketDetailLoading: false,
+      marketDetailPrompt: result.ok && result.data && result.data.prompt ? result.data.prompt : '这条提示词暂时无法读取。' })
+  },
+  async quickImportMarket(event) { return this.importMarketCode(event.currentTarget.dataset.code, false) },
+  async importMarketDetail() {
+    if (!this.data.marketDetail) return
+    return this.importMarketCode(this.data.marketDetail.code, true)
+  },
+  async importMarketCode(code, closeDetail) {
+    const item = this.data.marketItems.find((entry) => entry.code === code)
+    if (!item || item.imported || this.data.marketImportingCode) return
+    this.setData({ marketImportingCode: code })
+    const result = await promptStore.importCode(code)
+    if (!result.ok) {
+      this.setData({ marketImportingCode: '' })
+      wx.showToast({ title: '导入失败，请重试', icon: 'none' })
+      return
+    }
+    this.setData({ marketImportingCode: '', marketItems: this.decorateMarket(this.data.marketItems) })
+    if (closeDetail) this.closeMarketDetail()
+    wx.showToast({ title: result.already ? '已经导入过了' : '已加入提示词', icon: 'none' })
+    await this.loadItems()
   },
   handleRowTap(event) {
     if (this.ignoreNextRowTap) { this.ignoreNextRowTap = false; return }
@@ -117,8 +208,18 @@ Page({
     }
   },
   closeSwipe() { this.setData({ swipedRowId: '', swipeOffset: 0, swipeDragging: false }) },
-  openNewMenu() { if (!this.data.mutating && !this.data.reordering) this.setData({ newMenuVisible: true }) },
-  closeNewMenu() { this.setData({ newMenuVisible: false }) },
+  openNewMenu() { if (!this.data.mutating && !this.data.reordering) this.setData({ newMenuVisible: true, newMenuClosing: false }) },
+  closeNewMenu() { this.closeBottomSheet('newMenuClosing', { newMenuVisible: false }) },
+  closeBottomSheet(closingKey, hiddenState) {
+    if (this.data[closingKey]) return
+    this.setData({ [closingKey]: true })
+    const timer = setTimeout(() => {
+      this._sheetCloseTimers = (this._sheetCloseTimers || []).filter((entry) => entry !== timer)
+      if (this._sheetClosingDisposed) return
+      this.setData(Object.assign({ [closingKey]: false }, hiddenState))
+    }, 200)
+    this._sheetCloseTimers = (this._sheetCloseTimers || []).concat(timer)
+  },
   noop() {},
   createPrompt() { this.setData({ newMenuVisible: false }); wx.navigateTo({ url: '/pages/prompt-new/index?type=action' }) },
   createGroup() { this.setData({ groupDialogVisible: true, groupName: '' }) },
@@ -135,8 +236,8 @@ Page({
     this.setData({ mutating: false, newMenuVisible: false, groupDialogVisible: false, groupName: '' })
     await this.loadItems()
   },
-  openImport() { this.setData({ importVisible: true, importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', importKeyboardHeight: 0 }) },
-  closeImport() { if (!this.data.importing) this.setData({ importVisible: false, importKeyboardHeight: 0 }) },
+  openImport() { this.setData({ importVisible: true, importClosing: false, importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', importKeyboardHeight: 0 }) },
+  closeImport() { if (!this.data.importing) this.closeBottomSheet('importClosing', { importVisible: false, importKeyboardHeight: 0 }) },
   onImportKeyboardHeightChange(event) {
     const height = Number(event && event.detail && event.detail.height) || 0
     this.setData({ importKeyboardHeight: Math.max(0, height) })
@@ -158,7 +259,8 @@ Page({
     const result = await promptStore.importCode(this.data.importCode)
     if (!result.ok) { this.setData({ importing: false, importError: '导入失败，请重试' }); return }
     wx.showToast({ title: '已导入' })
-    this.setData({ importVisible: false, importing: false, importKeyboardHeight: 0 })
+    this.setData({ importing: false })
+    this.closeImport()
     await this.loadItems()
   },
   async deleteItem(event) {
@@ -231,4 +333,4 @@ Page({
   }
 })
 
-module.exports = { rowsFor, appliesLabel, findItem }
+module.exports = { rowsFor, appliesLabel, marketKindLabel, authorInitial, findItem }

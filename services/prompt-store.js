@@ -109,6 +109,30 @@ function createStore(deps = {}) {
     } catch (_) { return { ok: false, error: 'network_error' } }
   }
 
+  async function market(options = {}) {
+    const sort = options.sort === 'new' ? 'new' : 'hot'
+    const scope = options.scope === 'text' || options.scope === 'image' ? options.scope : ''
+    const limit = Math.max(1, Math.min(Number(options.limit) || 30, 100))
+    const query = [`sort=${sort}`, `limit=${limit}`]
+    if (scope) query.push(`scope=${scope}`)
+    try {
+      const res = await request.get(`${base}/prompt-market?${query.join('&')}`, auth.bearer())
+      if (!ok(res)) return { ok: false, error: 'market_failed', items: [] }
+      const values = Array.isArray(res.data && res.data.items) ? res.data.items : []
+      const marketItems = values.filter((item) => item && item.code).map((item) => ({
+        code: String(item.code),
+        label: String(item.label || '分享指令'),
+        author: String(item.author || ''),
+        kind: item.kind == null ? '' : String(item.kind),
+        appliesTo: Array.isArray(item.appliesTo) ? item.appliesTo.map(String) : [],
+        importCount: Math.max(0, Number(item.importCount) || 0),
+        createdAt: String(item.createdAt || ''),
+        example: item.example || null
+      }))
+      return { ok: true, items: marketItems }
+    } catch (_) { return { ok: false, error: 'network_error', items: [] } }
+  }
+
   async function importCode(code) {
     if (tree.extractShareCode(code) !== code) return { ok: false, error: 'invalid_code' }
     try {
@@ -149,7 +173,7 @@ function createStore(deps = {}) {
 
   return {
     items: () => tree.clone(items), error: () => lastError, isMutating: () => mutating,
-    refresh, replace, remove, add, applyReorder, restoreDefaults, preview, importCode, shareStates, setSharing,
+    refresh, replace, remove, add, applyReorder, restoreDefaults, preview, market, importCode, shareStates, setSharing,
     menu: (anchor) => tree.menu(items, anchor)
   }
 }

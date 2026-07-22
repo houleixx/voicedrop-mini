@@ -64,6 +64,20 @@ test('idempotent import does not append a duplicate local item', async () => {
   assert.equal(store.items().filter((node) => node.id === 'sys_concise').length, 1)
 })
 
+test('prompt market sends authenticated filters and normalizes items', async () => {
+  const d = deps(); const store = createStore(d)
+  d.queue.push({ statusCode: 200, data: { items: [{ code: 7654321, label: '公众号题图', author: 'Alice', appliesTo: ['text', 'image'], kind: 'image', importCount: 9, example: { input: '之前', output: '之后' } }] } })
+
+  const result = await store.market({ sort: 'new', scope: 'image', limit: 30 })
+
+  assert.equal(result.ok, true)
+  assert.equal(result.items[0].code, '7654321')
+  assert.equal(result.items[0].importCount, 9)
+  assert.deepEqual(result.items[0].example, { input: '之前', output: '之后' })
+  assert.equal(d.calls.at(-1).url, 'https://example.test/agent/prompt-market?sort=new&limit=30&scope=image')
+  assert.equal(d.calls.at(-1).token, 'token')
+})
+
 test('prompt sharing exposes sign-in and remote business errors', async () => {
   const d = deps(); d.auth.session = () => ''
   assert.equal((await createStore(d).setSharing('p_1', true)).error, 'needs_wechat_signin')

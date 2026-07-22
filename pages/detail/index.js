@@ -51,9 +51,11 @@ function hiddenPhotoInsertPromptData() {
 
 function longpressMenuHeight(menu, localRows) {
   const groups = uiConfig.renderableGroups(menu)
-  const rows = groups.reduce((sum, group) => sum + group.length, 0) + (localRows || []).length
-  const separators = Math.max(0, groups.length - 1) + ((localRows || []).length && groups.length ? 1 : 0)
-  return Math.max(48, rows * 48 + separators * 7)
+  const nodes = groups.flat()
+  const customRows = nodes.filter((node) => node.origin !== 'system').length
+  const rows = nodes.length + (localRows || []).length
+  const separator = customRows && (localRows || []).length ? 1 : 0
+  return Math.max(48, rows * 48 + separator)
 }
 
 function longpressAnchor(block, kind, rect, detail, systemInfo, menu, localRows) {
@@ -73,20 +75,36 @@ function longpressAnchor(block, kind, rect, detail, systemInfo, menu, localRows)
   const rawTop = rect && Number.isFinite(Number(rect.top)) ? Number(rect.top) : Number(point.y) || 160
   const left = Math.max(16, Math.min(rawLeft, windowWidth - width - 16))
   const top = Math.max(16, Math.min(rawTop, windowHeight - height - 16))
-  const menuHeight = longpressMenuHeight(menu, localRows)
-  const menuTop = kind === 'image'
-    ? Math.max(16, Math.min(top + 12, windowHeight - menuHeight - 16))
-    : (top + height + 12 + menuHeight <= windowHeight
-        ? top + height + 12
-        : Math.max(16, top - menuHeight - 12))
+  const menuCapacity = Math.min(520, Math.round(windowHeight * .68))
+  const menuHeight = Math.min(longpressMenuHeight(menu, localRows), menuCapacity)
+  const menuWidth = Math.min(340, windowWidth - 32)
+  const viewportInset = 16
+  const menuGap = 12
+  let menuTop
+  let menuMaxHeight
+  if (kind === 'image') {
+    menuTop = Math.max(viewportInset, Math.min(top + menuGap, windowHeight - menuHeight - viewportInset))
+    menuMaxHeight = Math.min(menuCapacity, windowHeight - menuTop - viewportInset)
+  } else {
+    const belowTop = top + height + menuGap
+    const belowHeight = Math.max(0, windowHeight - belowTop - viewportInset)
+    const aboveHeight = Math.max(0, top - menuGap - viewportInset)
+    const placeBelow = menuHeight <= belowHeight || belowHeight >= aboveHeight
+    const availableHeight = placeBelow ? belowHeight : aboveHeight
+    menuMaxHeight = Math.max(48, Math.min(menuCapacity, availableHeight))
+    menuTop = placeBelow
+      ? belowTop
+      : Math.max(viewportInset, top - menuGap - Math.min(menuHeight, menuMaxHeight))
+  }
   return {
     top,
     left,
     width,
     height,
     menuTop,
-    menuMaxHeight: windowHeight - menuTop - 16,
-    menuLeft: Math.min(Math.max(16, left), windowWidth - 256),
+    menuMaxHeight,
+    menuWidth,
+    menuLeft: Math.min(Math.max(16, left), windowWidth - menuWidth - 16),
     url: block.url || '',
     text: block.text || ''
   }

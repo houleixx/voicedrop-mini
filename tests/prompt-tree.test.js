@@ -28,6 +28,8 @@ test('actions move into and out of groups without nesting groups', () => {
 test('menu filters anchors and system edits fork in place', () => {
   const items = tree.decodeItems(resolved).items
   assert.equal(tree.menu(items, 'text').groups[0][0].children[0].id, 'sys_concise')
+  assert.equal(tree.menu(items, 'text').groups[0][0].origin, 'system')
+  assert.equal(tree.menu(items, 'text').groups[0][0].children[0].origin, 'system')
   assert.equal(tree.menu(items, 'image').groups.length, 0)
   const fork = tree.fork(items[0].children[0], () => 'p_abcdefgh')
   assert.equal(fork.forkedFrom, 'sys_concise')

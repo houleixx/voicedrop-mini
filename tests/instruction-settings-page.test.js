@@ -12,7 +12,7 @@ function context(page, initial) {
 
 function freshPage(name, serviceOverrides, wxOverrides, uiOverrides) {
   let page
-  const service = Object.assign({ items: () => [], refresh: async () => ({ ok: true }), replace: async () => ({ ok: true }), remove: async () => ({ ok: true }), add: async () => ({ ok: true }), restoreDefaults: async () => ({ ok: true }), shareStates: async () => ({ ok: true, byItem: {} }), setSharing: async () => ({ ok: true }), preview: async () => ({ ok: true, data: { label: '共享提示词' } }), importCode: async () => ({ ok: true }) }, serviceOverrides)
+  const service = Object.assign({ items: () => [], refresh: async () => ({ ok: true }), replace: async () => ({ ok: true }), remove: async () => ({ ok: true }), add: async () => ({ ok: true }), restoreDefaults: async () => ({ ok: true }), shareStates: async () => ({ ok: true, byItem: {} }), setSharing: async () => ({ ok: true }), preview: async () => ({ ok: true, data: { label: '共享提示词', prompt: '全文' } }), market: async () => ({ ok: true, items: [] }), importCode: async () => ({ ok: true }) }, serviceOverrides)
   global.Page = (definition) => { page = definition }
   global.wx = Object.assign({ navigateTo() {}, navigateBack() {} }, wxOverrides)
   for (const id of [`../pages/${name}/index`, '../services/prompt-store']) {
@@ -103,16 +103,51 @@ test('new group opens an inline naming dialog and creates the group from that di
   assert.equal(ctx.data.groupDialogVisible, false)
 })
 
-test('prompt list opens the magic-code importer as a bottom sheet', () => {
+test('prompt list closes the magic-code importer with a downward animation', async () => {
   const page = freshPage('instruction-settings')
   const ctx = context(page)
   page.openImport.call(ctx)
   assert.equal(ctx.data.importVisible, true)
   page.closeImport.call(ctx)
+  assert.equal(ctx.data.importClosing, true)
+  assert.equal(ctx.data.importVisible, true)
+  await new Promise((resolve) => setTimeout(resolve, 220))
   assert.equal(ctx.data.importVisible, false)
+  assert.equal(ctx.data.importClosing, false)
 })
 
-test('magic-code importer lifts its actions above the keyboard', () => {
+test('prompt market switches filters, opens details, and imports from the list', async () => {
+  const calls = []
+  let storedItems = items
+  const marketItems = [{ code: '7654321', label: '公众号题图', author: 'Alice', appliesTo: ['text', 'image'], kind: 'image', importCount: 9 }]
+  const page = freshPage('instruction-settings', {
+    items: () => storedItems,
+    market: async (options) => { calls.push(options); return { ok: true, items: marketItems } },
+    preview: async () => ({ ok: true, data: { prompt: '生成一张题图' } }),
+    importCode: async () => { storedItems = [...items, { id: 'imported', type: 'action', label: '公众号题图', importedFrom: '7654321', appliesTo: ['text'] }]; return { ok: true } }
+  }, { showToast() {} })
+  const ctx = context(page)
+
+  await page.loadMarket.call(ctx)
+  assert.equal(ctx.data.marketItems[0].appliesLabel, '文字+图片')
+  assert.equal(ctx.data.marketItems[0].detailKindLabel, '文字提示词')
+  assert.equal(ctx.data.marketItems[0].authorInitial, 'A')
+  page.selectMarketFilter.call(ctx, { currentTarget: { dataset: { key: 'image' } } })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(calls.at(-1), { sort: 'hot', scope: 'image', limit: 30 })
+  page.openMarketDetail.call(ctx, { currentTarget: { dataset: { code: '7654321' } } })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(ctx.data.marketDetailPrompt, '生成一张题图')
+  await page.quickImportMarket.call(ctx, { currentTarget: { dataset: { code: '7654321' } } })
+  assert.equal(ctx.data.marketItems[0].imported, true)
+  page.closeMarketDetail.call(ctx)
+  assert.equal(ctx.data.marketDetailClosing, true)
+  assert.ok(ctx.data.marketDetail)
+  await new Promise((resolve) => setTimeout(resolve, 220))
+  assert.equal(ctx.data.marketDetail, null)
+})
+
+test('magic-code importer lifts its actions above the keyboard', async () => {
   const root = path.join(__dirname, '..')
   const wxml = fs.readFileSync(path.join(root, 'pages/instruction-settings/index.wxml'), 'utf8')
   const page = freshPage('instruction-settings')
@@ -120,11 +155,12 @@ test('magic-code importer lifts its actions above the keyboard', () => {
 
   page.onImportKeyboardHeightChange.call(ctx, { detail: { height: 312 } })
   assert.equal(ctx.data.importKeyboardHeight, 312)
-  assert.match(wxml, /class="sheet-mask"[^>]*style="bottom: \{\{importKeyboardHeight\}\}px;"/)
+  assert.match(wxml, /class="sheet-mask \{\{importClosing \? 'sheet-closing' : ''\}\}"[^>]*style="bottom: \{\{importKeyboardHeight\}\}px;"/)
   assert.match(wxml, /class="import-code-input"[^>]*bindkeyboardheightchange="onImportKeyboardHeightChange"/)
   assert.match(wxml, /class="import-code-input"[^>]*adjust-position="\{\{false\}\}"/)
 
   page.closeImport.call(ctx)
+  await new Promise((resolve) => setTimeout(resolve, 220))
   assert.equal(ctx.data.importKeyboardHeight, 0)
 })
 
@@ -236,6 +272,26 @@ test('prompt list markup contains the screenshot hierarchy and import copy', () 
   assert.doesNotMatch(wxml.replace(header, ''), /bindtap="cancelReorder"/)
   assert.match(wxml, /slot="right"[\s\S]*class="add-button"/)
   assert.match(wxml, /输入魔法数字导入/)
+  assert.match(wxml, /class="market-heading">社区提示词</)
+  assert.doesNotMatch(wxml, /社区热门/)
+  assert.match(wxml, /class="prompt-state prompt-loading-state"[^>]*>[\s\S]*class="prompt-loading-spinner"[\s\S]*正在加载提示词…/)
+  assert.match(wxml, /class="market-state market-loading-state"[^>]*>[\s\S]*class="prompt-loading-spinner"[\s\S]*正在加载社区提示词…/)
+  assert.match(wxml, /market-detail-stats/)
+  assert.match(wxml, /被导入/)
+  assert.match(wxml, /适用于/)
+  assert.match(wxml, /效果示例/)
+  assert.match(wxml, /class="market-detail-close"[^>]*bindtap="closeMarketDetail"/)
+  assert.match(wxml, /scroll-y enhanced show-scrollbar class="market-detail-scroll"/)
+  assert.match(wxml, /class="market-detail-footer"/)
+  assert.match(wxml, /newMenuClosing \? 'sheet-closing'/)
+  assert.match(wxml, /importClosing \? 'sheet-closing'/)
+  assert.match(wxml, /marketDetailClosing \? 'sheet-closing'/)
+  assert.match(wxml, /ri-file-text-line/)
+  assert.doesNotMatch(wxml, /ri-double-quotes-l/)
+  assert.match(wxml, /item\.type === 'group' \? 'group-icon' : \(item\.imageOnly \? 'accent-icon' : 'text-icon'\)/)
+  assert.match(wxml, /item\.imageOnly \? 'accent-icon' : 'text-icon'/)
+  assert.match(wxml, /originLabel === '已自定义' \? 'custom-origin' : 'user-origin'/)
+  assert.doesNotMatch(wxml, /好评/)
   assert.match(wxml, /恢复默认提示词/)
   assert.match(wxml, /新建动作[\s\S]*新建分组/)
   assert.match(wxml, /class="import-sheet"/)
@@ -249,7 +305,28 @@ test('prompt list markup contains the screenshot hierarchy and import copy', () 
   assert.match(wxml, /bindtouchmove="rowTouchMove"/)
   assert.match(wxml, /class="prompt-delete"[\s\S]*wx:if="\{\{item\.type === 'action'\}\}"[\s\S]*catchtap="deleteItem"/)
   const script = fs.readFileSync(path.join(root, 'pages/instruction-settings/index.js'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/instruction-settings/index.wxss'), 'utf8')
   assert.match(script, /rowTouchEnd\(event\)/)
+  assert.match(wxml, /height:\{\{rows\.length \* 112\}\}rpx/)
+  assert.match(wxml, /style="height:112rpx"/)
+  assert.match(script, /rowHeightPx:\s*56/)
+  assert.match(script, /rowHeightPx:\s*112 \* width \/ 750/)
+  assert.match(css, /\.prompt-row-content\s*\{[^}]*gap:\s*18rpx;[^}]*padding:\s*14rpx 20rpx;/s)
+  assert.match(css, /\.prompt-card \.prompt-row\s*\{[^}]*background:\s*#fff/s)
+  assert.match(css, /\.prompt-delete\s*\{[^}]*background:\s*#d8593b/s)
+  assert.match(css, /\.prompt-row-content::after\s*\{[^}]*right:\s*0;[^}]*left:\s*110rpx;/s)
+  assert.match(css, /\.market-row::after\s*\{[^}]*right:\s*0;[^}]*left:\s*110rpx;/s)
+  assert.match(css, /animation:\s*prompt-loading-spin\s+\.8s\s+linear\s+infinite/)
+  assert.match(css, /\.prompt-icon\.text-icon\s*\{[^}]*background:\s*#eaf1ec;[^}]*color:\s*#5e8a6a;/s)
+  assert.match(css, /\.market-row\s*\{[^}]*min-height:\s*112rpx;[^}]*gap:\s*18rpx;[^}]*padding:\s*14rpx 20rpx;/s)
+  assert.match(css, /\.market-detail-footer\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s)
+  assert.match(css, /\.market-detail-import\s*\{[^}]*display:\s*flex!important;[^}]*max-width:\s*100%;[^}]*flex:\s*1;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;[^}]*line-height:\s*normal!important;/s)
+  assert.match(css, /\.origin-badge\s*\{[^}]*flex:\s*none;[^}]*white-space:\s*nowrap;[^}]*word-break:\s*keep-all;/s)
+  assert.match(css, /\.origin-badge\.user-origin\s*\{[^}]*background:\s*#e7f1e8;[^}]*color:\s*#5e8a6a/s)
+  assert.match(css, /\.origin-badge\.custom-origin\s*\{[^}]*background:\s*#fbead2;[^}]*color:\s*#c98a2e/s)
+  assert.match(css, /\.sheet-mask\.sheet-closing[^}]*animation:\s*sheet-mask-out\s+\.2s/s)
+  assert.match(css, /\.sheet-mask\.sheet-closing \.market-detail-sheet[^}]*animation:\s*bottom-sheet-down\s+\.2s/s)
+  assert.match(css, /@keyframes bottom-sheet-down\{from\{transform:translateY\(0\)\}to\{transform:translateY\(100%\)\}\}/)
   const sharedHeader = fs.readFileSync(path.join(root, 'components/page-header/index.wxml'), 'utf8')
   assert.match(sharedHeader, /wx:if="\{\{!hideBack\}\}"/)
   assert.match(sharedHeader, /slot name="left"/)

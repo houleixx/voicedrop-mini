@@ -16,6 +16,10 @@ const recordPermission = require('../../utils/record-permission')
 
 const app = getApp()
 
+function isDevtoolsRuntime(systemInfo, deviceInfo) {
+  return [systemInfo, deviceInfo].some((info) => Object.values(info || {}).some((value) => /devtools|wechatdevtools|微信开发者工具/i.test(String(value || ''))))
+}
+
 Page({
   data: {
     activeTab: 'recordings',
@@ -55,6 +59,7 @@ Page({
     communityLoaded: false,
     refreshing: false,
     audioConsentVisible: false,
+    communityFeedDevtools: false,
     scrollContentTop: 0,
     communityScrollContentTop: 0
   },
@@ -66,11 +71,14 @@ Page({
     this.setData({ activeTab, currentHomeTab: activeTab })
     try {
       const info = wx.getSystemInfoSync()
+      let deviceInfo = {}
+      try { deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : {} } catch (_) {}
       const statusBarPx = info.statusBarHeight
       const topRpx = 200
       const pxPerRpx = info.windowWidth / 750
       const scrollContentTop = statusBarPx + topRpx * pxPerRpx
       this.setData({
+        communityFeedDevtools: isDevtoolsRuntime(info, deviceInfo),
         scrollContentTop,
         communityScrollContentTop: scrollContentTop + 88 * pxPerRpx
       })
@@ -468,7 +476,7 @@ Page({
 
   selectCommunityFeed(event) {
     const tab = event.currentTarget.dataset.feedTab
-    if (!['recommended', 'latest', 'replies', 'prompts'].includes(tab) || tab === this.data.communityFeedTab) return
+    if (!['recommended', 'latest', 'replies'].includes(tab) || tab === this.data.communityFeedTab) return
     const postData = this.communityPostData(this._communityFeed, tab)
     this.setData({
       communityFeedTab: tab,
@@ -1109,3 +1117,5 @@ Page({
     if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs(records))
   }
 })
+
+module.exports = { isDevtoolsRuntime }
