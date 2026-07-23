@@ -1,9 +1,7 @@
 <view class="home-head" style="padding-top: {{statusBarHeight}}px;">
   <view class="brand-row">
     <view class="brand-wave" aria-hidden="true">
-      <view class="wave-line wave-line-short"></view>
-      <view class="wave-line wave-line-tall"></view>
-      <view class="wave-line wave-line-mid wave-line-last"></view>
+      <image class="brand-wave-image" src="/images/voicedrop-brand-waveform.svg" mode="aspectFit" />
     </view>
     <text class="brand-name">VoiceDrop口述</text>
     <view class="settings-button" style="top: {{settingsTop}}px; right: {{capsuleSafeRightPx}}px;" bindtap="openSettings" aria-label="设置">

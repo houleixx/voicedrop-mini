@@ -28,27 +28,9 @@
   justify-content: center;
 }
 
-.wave-line {
-  width: 8rpx;
-  margin-right: 8rpx;
-  border-radius: 999rpx;
-  background: #e9332c;
-}
-
-.wave-line-last {
-  margin-right: 0;
-}
-
-.wave-line-short {
-  height: 28rpx;
-}
-
-.wave-line-mid {
-  height: 38rpx;
-}
-
-.wave-line-tall {
-  height: 54rpx;
+.brand-wave-image {
+  width: 39rpx;
+  height: 32rpx;
 }
 
 .brand-name {

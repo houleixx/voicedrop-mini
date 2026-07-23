@@ -1,3 +1,10 @@
+.about-card,
+.menu,
+.blocked {
+  border: 2rpx solid #ece3d5;
+  background: #ffffff;
+}
+
 .about-card {
   margin-top: 0;
   padding: 36rpx;
