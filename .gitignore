@@ -53,3 +53,4 @@ coverage/
 
 # Local Codex project context (contains machine-specific paths)
 /AGENTS.md
+/CLAUDE.md

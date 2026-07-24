@@ -153,6 +153,8 @@ function createStore(deps = {}) {
       return ok(res) ? { ok: true, byItem: res.data && res.data.byItem || {} } : { ok: false, error: 'share_failed', byItem: {} }
     } catch (_) { return { ok: false, error: 'network_error', byItem: {} } }
   }
+  // borrowed 字段由服务端返回，byItem 中的每个条目可能包含 borrowed: true
+  // 表示这是转发原作者的码，关闭只停止转发而非码失效
 
   async function setSharing(id, on) {
     const session = typeof auth.session === 'function' ? auth.session() : ''
@@ -167,7 +169,7 @@ function createStore(deps = {}) {
         const error = remote === 'needs_apple_signin' ? 'needs_wechat_signin' : (remote || 'share_failed')
         return { ok: false, error, statusCode: res && res.statusCode }
       }
-      return { ok: true, code: String(res.data && res.data.code || ''), sharing: Boolean(res.data && res.data.sharing), url: res.data && res.data.url, communityShareId: res.data && res.data.communityShareId }
+      return { ok: true, code: String(res.data && res.data.code || ''), sharing: Boolean(res.data && res.data.sharing), borrowed: Boolean(res.data && res.data.borrowed), url: res.data && res.data.url, communityShareId: res.data && res.data.communityShareId }
     } catch (_) { return { ok: false, error: 'network_error' } }
   }
 

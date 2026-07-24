@@ -116,7 +116,7 @@ test('prompt list closes the magic-code importer with a downward animation', asy
   assert.equal(ctx.data.importClosing, false)
 })
 
-test('prompt market switches filters, opens details, and imports from the list', async () => {
+test('prompt market loads hot sort, opens details, and imports from the list', async () => {
   const calls = []
   let storedItems = items
   const marketItems = [{ code: '7654321', label: '公众号题图', author: 'Alice', appliesTo: ['text', 'image'], kind: 'image', importCount: 9 }]
@@ -132,9 +132,8 @@ test('prompt market switches filters, opens details, and imports from the list',
   assert.equal(ctx.data.marketItems[0].appliesLabel, '文字+图片')
   assert.equal(ctx.data.marketItems[0].detailKindLabel, '文字提示词')
   assert.equal(ctx.data.marketItems[0].authorInitial, 'A')
-  page.selectMarketFilter.call(ctx, { currentTarget: { dataset: { key: 'image' } } })
-  await new Promise((resolve) => setImmediate(resolve))
-  assert.deepEqual(calls.at(-1), { sort: 'hot', scope: 'image', limit: 30 })
+  // 筛选 chip 已移除，固定按热门排序
+  assert.deepEqual(calls.at(-1), { sort: 'hot', scope: '', limit: 30 })
   page.openMarketDetail.call(ctx, { currentTarget: { dataset: { code: '7654321' } } })
   await new Promise((resolve) => setImmediate(resolve))
   assert.equal(ctx.data.marketDetailPrompt, '生成一张题图')
@@ -290,7 +289,9 @@ test('prompt list markup contains the screenshot hierarchy and import copy', () 
   assert.doesNotMatch(wxml, /ri-double-quotes-l/)
   assert.match(wxml, /item\.type === 'group' \? 'group-icon' : \(item\.imageOnly \? 'accent-icon' : 'text-icon'\)/)
   assert.match(wxml, /item\.imageOnly \? 'accent-icon' : 'text-icon'/)
-  assert.match(wxml, /originLabel === '已自定义' \? 'custom-origin' : 'user-origin'/)
+  // 溯源转发：区分「导入」「已自定义」「自建」三种徽标
+  assert.match(wxml, /originLabel === '导入' \? 'imported-origin'/)
+  assert.match(wxml, /originLabel === '已自定义' \? 'custom-origin'/)
   assert.doesNotMatch(wxml, /好评/)
   assert.match(wxml, /恢复默认提示词/)
   assert.match(wxml, /新建动作[\s\S]*新建分组/)
@@ -324,6 +325,7 @@ test('prompt list markup contains the screenshot hierarchy and import copy', () 
   assert.match(css, /\.origin-badge\s*\{[^}]*flex:\s*none;[^}]*white-space:\s*nowrap;[^}]*word-break:\s*keep-all;/s)
   assert.match(css, /\.origin-badge\.user-origin\s*\{[^}]*background:\s*#e7f1e8;[^}]*color:\s*#5e8a6a/s)
   assert.match(css, /\.origin-badge\.custom-origin\s*\{[^}]*background:\s*#fbead2;[^}]*color:\s*#c98a2e/s)
+  assert.match(css, /\.origin-badge\.imported-origin\s*\{[^}]*background:\s*#e3edf8;[^}]*color:\s*#4a7fb5/s)
   assert.match(css, /\.sheet-mask\.sheet-closing[^}]*animation:\s*sheet-mask-out\s+\.2s/s)
   assert.match(css, /\.sheet-mask\.sheet-closing \.market-detail-sheet[^}]*animation:\s*bottom-sheet-down\s+\.2s/s)
   assert.match(css, /@keyframes bottom-sheet-down\{from\{transform:translateY\(0\)\}to\{transform:translateY\(100%\)\}\}/)

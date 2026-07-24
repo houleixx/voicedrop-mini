@@ -11,7 +11,8 @@
         <view class="share-head">
           <view class="setting-copy">
             <text>分享这条提示词</text>
-            <text class="hint">{{sharing ? '分享中，关闭后分享码立即失效' : '开启后，任何人对 VoiceDrop 说出分享码，或打开链接，就能看到并一次性使用这条提示词'}}</text>
+            <!-- 溯源转发：未修改的导入件分享的是原作者的码——文案不能说「关闭后码失效」 -->
+<text class="hint">{{sharing ? (shareBorrowed ? '转发中：这是原作者的分享码，关闭只停止转发，码不会失效' : '分享中：社区可见，关闭后分享码失效、社区帖撤下') : '开启后发布到社区，并得到分享码短链'}}</text>
           </view>
           <switch checked="{{sharing}}" disabled="{{shareToggling}}" bindchange="toggleSharing" color="#c7432f" />
         </view>
@@ -24,7 +25,9 @@
             <button class="share-action" bindtap="copyShareLink"><text class="ri-link"></text><text>复制链接</text></button>
             <button class="share-action" open-type="share"><text class="ri-share-box-line"></text><text>分享…</text></button>
           </view>
-          <text class="share-warning" wx:if="{{dirty}}">分享的始终是已保存的版本</text>
+          <!-- 溯源转发：未修改的导入件分享的是原作者的码，改动正文保存后会自动停止转发 -->
+<text class="share-warning" wx:if="{{shareBorrowed}}">转发原作者的版本；改动正文保存后会自动停止转发</text>
+<text class="share-warning" wx:elif="{{dirty}}">分享的始终是已保存的版本</text>
         </view>
       </view>
     </block>

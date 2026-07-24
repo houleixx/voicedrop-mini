@@ -19,11 +19,20 @@ function authorInitial(author) {
 }
 
 function rowFor(item, depth, parentId, index, expanded) {
+  // 从分享码收下来的条目 origin 也是 "user"，但对用户来说它是「导入」不是「自建」。
+  let originLabel = ''
+  if (item.importedFrom) {
+    originLabel = '导入'
+  } else if (item.origin === 'custom') {
+    originLabel = '已自定义'
+  } else if (item.origin === 'user') {
+    originLabel = '自建'
+  }
   return {
     id: item.id, type: item.type, title: item.label, depth, parentId, index,
     childCount: (item.children || []).length, expanded: !!expanded,
     imageOnly: appliesLabel(item) === '仅图片', appliesLabel: appliesLabel(item),
-    originLabel: item.origin === 'custom' ? '已自定义' : (item.origin === 'user' ? '自建' : '')
+    originLabel
   }
 }
 
@@ -55,13 +64,7 @@ Page({
     mutating: false, reordering: false, newMenuVisible: false, newMenuClosing: false, groupDialogVisible: false, groupName: '', importVisible: false, importClosing: false,
     importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', importKeyboardHeight: 0, rowHeightPx: 56,
     swipedRowId: '', swipeOffset: 0, swipeDeletePx: 72, swipeDragging: false,
-    marketFilters: [
-      { key: 'hot', label: '热门', sort: 'hot', scope: '' },
-      { key: 'new', label: '最新', sort: 'new', scope: '' },
-      { key: 'text', label: '文字', sort: 'hot', scope: 'text' },
-      { key: 'image', label: '配图', sort: 'hot', scope: 'image' }
-    ],
-    marketFilter: 'hot', marketItems: [], marketLoading: false, marketError: '', marketImportingCode: '',
+    marketItems: [], marketLoading: false, marketError: '', marketImportingCode: '',
     marketDetail: null, marketDetailPrompt: '', marketDetailLoading: false, marketDetailClosing: false
   },
   onLoad() {
@@ -103,19 +106,10 @@ Page({
   },
   async loadMarket() {
     if (this.data.marketLoading) return
-    const filter = this.data.marketFilters.find((item) => item.key === this.data.marketFilter) || this.data.marketFilters[0]
-    const requestKey = filter.key
     this.setData({ marketLoading: true, marketError: '' })
-    const result = await promptStore.market({ sort: filter.sort, scope: filter.scope, limit: 30 })
-    if (requestKey !== this.data.marketFilter) return
+    const result = await promptStore.market({ sort: 'hot', scope: '', limit: 30 })
     this.setData({ marketLoading: false, marketItems: result.ok ? this.decorateMarket(result.items) : [],
       marketError: result.ok ? '' : '社区提示词加载失败，点此重试' })
-  },
-  selectMarketFilter(event) {
-    const key = event.currentTarget.dataset.key
-    if (!this.data.marketFilters.some((item) => item.key === key) || key === this.data.marketFilter || this.data.marketLoading) return
-    this.setData({ marketFilter: key, marketItems: [], marketError: '' })
-    this.loadMarket()
   },
   retryMarket() { this.loadMarket() },
   openMarketDetail(event) {

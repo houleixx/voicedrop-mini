@@ -10,7 +10,7 @@ Page({
   data: {
     itemId: '', item: null, loading: true, saving: false, error: '', pageTitle: '提示词',
     nameDraft: '', instructionDraft: '', textDraft: true, imageDraft: false, dirty: false,
-    shareCode: null, sharing: false, shareToggling: false, shareError: ''
+    shareCode: null, sharing: false, shareToggling: false, shareError: '', shareBorrowed: false
   },
   onLoad(options) { this.setData({ itemId: decodeURIComponent(options.id || '') }) },
   onShow() { if (!this.data.item) this.loadItem() },
@@ -22,7 +22,7 @@ Page({
     this.setData({
       item, loading: false, pageTitle: item.label, nameDraft: item.label,
       instructionDraft: item.prompt || '', textDraft: (item.appliesTo || []).includes('text'), imageDraft: (item.appliesTo || []).includes('image'),
-      shareCode: share.code || null, sharing: Boolean(share.sharing), dirty: false, error: ''
+      shareCode: share.code || null, sharing: Boolean(share.sharing), shareBorrowed: Boolean(share.borrowed), dirty: false, error: ''
     })
   },
   updateDirty(update) {
@@ -54,7 +54,7 @@ Page({
       }
       this.setData({ shareToggling: false, sharing: previous, shareError: messages[result.error] || `操作失败：${result.error || '请重试'}` }); return
     }
-    this.setData({ shareToggling: false, sharing: result.sharing, shareCode: result.code || this.data.shareCode })
+    this.setData({ shareToggling: false, sharing: result.sharing, shareCode: result.code || this.data.shareCode, shareBorrowed: Boolean(result.borrowed) })
   },
   copyShareCode() { if (this.data.shareCode) wx.setClipboardData({ data: this.data.shareCode }) },
   copyShareLink() { if (this.data.shareCode) wx.setClipboardData({ data: `https://voicedrop.cn/${this.data.shareCode}` }) },

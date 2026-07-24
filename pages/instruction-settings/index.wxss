@@ -57,6 +57,7 @@
 .origin-badge{flex:none;white-space:nowrap;word-break:keep-all;}
 .origin-badge.user-origin{background:#e7f1e8;color:#5e8a6a}
 .origin-badge.custom-origin{background:#fbead2;color:#c98a2e}
+.origin-badge.imported-origin{background:#e3edf8;color:#4a7fb5}
 
 /* Bottom sheets stay mounted until their downward exit animation completes. */
 .sheet-mask{animation:sheet-mask-in .22s ease-out both}
