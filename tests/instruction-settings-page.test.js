@@ -116,7 +116,7 @@ test('prompt list closes the magic-code importer with a downward animation', asy
   assert.equal(ctx.data.importClosing, false)
 })
 
-test('prompt market loads hot sort, opens details, and imports from the list', async () => {
+test('prompt market switches filters, opens details, and imports from the list', async () => {
   const calls = []
   let storedItems = items
   const marketItems = [{ code: '7654321', label: '公众号题图', author: 'Alice', appliesTo: ['text', 'image'], kind: 'image', importCount: 9 }]
@@ -132,8 +132,10 @@ test('prompt market loads hot sort, opens details, and imports from the list', a
   assert.equal(ctx.data.marketItems[0].appliesLabel, '文字+图片')
   assert.equal(ctx.data.marketItems[0].detailKindLabel, '文字提示词')
   assert.equal(ctx.data.marketItems[0].authorInitial, 'A')
-  // 筛选 chip 已移除，固定按热门排序
-  assert.deepEqual(calls.at(-1), { sort: 'hot', scope: '', limit: 30 })
+  assert.deepEqual(ctx.data.marketFilters.map((filter) => filter.label), ['热门', '最新', '文字', '配图'])
+  page.selectMarketFilter.call(ctx, { currentTarget: { dataset: { key: 'image' } } })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(calls.at(-1), { sort: 'hot', scope: 'image', limit: 30 })
   page.openMarketDetail.call(ctx, { currentTarget: { dataset: { code: '7654321' } } })
   await new Promise((resolve) => setImmediate(resolve))
   assert.equal(ctx.data.marketDetailPrompt, '生成一张题图')
@@ -272,6 +274,8 @@ test('prompt list markup contains the screenshot hierarchy and import copy', () 
   assert.match(wxml, /slot="right"[\s\S]*class="add-button"/)
   assert.match(wxml, /输入魔法数字导入/)
   assert.match(wxml, /class="market-heading">社区提示词</)
+  assert.match(wxml, /class="market-filters"/)
+  assert.match(wxml, /bindtap="selectMarketFilter"/)
   assert.doesNotMatch(wxml, /社区热门/)
   assert.match(wxml, /class="prompt-state prompt-loading-state"[^>]*>[\s\S]*class="prompt-loading-spinner"[\s\S]*正在加载提示词…/)
   assert.match(wxml, /class="market-state market-loading-state"[^>]*>[\s\S]*class="prompt-loading-spinner"[\s\S]*正在加载社区提示词…/)

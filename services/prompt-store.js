@@ -5,6 +5,16 @@ const tree = require('../utils/prompt-tree')
 
 const CACHE_KEY = 'voicedrop.prompts.cache.v1'
 
+function cacheKeyFor(identity) {
+  const value = String(identity || '')
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `${CACHE_KEY}.${(hash >>> 0).toString(16).padStart(8, '0')}`
+}
+
 function builtin() {
   const action = (id, label, prompt, anchor, kind) => ({ id, type: 'action', label, origin: 'system', prompt, appliesTo: [anchor], kind })
   const group = (id, label, children) => ({ id, type: 'group', label, origin: 'system', children })
@@ -42,20 +52,32 @@ function createStore(deps = {}) {
   const storage = deps.storage || defaultStorage()
   const auth = deps.auth || authService
   const base = deps.base || api.agentBase()
-  let items = loadCache(storage)
+  let cacheIdentity = String(auth.bearer() || '')
+  let cacheKey = cacheKeyFor(cacheIdentity)
+  let items = loadCache(storage, cacheKey)
   let lastError = ''
   let mutating = false
 
-  function loadCache(source) {
-    const raw = source.get(CACHE_KEY)
+  function loadCache(source, key) {
+    const raw = source.get(key)
     if (raw) { try { return tree.decodeItems(raw).items } catch (_) {} }
     return tree.clone(builtin())
   }
 
-  function saveCache() { storage.set(CACHE_KEY, JSON.stringify({ schema: 1, items })) }
+  function saveCache() { storage.set(cacheKey, JSON.stringify({ schema: 1, items })) }
   function ok(res) { return res && res.statusCode >= 200 && res.statusCode < 300 }
 
+  function ensureAccount() {
+    const next = String(auth.bearer() || '')
+    if (next === cacheIdentity) return
+    cacheIdentity = next
+    cacheKey = cacheKeyFor(next)
+    items = loadCache(storage, cacheKey)
+    lastError = ''
+  }
+
   async function refresh() {
+    ensureAccount()
     try {
       const res = await request.get(`${base}/prompts`, auth.bearer())
       if (!ok(res)) throw new Error('http')
@@ -68,6 +90,7 @@ function createStore(deps = {}) {
   }
 
   async function transact(draftMaker) {
+    ensureAccount()
     if (mutating) return { ok: false, error: 'busy' }
     const snapshot = tree.clone(items)
     mutating = true
@@ -174,11 +197,11 @@ function createStore(deps = {}) {
   }
 
   return {
-    items: () => tree.clone(items), error: () => lastError, isMutating: () => mutating,
+    items: () => { ensureAccount(); return tree.clone(items) }, error: () => lastError, isMutating: () => mutating,
     refresh, replace, remove, add, applyReorder, restoreDefaults, preview, market, importCode, shareStates, setSharing,
-    menu: (anchor) => tree.menu(items, anchor)
+    menu: (anchor) => { ensureAccount(); return tree.menu(items, anchor) }
   }
 }
 
 const store = createStore()
-module.exports = Object.assign(store, { createStore, CACHE_KEY, builtin })
+module.exports = Object.assign(store, { createStore, CACHE_KEY, cacheKeyFor, builtin })

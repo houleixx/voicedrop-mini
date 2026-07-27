@@ -1,5 +1,6 @@
-const HOST = 'jianshuo.dev'
-const PHOTO_HOST = 'voicedrop.cn'
+const HOST = 'voicedrop.cn'
+const PHOTO_HOST = HOST
+const WS_HOST = 'jianshuo.dev'
 
 function filesBase() {
   return `https://${HOST}/files/api`
@@ -18,11 +19,11 @@ function recoBase() {
 }
 
 function agentWs() {
-  return `wss://${HOST}/agent`
+  return `wss://${WS_HOST}/agent`
 }
 
 function sharePage(id) {
-  return `https://${HOST}/voicedrop/${id}`
+  return `https://${HOST}/${path(id)}`
 }
 
 function downloadUrl(key) {
@@ -47,6 +48,7 @@ function path(key) {
 module.exports = {
   HOST,
   PHOTO_HOST,
+  WS_HOST,
   filesBase,
   photoBase,
   agentBase,

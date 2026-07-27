@@ -64,7 +64,13 @@ Page({
     mutating: false, reordering: false, newMenuVisible: false, newMenuClosing: false, groupDialogVisible: false, groupName: '', importVisible: false, importClosing: false,
     importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', importKeyboardHeight: 0, rowHeightPx: 56,
     swipedRowId: '', swipeOffset: 0, swipeDeletePx: 72, swipeDragging: false,
-    marketItems: [], marketLoading: false, marketError: '', marketImportingCode: '',
+    marketFilters: [
+      { key: 'hot', label: '热门', sort: 'hot', scope: '' },
+      { key: 'new', label: '最新', sort: 'new', scope: '' },
+      { key: 'text', label: '文字', sort: 'hot', scope: 'text' },
+      { key: 'image', label: '配图', sort: 'hot', scope: 'image' }
+    ],
+    marketFilter: 'hot', marketItems: [], marketLoading: false, marketError: '', marketImportingCode: '',
     marketDetail: null, marketDetailPrompt: '', marketDetailLoading: false, marketDetailClosing: false
   },
   onLoad() {
@@ -106,10 +112,19 @@ Page({
   },
   async loadMarket() {
     if (this.data.marketLoading) return
+    const filter = this.data.marketFilters.find((item) => item.key === this.data.marketFilter) || this.data.marketFilters[0]
+    const requestKey = filter.key
     this.setData({ marketLoading: true, marketError: '' })
-    const result = await promptStore.market({ sort: 'hot', scope: '', limit: 30 })
+    const result = await promptStore.market({ sort: filter.sort, scope: filter.scope, limit: 30 })
+    if (requestKey !== this.data.marketFilter) return
     this.setData({ marketLoading: false, marketItems: result.ok ? this.decorateMarket(result.items) : [],
       marketError: result.ok ? '' : '社区提示词加载失败，点此重试' })
+  },
+  selectMarketFilter(event) {
+    const key = event.currentTarget.dataset.key
+    if (!this.data.marketFilters.some((item) => item.key === key) || key === this.data.marketFilter || this.data.marketLoading) return
+    this.setData({ marketFilter: key, marketItems: [], marketError: '' })
+    this.loadMarket()
   },
   retryMarket() { this.loadMarket() },
   openMarketDetail(event) {

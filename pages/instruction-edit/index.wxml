@@ -33,5 +33,5 @@
     </block>
     <button class="bottom-save {{dirty && !saving ? '' : 'disabled'}}" disabled="{{!dirty || saving}}" loading="{{saving}}" bindtap="save">{{saving ? '保存中' : '保存'}}</button>
   </view>
-  <view class="loading" wx:else>{{error || '正在加载...'}}</view>
+  <view class="loading" wx:else>{{error || '加载中...'}}</view>
 </view>

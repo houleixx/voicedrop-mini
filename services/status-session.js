@@ -3,6 +3,8 @@ const auth = require('./auth')
 const http = require('./request')
 const agentMessage = require('../utils/agent-message')
 
+const HEARTBEAT_MS = 25000
+
 function createSession(handlers, runtime) {
   handlers = handlers || {}
   runtime = runtime || {}
@@ -12,15 +14,37 @@ function createSession(handlers, runtime) {
   const httpService = runtime.http || http
   const delay = runtime.setTimeout || setTimeout
   const clearDelay = runtime.clearTimeout || clearTimeout
+  const repeat = runtime.setInterval || setInterval
+  const clearRepeat = runtime.clearInterval || clearInterval
   let socket = null
   let connecting = false
   let generation = 0
   let retryTimer = null
+  let heartbeatTimer = null
   let closed = true
 
   function clearRetry() {
     if (retryTimer) clearDelay(retryTimer)
     retryTimer = null
+  }
+
+  function clearHeartbeat() {
+    if (heartbeatTimer) clearRepeat(heartbeatTimer)
+    heartbeatTimer = null
+  }
+
+  function startHeartbeat(current) {
+    clearHeartbeat()
+    heartbeatTimer = repeat(() => {
+      if (closed || socket !== current) return
+      current.send({
+        data: JSON.stringify({ type: 'ping' }),
+        fail: () => {
+          if (!closed && socket === current) scheduleReconnect(current)
+        }
+      })
+    }, HEARTBEAT_MS)
+    if (heartbeatTimer && typeof heartbeatTimer.unref === 'function') heartbeatTimer.unref()
   }
 
   function connect() {
@@ -55,6 +79,9 @@ function createSession(handlers, runtime) {
     if (closed || socket || currentGeneration !== generation) return
     const current = socketApi.connectSocket(options)
     socket = current
+    current.onOpen(() => {
+      if (!closed && socket === current) startHeartbeat(current)
+    })
     current.onMessage((message) => {
       if (closed || socket !== current) return null
       const raw = message.data
@@ -78,6 +105,7 @@ function createSession(handlers, runtime) {
   function scheduleReconnect(current) {
     if (socket && socket !== current) return
     if (socket === current) socket = null
+    clearHeartbeat()
     if (closed || retryTimer) return
     retryTimer = delay(() => {
       retryTimer = null
@@ -90,6 +118,7 @@ function createSession(handlers, runtime) {
     connecting = false
     generation++
     clearRetry()
+    clearHeartbeat()
     const current = socket
     socket = null
     if (current) current.close({ code: 1000, reason: 'bye' })

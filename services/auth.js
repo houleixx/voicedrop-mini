@@ -1,5 +1,6 @@
 const ANON_KEY = 'voicedrop.auth.anon'
 const SESSION_KEY = 'voicedrop.auth.session'
+const accountState = require('./account-state')
 
 function wxApi() {
   return typeof wx === 'undefined' ? null : wx
@@ -84,7 +85,11 @@ function anonId() {
 
 function adoptToken(token) {
   if (!token || !String(token).startsWith('anon_') || String(token).length < 20) return false
-  storageSet(ANON_KEY, String(token).trim())
+  const next = String(token).trim()
+  if (accountState.identityChanged(anonymousBearer(), next)) {
+    accountState.clearPendingAccountState(wxApi())
+  }
+  storageSet(ANON_KEY, next)
   storageRemove(SESSION_KEY)
   return true
 }
@@ -99,6 +104,12 @@ function signOutWechat() {
   storageRemove(SESSION_KEY)
 }
 
+function resetAnonymous() {
+  accountState.clearDeletedAccountState(wxApi())
+  storageSet(ANON_KEY, newAnon())
+  storageRemove(SESSION_KEY)
+}
+
 module.exports = {
   bearer,
   anonymousBearer,
@@ -108,6 +119,7 @@ module.exports = {
   adoptToken,
   storeSession,
   signOutWechat,
+  resetAnonymous,
   isSessionToken,
   isWechatAuthenticated: () => Boolean(session())
 }

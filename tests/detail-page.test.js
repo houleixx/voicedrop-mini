@@ -9,7 +9,7 @@ test('audio detail loading state shows a spinner above the text', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
 
-  assert.match(wxml, /<view wx:if="\{\{loading\}\}" class="loading-state">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>正在加载\.\.\.<\/text>\s*<\/view>/)
+  assert.match(wxml, /<view wx:if="\{\{loading\}\}" class="loading-state">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>加载中\.\.\.<\/text>\s*<\/view>/)
   assert.match(css, /\.loading-state\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*24rpx;/s)
   assert.match(css, /\.loading-spinner\s*\{[^}]*border-top-color:\s*#c7432f;[^}]*animation:\s*loading-spin\s+0\.8s\s+linear\s+infinite;/s)
 })

@@ -10,6 +10,7 @@ let metaCacheIdentity = ''
 let titleCache = {}
 let tagsCache = {}
 let coverCache = {}
+let staleMetaKeys = new Set()
 let cachedScope = ''
 let cachedScopeToken = ''
 
@@ -77,6 +78,7 @@ async function enrichArticleMeta(records) {
     }
     rec.coverPhotoKey = cover
     coverCache[key] = cover
+    staleMetaKeys.delete(key)
     rec.rowTitle = recording.rowTitle(rec)
   })
   persistMetaCache()
@@ -96,7 +98,8 @@ function applyCachedArticleMeta(records) {
 
 function hasCompleteArticleMeta(rec) {
   const key = recording.articleKey(rec.stem)
-  return Object.prototype.hasOwnProperty.call(titleCache, key) &&
+  return !staleMetaKeys.has(key) &&
+    Object.prototype.hasOwnProperty.call(titleCache, key) &&
     Object.prototype.hasOwnProperty.call(tagsCache, key) &&
     Object.prototype.hasOwnProperty.call(coverCache, key)
 }
@@ -120,12 +123,14 @@ function ensureMetaCache() {
   titleCache = {}
   tagsCache = {}
   coverCache = {}
+  staleMetaKeys = new Set()
   try {
     const raw = wx.getStorageSync(`${META_CACHE_PREFIX}${identity}`)
     const parsed = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
     titleCache = parsed.titles && typeof parsed.titles === 'object' ? parsed.titles : {}
     tagsCache = parsed.tags && typeof parsed.tags === 'object' ? parsed.tags : {}
     coverCache = parsed.covers && typeof parsed.covers === 'object' ? parsed.covers : {}
+    staleMetaKeys = new Set(Array.isArray(parsed.stale) ? parsed.stale : [])
   } catch (_) {
   }
 }
@@ -136,7 +141,8 @@ function persistMetaCache() {
     wx.setStorageSync(`${META_CACHE_PREFIX}${metaCacheIdentity}`, JSON.stringify({
       titles: titleCache,
       tags: tagsCache,
-      covers: coverCache
+      covers: coverCache,
+      stale: Array.from(staleMetaKeys)
     }))
   } catch (_) {
   }
@@ -146,15 +152,16 @@ function invalidateArticleCaches(stems) {
   ensureMetaCache()
   const values = Array.isArray(stems) ? stems : []
   if (!values.length) {
-    titleCache = {}
-    tagsCache = {}
-    coverCache = {}
+    const keys = new Set([
+      ...Object.keys(titleCache),
+      ...Object.keys(tagsCache),
+      ...Object.keys(coverCache)
+    ])
+    keys.forEach((key) => staleMetaKeys.add(key))
   } else {
     for (const stem of values) {
       const key = recording.articleKey(stem)
-      delete titleCache[key]
-      delete tagsCache[key]
-      delete coverCache[key]
+      staleMetaKeys.add(key)
     }
   }
   persistMetaCache()
@@ -176,6 +183,11 @@ async function deleteArticle(rec) {
   await Promise.all(keys.map((key) => http.del(`${api.filesBase()}/file/${api.path(key)}`, auth.bearer()).catch(() => null)))
   invalidateArticleCaches([rec.stem])
   return true
+}
+
+async function deleteAccount() {
+  const res = await http.postJson(`${api.filesBase()}/account/delete`, auth.bearer())
+  return res.statusCode >= 200 && res.statusCode < 300
 }
 
 async function shareUrl(rec, section) {
@@ -297,7 +309,7 @@ function downloadPhotoTemp(key, scope, options) {
   const scopedKey = scopedPhotoKey(key, scope)
   return new Promise((resolve, reject) => {
     const cacheBust = options && options.cacheBust
-    const urls = [api.photoCdnUrl(scopedKey), api.photoUrl(scopedKey)]
+    const urls = Array.from(new Set([api.photoCdnUrl(scopedKey), api.photoUrl(scopedKey)]))
       .map((baseUrl) => cacheBust ? `${baseUrl}?v=${encodeURIComponent(cacheBust)}` : baseUrl)
     const attempt = (index, previousError) => {
       const url = urls[index]
@@ -486,6 +498,7 @@ module.exports = {
   fetchDocByArticleKey,
   deleteRecording,
   deleteArticle,
+  deleteAccount,
   recordingDeleteSucceeded,
   shareUrl,
   publishWechat,

@@ -5,6 +5,7 @@ const http = require('./request')
 const QUEUE_KEY = 'voicedrop.commandqueue.default'
 const CONTROL_KEY = 'voicedrop.commandcontrols.default'
 const CONFIRM_KEY = 'voicedrop.commandconfirms.default'
+const HEARTBEAT_MS = 25000
 
 function uuid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
@@ -114,6 +115,8 @@ function createSession(handlers, runtime) {
   const httpService = runtime.http || http
   const delay = runtime.setTimeout || setTimeout
   const clearDelay = runtime.clearTimeout || clearTimeout
+  const repeat = runtime.setInterval || setInterval
+  const clearRepeat = runtime.clearInterval || clearInterval
   let socket = null
   let connecting = false
   let generation = 0
@@ -122,6 +125,7 @@ function createSession(handlers, runtime) {
   let snapshotReady = false
   let retryTimer = null
   let snapshotTimer = null
+  let heartbeatTimer = null
   let refs = []
   const queue = loadQueue(socketApi)
   const controls = loadControls(socketApi)
@@ -146,6 +150,25 @@ function createSession(handlers, runtime) {
   function clearSnapshotTimer() {
     if (snapshotTimer) clearDelay(snapshotTimer)
     snapshotTimer = null
+  }
+
+  function clearHeartbeat() {
+    if (heartbeatTimer) clearRepeat(heartbeatTimer)
+    heartbeatTimer = null
+  }
+
+  function startHeartbeat(current) {
+    clearHeartbeat()
+    heartbeatTimer = repeat(() => {
+      if (closed || socket !== current || !opened) return
+      current.send({
+        data: JSON.stringify({ type: 'ping' }),
+        fail: () => {
+          if (!closed && socket === current) scheduleReconnect(current)
+        }
+      })
+    }, HEARTBEAT_MS)
+    if (heartbeatTimer && typeof heartbeatTimer.unref === 'function') heartbeatTimer.unref()
   }
 
   function notifyQueue() {
@@ -204,6 +227,7 @@ function createSession(handlers, runtime) {
     current.onOpen(() => {
       if (closed || socket !== current) return
       opened = true
+      startHeartbeat(current)
       snapshotReady = false
       trace('open', { queueLength: queue.length })
       notifyState('已连接')
@@ -239,6 +263,7 @@ function createSession(handlers, runtime) {
     opened = false
     snapshotReady = false
     clearSnapshotTimer()
+    clearHeartbeat()
     if (closed || retryTimer) return
     notifyState(queue.length ? '正在恢复' : '连接断开')
     retryTimer = delay(() => {
@@ -376,6 +401,7 @@ function createSession(handlers, runtime) {
       } else if (obj.type === 'snapshot') {
         clearSnapshotTimer()
         snapshotReady = true
+        if (handlers.onUpdate) handlers.onUpdate(obj.stems || [])
         reconcile(obj.queue)
         flushControls()
       }
@@ -431,6 +457,7 @@ function createSession(handlers, runtime) {
     snapshotReady = false
     clearRetry()
     clearSnapshotTimer()
+    clearHeartbeat()
     const current = socket
     socket = null
     if (current) current.close({ code: 1000, reason: 'bye' })

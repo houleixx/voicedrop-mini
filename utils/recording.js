@@ -143,11 +143,15 @@ function period(date) {
   return 'LateNight'
 }
 
+function timestamp(date) {
+  const d = date instanceof Date ? date : new Date()
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1, 2)}-${pad(d.getDate(), 2)}-${pad(d.getHours(), 2)}${pad(d.getMinutes(), 2)}${pad(d.getSeconds(), 2)}`
+}
+
 function makeName(date, durationSeconds, place) {
   const d = date instanceof Date ? date : new Date()
-  const timestamp = `${d.getFullYear()}-${pad(d.getMonth() + 1, 2)}-${pad(d.getDate(), 2)}-${pad(d.getHours(), 2)}${pad(d.getMinutes(), 2)}${pad(d.getSeconds(), 2)}`
   const suffix = place ? `-${place}` : ''
-  return `VoiceDrop-${timestamp}-${durationTag(durationSeconds)}-${WEEKDAYS_EN[d.getDay()]}-${period(d)}${suffix}.m4a`
+  return `VoiceDrop-${timestamp(d)}-${durationTag(durationSeconds)}-${WEEKDAYS_EN[d.getDay()]}-${period(d)}${suffix}.m4a`
 }
 
 function photoKey(sessionTs, offset) {
@@ -188,6 +192,7 @@ module.exports = {
   fromRecordingIndex,
   durationTag,
   period,
+  timestamp,
   makeName,
   photoKey,
   tagsFromRecords,

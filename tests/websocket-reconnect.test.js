@@ -76,9 +76,44 @@ function timerHarness() {
     },
     clearTimeout(timer) {
       if (timer) timer.cleared = true
+    },
+    setInterval(callback, delay) {
+      const timer = { callback, delay, cleared: false, interval: true }
+      timers.push(timer)
+      return timer
+    },
+    clearInterval(timer) {
+      if (timer) timer.cleared = true
     }
   }
 }
+
+test('status and command sockets send a keepalive every 25 seconds', () => {
+  const status = socketHarness()
+  const command = socketHarness()
+  const statusTimer = timerHarness()
+  const commandTimer = timerHarness()
+  statusSession.createSession({}, directAuthRuntime(status.wx, {
+    setInterval: statusTimer.setInterval,
+    clearInterval: statusTimer.clearInterval
+  })).connect()
+  libraryCommand.createSession({}, directAuthRuntime(command.wx, {
+    setInterval: commandTimer.setInterval,
+    clearInterval: commandTimer.clearInterval
+  })).connect()
+
+  status.sockets[0].callbacks.open()
+  command.sockets[0].callbacks.open()
+  const statusHeartbeat = statusTimer.timers.find((item) => item.interval)
+  const commandHeartbeat = commandTimer.timers.find((item) => item.interval)
+  assert.equal(statusHeartbeat.delay, 25000)
+  assert.equal(commandHeartbeat.delay, 25000)
+
+  statusHeartbeat.callback()
+  commandHeartbeat.callback()
+  assert.equal(JSON.parse(status.sockets[0].sent[0].data).type, 'ping')
+  assert.equal(JSON.parse(command.sockets[0].sent[0].data).type, 'ping')
+})
 
 test('status socket retries silently after the iOS-compatible delay', () => {
   const socket = socketHarness()
@@ -370,6 +405,19 @@ test('library command refreshes updated stems and resolves the matching request'
 
   assert.deepEqual(updates, [['a']])
   assert.deepEqual(session.queue(), [])
+})
+
+test('library command refreshes authoritative state after a snapshot without stems', () => {
+  const socket = socketHarness()
+  const updates = []
+  const session = libraryCommand.createSession({ onUpdate: (stems) => updates.push(stems) }, { wx: socket.wx })
+
+  session.connect()
+  socket.sockets[0].callbacks.message({
+    data: JSON.stringify({ type: 'snapshot', queue: [] })
+  })
+
+  assert.deepEqual(updates, [[]])
 })
 
 test('library command uses the queue head for old-server terminal messages without ids', () => {

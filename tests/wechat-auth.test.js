@@ -12,6 +12,7 @@ function freshWechatAuth(response, wxOverrides = {}) {
     removeStorageSync: (key) => {
       delete storage[key]
     },
+    getStorageInfoSync: () => ({ keys: Object.keys(storage) }),
     getAccountInfoSync: () => ({
       miniProgram: { appId: 'wx-test-runtime-appid' }
     }),
@@ -40,7 +41,7 @@ test('wechat auth exchanges mini program code without switching accounts before 
   assert.equal(result.ok, true)
   assert.equal(requests.length, 1)
   assert.equal(requests[0].method, 'POST')
-  assert.equal(requests[0].url, 'https://jianshuo.dev/files/api/auth/wechat')
+  assert.equal(requests[0].url, 'https://voicedrop.cn/files/api/auth/wechat')
   assert.equal(requests[0].data.code, 'code-1')
   assert.equal(requests[0].data.appid, 'wx-test-runtime-appid')
   assert.equal(requests[0].data.platform, 'mini_program')
@@ -76,9 +77,17 @@ test('auth imports only an anonymous account token', () => {
   assert.equal(storage['voicedrop.auth.session'], undefined)
 
   const anonymous = `anon_${'a'.repeat(64)}`
+  storage['voicedrop.commandqueue.default'] = '[{"id":"old"}]'
+  storage['voicedrop.commandcontrols.default'] = '[{"id":"old"}]'
+  storage['voicedrop.commandconfirms.default'] = '[{"id":"old"}]'
+  storage['voicedrop.editqueue.VoiceDrop-old'] = '[{"id":"old"}]'
   assert.equal(auth.adoptToken(anonymous), true)
   assert.equal(auth.bearer(), anonymous)
   assert.equal(storage['voicedrop.auth.session'], undefined)
+  assert.equal(storage['voicedrop.commandqueue.default'], undefined)
+  assert.equal(storage['voicedrop.commandcontrols.default'], undefined)
+  assert.equal(storage['voicedrop.commandconfirms.default'], undefined)
+  assert.equal(storage['voicedrop.editqueue.VoiceDrop-old'], undefined)
 })
 
 test('wechat auth refuses missing login code without network request', async () => {
@@ -107,4 +116,18 @@ test('wechat auth reports a missing runtime AppID without network request', asyn
     detail: '无法读取当前小程序 AppID'
   })
   assert.equal(requests.length, 0)
+})
+
+test('auth reset wipes local account data and creates a new anonymous token', () => {
+  const { storage } = freshWechatAuth()
+  const auth = require('../services/auth')
+  const previous = auth.anonymousBearer()
+  storage['voicedrop.commandqueue.default'] = '[{"id":"old"}]'
+  storage['voicedrop.prompts.cache.v1.old'] = 'old-cache'
+
+  auth.resetAnonymous()
+
+  assert.notEqual(auth.anonymousBearer(), previous)
+  assert.equal(storage['voicedrop.commandqueue.default'], undefined)
+  assert.equal(storage['voicedrop.prompts.cache.v1.old'], undefined)
 })

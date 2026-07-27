@@ -163,7 +163,7 @@ test('community detail has custom actions and loading markup', () => {
   assert.match(wxml, /<view class="loaded-content" wx:else>/)
   assert.match(wxml, /loaded-content[\s\S]*article card/)
   assert.doesNotMatch(wxml, /loaded-content[\s\S]*article-head/)
-  assert.match(wxml, /<view class="loading-card" wx:if="\{\{loading\}\}">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>内容加载中\.\.\.<\/text>\s*<\/view>/)
+  assert.match(wxml, /<view class="loading-card" wx:if="\{\{loading\}\}">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>加载中\.\.\.<\/text>\s*<\/view>/)
   assert.match(wxml, /加载中/)
   assert.match(wxml, /class="more-menu-layer"/)
   assert.match(wxml, /data-action="reply"/)
@@ -319,7 +319,7 @@ test('community detail share action prepares Android web share URL', () => {
 
   page.shareLink.call(ctx)
 
-  assert.deepEqual(clipboard, [{ data: 'https://jianshuo.dev/voicedrop/share-1' }])
+  assert.deepEqual(clipboard, [{ data: 'https://voicedrop.cn/share-1' }])
   assert.equal(ctx.data.moreMenuOpen, false)
 })
 

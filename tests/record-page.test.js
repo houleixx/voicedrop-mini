@@ -21,21 +21,37 @@ function flush() {
 }
 
 function createRecorder() {
-  const callbacks = { frame: [], stop: [], error: [] }
+  const callbacks = { frame: [], stop: [], error: [], pause: [], resume: [], interruptionBegin: [], interruptionEnd: [] }
   const recorder = {
     startCount: 0,
     stopCount: 0,
+    pauseCount: 0,
+    resumeCount: 0,
     start() { this.startCount += 1 },
     onFrameRecorded(fn) { callbacks.frame.push(fn) },
     onStop(fn) { callbacks.stop.push(fn) },
     onError(fn) { callbacks.error.push(fn) },
+    onPause(fn) { callbacks.pause.push(fn) },
+    onResume(fn) { callbacks.resume.push(fn) },
+    onInterruptionBegin(fn) { callbacks.interruptionBegin.push(fn) },
+    onInterruptionEnd(fn) { callbacks.interruptionEnd.push(fn) },
     offFrameRecorded(fn) { callbacks.frame = callbacks.frame.filter((item) => item !== fn) },
     offStop(fn) { callbacks.stop = callbacks.stop.filter((item) => item !== fn) },
     offError(fn) { callbacks.error = callbacks.error.filter((item) => item !== fn) },
+    offPause(fn) { callbacks.pause = callbacks.pause.filter((item) => item !== fn) },
+    offResume(fn) { callbacks.resume = callbacks.resume.filter((item) => item !== fn) },
+    offInterruptionBegin(fn) { callbacks.interruptionBegin = callbacks.interruptionBegin.filter((item) => item !== fn) },
+    offInterruptionEnd(fn) { callbacks.interruptionEnd = callbacks.interruptionEnd.filter((item) => item !== fn) },
     stop() { this.stopCount += 1 },
+    pause() { this.pauseCount += 1 },
+    resume() { this.resumeCount += 1 },
     emitFrame(frame) { callbacks.frame.slice().forEach((fn) => fn(frame)) },
     emitStop(result) { callbacks.stop.slice().forEach((fn) => fn(result)) },
     emitError(error) { callbacks.error.slice().forEach((fn) => fn(error)) },
+    emitPause() { callbacks.pause.slice().forEach((fn) => fn()) },
+    emitResume() { callbacks.resume.slice().forEach((fn) => fn()) },
+    emitInterruptionBegin() { callbacks.interruptionBegin.slice().forEach((fn) => fn()) },
+    emitInterruptionEnd() { callbacks.interruptionEnd.slice().forEach((fn) => fn()) },
     listenerCount(type) { return callbacks[type].length }
   }
   return recorder
@@ -44,7 +60,8 @@ function createRecorder() {
 function loadPage(overrides = {}) {
   const recorder = overrides.recorder || createRecorder()
   const app = overrides.app || { globalData: { pendingRecordTag: '', pendingReplyTo: null, ...(overrides.globalData || {}) } }
-  const calls = { uploads: [], tags: [], mixes: [], toasts: [], modals: [], navigations: 0, unlinks: [], interviewerStops: 0, refreshes: 0, order: [] }
+  const storage = {}
+  const calls = { uploads: [], photoUploads: [], tags: [], mixes: [], toasts: [], modals: [], navigations: 0, unlinks: [], interviewerStops: 0, refreshes: 0, order: [] }
   const upload = overrides.upload || (() => Promise.resolve(true))
   const audio = {
     recorder: () => recorder,
@@ -82,9 +99,17 @@ function loadPage(overrides = {}) {
     },
     wrapPcm16Wav: (data) => data
   }
+  const library = {
+    uploadPhoto(filePath, key) {
+      calls.order.push('photo.upload')
+      calls.photoUploads.push({ filePath, key })
+      return overrides.photoUpload ? overrides.photoUpload(filePath, key) : Promise.resolve(true)
+    }
+  }
   const fsManager = overrides.fsManager || {
-    readFile(options) { options.success({ data: new ArrayBuffer(2) }) },
+    readFile(options) { options.success({ data: new ArrayBuffer(3200) }) },
     writeFile(options) { options.success() },
+    copyFile(options) { options.success() },
     unlink(options) { calls.unlinks.push(options.filePath); options.success() }
   }
   let definition
@@ -93,6 +118,8 @@ function loadPage(overrides = {}) {
   global.getCurrentPages = () => [{ load() { calls.refreshes += 1 } }]
   global.wx = {
     env: { USER_DATA_PATH: '/user' },
+    getStorageSync(key) { return storage[key] },
+    setStorageSync(key, value) { storage[key] = value },
     getSystemInfoSync: () => ({ statusBarHeight: 20 }),
     getFileSystemManager: () => fsManager,
     showLoading() {},
@@ -101,15 +128,20 @@ function loadPage(overrides = {}) {
     showModal(options) { calls.modals.push(options) },
     navigateBack(options = {}) { calls.navigations += 1; if (options.success) options.success() }
   }
+  if (overrides.chooseMedia !== undefined) global.wx.chooseMedia = overrides.chooseMedia
+  if (overrides.chooseImage !== undefined) global.wx.chooseImage = overrides.chooseImage
 
   const moduleIds = [
     '../pages/record/index',
     '../services/audio',
+    '../services/library',
+    '../services/recording-upload-queue',
     '../utils/wav',
     '../services/realtime-interviewer'
   ]
   moduleIds.forEach((id) => { delete require.cache[require.resolve(id)] })
   require.cache[require.resolve('../services/audio')] = { exports: audio }
+  require.cache[require.resolve('../services/library')] = { exports: library }
   require.cache[require.resolve('../utils/wav')] = { exports: wav }
   require.cache[require.resolve('../services/realtime-interviewer')] = { exports: realtimeInterviewer }
   require('../pages/record/index')
@@ -147,7 +179,9 @@ test('record page uses PCM frames for waveform and interview uplink', () => {
   assert.match(js, /this\.interviewer\.onPcm16\(frame\.frameBuffer, 16000\)/)
   assert.match(js, /wav\.wrapPcm16Wav/)
   assert.match(js, /wav\.mixPcm16/)
-  assert.match(js, /audio\.uploadFile\(finalizedPath, name, 'audio\/wav'\)/)
+  assert.match(js, /recordingUploads\.stage\(\{/)
+  assert.match(js, /contentType: 'audio\/wav'/)
+  assert.match(js, /recordingUploads\.upload\(item\.name\)/)
 })
 
 test('record page mixes AI playback into the final microphone PCM timeline', async () => {
@@ -181,15 +215,221 @@ test('record page side controls sit closer to the center', () => {
   assert.match(wxss, /\.camera-button-column\s*\{[^}]*right:\s*88rpx;/)
 })
 
+test('record page captures camera or album images into the current recording filmstrip', () => {
+  let request
+  const h = loadPage({
+    chooseMedia(options) {
+      request = options
+      options.success({ tempFiles: [{ tempFilePath: '/tmp/scene.jpg' }] })
+      options.complete()
+    }
+  })
+  h.page.data.startedAt = new Date(2026, 6, 26, 10, 20, 30).getTime()
+
+  h.page.takePhoto()
+  assert.equal(request, undefined)
+  h.recorder.emitPause()
+
+  assert.deepEqual(request.sourceType, ['camera', 'album'])
+  assert.deepEqual(request.mediaType, ['image'])
+  assert.equal(h.page.data.capturedPhotos.length, 1)
+  assert.equal(h.page.data.capturedPhotos[0].path, '/tmp/scene.jpg')
+  assert.match(h.page.data.capturedPhotos[0].key, /^photos\/2026-07-26-102030\/\d+-[0-9a-z]{3}\.jpg$/)
+  assert.match(wxml, /class="photo-filmstrip"/)
+  assert.match(wxml, /catchtap="removePhoto"/)
+})
+
+test('record page removes a captured photo before upload', () => {
+  const h = loadPage()
+  h.page.setData({
+    capturedPhotos: [
+      { path: '/tmp/a.jpg', key: 'photos/session/1-abc.jpg' },
+      { path: '/tmp/b.jpg', key: 'photos/session/2-def.jpg' }
+    ]
+  })
+
+  h.page.removePhoto({ currentTarget: { dataset: { index: 0 } } })
+
+  assert.deepEqual(h.page.data.capturedPhotos, [
+    { path: '/tmp/b.jpg', key: 'photos/session/2-def.jpg' }
+  ])
+})
+
+test('record page uploads every photo before uploading audio', async () => {
+  const h = loadPage()
+  h.page.setData({
+    capturedPhotos: [
+      { path: '/tmp/a.jpg', key: 'photos/session/1-abc.jpg' },
+      { path: '/tmp/b.jpg', key: 'photos/session/2-def.jpg' }
+    ]
+  })
+
+  h.recorder.emitStop({ tempFilePath: '/tmp/raw.pcm' })
+  await flush()
+  await flush()
+
+  assert.deepEqual(h.calls.photoUploads, [
+    { filePath: '/user/voicedrop-pending-photo-photos-session-1-abc-jpg.jpg', key: 'photos/session/1-abc.jpg' },
+    { filePath: '/user/voicedrop-pending-photo-photos-session-2-def-jpg.jpg', key: 'photos/session/2-def.jpg' }
+  ])
+  assert.ok(h.calls.order.indexOf('photo.upload') < h.calls.order.indexOf('upload'))
+  assert.equal(h.calls.uploads.length, 1)
+})
+
+test('a recording photo failure retains the audio plan and returns for retry', async () => {
+  const h = loadPage({ photoUpload: () => Promise.reject(new Error('photo offline')) })
+  h.page.setData({
+    capturedPhotos: [{ path: '/tmp/a.jpg', key: 'photos/session/1-abc.jpg' }]
+  })
+
+  h.recorder.emitStop({ tempFilePath: '/tmp/raw.pcm' })
+  await flush()
+  await flush()
+
+  assert.equal(h.calls.uploads.length, 0)
+  assert.equal(h.calls.toasts.at(-1).title, '照片暂未保存，录音已保留')
+  assert.equal(h.calls.navigations, 1)
+})
+
+test('record page resumes its elapsed timer after returning from the system picker', () => {
+  const show = js.slice(js.indexOf('onShow()'), js.indexOf('onHide()'))
+  assert.match(show, /this\.startTimer\(\)/)
+  assert.match(js, /startTimer\(\)\s*\{[\s\S]*if \(this\.data\.timerInterval\) return/)
+})
+
+test('canceling the system photo picker resumes the owned RecorderManager after returning', () => {
+  let request
+  const h = loadPage({
+    chooseMedia(options) { request = options }
+  })
+
+  h.page.takePhoto()
+  h.recorder.emitPause()
+  h.page.onHide()
+  request.fail({ errMsg: 'chooseMedia:fail cancel' })
+  request.complete()
+  assert.equal(h.recorder.resumeCount, 0)
+
+  h.page.onShow()
+
+  assert.equal(h.recorder.resumeCount, 1)
+  assert.equal(h.recorder.listenerCount('pause'), 1)
+  assert.equal(h.recorder.listenerCount('resume'), 1)
+  assert.equal(h.recorder.listenerCount('interruptionBegin'), 1)
+  assert.equal(h.recorder.listenerCount('interruptionEnd'), 1)
+  h.page.onUnload()
+})
+
+test('the recorder is paused before opening a system picker so its PCM remains usable', async () => {
+  let request
+  let openedWhileRunning = false
+  const recorder = createRecorder()
+  const fsManager = {
+    readFile(options) {
+      options.success({ data: new ArrayBuffer(openedWhileRunning ? 0 : 3200) })
+    },
+    writeFile(options) { options.success() },
+    copyFile(options) { options.success() },
+    saveFile(options) { options.success({ savedFilePath: options.filePath }) },
+    unlink(options) { options.success() }
+  }
+  const h = loadPage({
+    recorder,
+    fsManager,
+    chooseMedia(options) {
+      request = options
+      openedWhileRunning = recorder.pauseCount === 0
+    }
+  })
+
+  h.page.takePhoto()
+  h.recorder.emitPause()
+  h.page.onHide()
+  request.fail({ errMsg: 'chooseMedia:fail cancel' })
+  request.complete()
+  h.page.onShow()
+  h.recorder.emitResume()
+  h.recorder.emitStop({ tempFilePath: '/tmp/picker-session.pcm' })
+  await flush()
+  await flush()
+
+  assert.equal(openedWhileRunning, false)
+  assert.equal(h.recorder.pauseCount, 1)
+  assert.equal(h.calls.modals.length, 0)
+  assert.equal(h.calls.uploads.length, 1)
+})
+
+test('returning before the picker complete callback still resumes recording exactly once', () => {
+  let request
+  const h = loadPage({
+    chooseMedia(options) { request = options }
+  })
+
+  h.page.takePhoto()
+  h.recorder.emitPause()
+  h.page.onHide()
+  h.page.onShow()
+  assert.equal(h.recorder.resumeCount, 0)
+
+  request.fail({ errMsg: 'chooseMedia:fail cancel' })
+  request.complete()
+  request.complete()
+
+  assert.equal(h.recorder.resumeCount, 1)
+  h.page.onUnload()
+})
+
+test('a RecorderManager system interruption resumes the owned recording', () => {
+  const h = loadPage()
+
+  h.recorder.emitInterruptionBegin()
+  h.recorder.emitPause()
+  assert.ok(h.page._recordingPausedAt)
+
+  h.recorder.emitInterruptionEnd()
+  assert.equal(h.recorder.resumeCount, 1)
+
+  h.recorder.emitResume()
+  assert.equal(h.page._recordingPausedAt, 0)
+  h.page.onUnload()
+})
+
+test('an empty PCM file after a recorder interruption is never uploaded', async () => {
+  const fsManager = {
+    readFile(options) { options.success({ data: new ArrayBuffer(0) }) },
+    writeFile() { throw new Error('empty PCM must not be written') },
+    copyFile(options) { options.success() },
+    unlink(options) { options.success() }
+  }
+  const h = loadPage({ fsManager })
+
+  h.recorder.emitStop({ tempFilePath: '/tmp/empty-after-picker.pcm' })
+  await flush()
+  await flush()
+
+  assert.equal(h.calls.uploads.length, 0)
+  assert.equal(h.calls.photoUploads.length, 0)
+  assert.equal(h.calls.modals.at(-1).title, '录音已中断')
+  assert.match(h.calls.modals.at(-1).content, /没有录到有效声音/)
+})
+
 test('record page owns named recorder callbacks and releases them after the session', () => {
   const unload = js.slice(js.indexOf('onUnload()'), js.indexOf('onShow()'))
   assert.match(unload, /this\._alive = false[\s\S]*this\.stopRecording\(\)/)
   assert.match(js, /this\._frameRecordedHandler =/)
   assert.match(js, /this\._stopHandler =/)
   assert.match(js, /this\._errorHandler =/)
+  assert.match(js, /this\._pauseHandler =/)
+  assert.match(js, /this\._resumeHandler =/)
+  assert.match(js, /this\._interruptionBeginHandler =/)
+  assert.match(js, /this\._interruptionEndHandler =/)
   assert.match(js, /manager\.offFrameRecorded\(this\._frameRecordedHandler\)/)
   assert.match(js, /manager\.offStop\(this\._stopHandler\)/)
   assert.match(js, /manager\.offError\(this\._errorHandler\)/)
+  assert.match(js, /manager\.offPause\(this\._pauseHandler\)/)
+  assert.match(js, /manager\.offResume\(this\._resumeHandler\)/)
+  assert.match(js, /manager\.offInterruptionBegin\(this\._interruptionBeginHandler\)/)
+  assert.match(js, /manager\.offInterruptionEnd\(this\._interruptionEndHandler\)/)
 })
 
 test('a stale shared-recorder error callback cannot navigate or toast', () => {
@@ -279,7 +519,7 @@ test('an upload finishing after unload keeps data side effects but performs no U
 test('WAV finalization uses the captured session id even if the page id later changes', async () => {
   let finishRead
   const fsManager = {
-    readFile(options) { finishRead = () => options.success({ data: new ArrayBuffer(2) }) },
+    readFile(options) { finishRead = () => options.success({ data: new ArrayBuffer(3200) }) },
     writeFile(options) { this.writtenPath = options.filePath; options.success() },
     unlink(options) { options.success() }
   }
@@ -294,7 +534,7 @@ test('WAV finalization uses the captured session id even if the page id later ch
   assert.equal(fsManager.writtenPath, `/user/voicedrop-${sessionId}.wav`)
 })
 
-test('the generated WAV is unlinked after both upload success and failure', async () => {
+test('the generated WAV is removed after success and retained for retry after failure', async () => {
   const success = loadPage()
   const successId = success.page._recordSessionId
   success.recorder.emitStop({ tempFilePath: '/tmp/success.pcm' })
@@ -305,7 +545,7 @@ test('the generated WAV is unlinked after both upload success and failure', asyn
   const failureId = failure.page._recordSessionId
   failure.recorder.emitStop({ tempFilePath: '/tmp/failure.pcm' })
   await flush()
-  assert.deepEqual(failure.calls.unlinks, [`/user/voicedrop-${failureId}.wav`])
+  assert.equal(failure.calls.unlinks.includes(`/user/voicedrop-${failureId}.wav`), false)
   assert.equal(failure.calls.toasts.at(-1).title, '上传失败')
 })
 

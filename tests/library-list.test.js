@@ -78,8 +78,19 @@ test('library list prefers the lightweight recordings index', async () => {
   assert.equal(records.length, 1)
   assert.equal(records[0].isEmpty, true)
   assert.equal(records[0].statusLabel, '无语音')
-  assert.equal(library.__requests[0].url, 'https://jianshuo.dev/files/api/recordings')
+  assert.equal(library.__requests[0].url, 'https://voicedrop.cn/files/api/recordings')
   assert.equal(library.__requests.some((request) => request.url.endsWith('/list')), false)
+})
+
+test('account deletion posts to the authenticated backend endpoint', async () => {
+  const library = freshLibraryWithWx([
+    { path: '/account/delete', method: 'POST', data: { ok: true } }
+  ])
+
+  assert.equal(await library.deleteAccount(), true)
+  assert.equal(library.__requests[0].method, 'POST')
+  assert.equal(library.__requests[0].url, 'https://voicedrop.cn/files/api/account/delete')
+  assert.match(library.__requests[0].header.Authorization, /^Bearer anon_/)
 })
 
 test('library list falls back to the legacy full list when the recordings index is unavailable', async () => {
@@ -97,7 +108,7 @@ test('library list falls back to the legacy full list when the recordings index 
   assert.equal(records.length, 1)
   assert.deepEqual(
     library.__requests.slice(0, 2).map((request) => request.url),
-    ['https://jianshuo.dev/files/api/recordings', 'https://jianshuo.dev/files/api/list']
+    ['https://voicedrop.cn/files/api/recordings', 'https://voicedrop.cn/files/api/list']
   )
 })
 
@@ -204,6 +215,98 @@ test('library list does not keep stale tag cache after tags are removed', async 
   assert.deepEqual(second[0].tags, [])
 })
 
+test('library keeps the last known title visible while an empty-stem snapshot revalidates all metadata', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  let docReads = 0
+  const library = freshLibraryWithWx([], {
+    request: (options) => {
+      if (options.url.endsWith('/recordings')) {
+        options.success({
+          statusCode: 200,
+          data: {
+            recordings: [{
+              name: `${stem}.m4a`,
+              uploaded: '2026-06-18T06:31:00Z',
+              hasArticles: true
+            }]
+          }
+        })
+        return
+      }
+      if (options.url.endsWith(`/articles/${stem}`)) {
+        docReads += 1
+        options.success({
+          statusCode: 200,
+          data: {
+            articles: [{
+              title: docReads === 1 ? '刷新前标题' : '刷新后标题',
+              body: '正文'
+            }],
+            tags: []
+          }
+        })
+        return
+      }
+      options.success({ statusCode: 404, data: {} })
+    }
+  })
+
+  const first = await library.list()
+  await library.enrichArticleMeta(first)
+  library.invalidateArticleCaches([])
+
+  const refreshing = await library.list()
+  assert.equal(refreshing[0].rowTitle, '刷新前标题')
+
+  await library.enrichArticleMeta(refreshing)
+  assert.equal(refreshing[0].rowTitle, '刷新后标题')
+  assert.equal(docReads, 2)
+})
+
+test('library persists stale metadata without losing its visible title across service recreation', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const storage = {}
+  let docReads = 0
+  const overrides = {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    request: (options) => {
+      if (options.url.endsWith('/recordings')) {
+        options.success({
+          statusCode: 200,
+          data: { recordings: [{ name: `${stem}.m4a`, hasArticles: true }] }
+        })
+        return
+      }
+      if (options.url.endsWith(`/articles/${stem}`)) {
+        docReads += 1
+        options.success({
+          statusCode: 200,
+          data: {
+            articles: [{ title: docReads === 1 ? '重启前标题' : '重启后标题', body: '正文' }],
+            tags: []
+          }
+        })
+        return
+      }
+      options.success({ statusCode: 404, data: {} })
+    }
+  }
+
+  const firstLibrary = freshLibraryWithWx([], overrides)
+  const first = await firstLibrary.list()
+  await firstLibrary.enrichArticleMeta(first)
+  firstLibrary.invalidateArticleCaches([])
+
+  const recreatedLibrary = freshLibraryWithWx([], overrides)
+  const refreshing = await recreatedLibrary.list()
+  assert.equal(refreshing[0].rowTitle, '重启前标题')
+
+  await recreatedLibrary.enrichArticleMeta(refreshing)
+  assert.equal(refreshing[0].rowTitle, '重启后标题')
+  assert.equal(docReads, 2)
+})
+
 test('library persists complete article metadata and skips doc requests on a new service instance', async () => {
   const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
   const storage = {}
@@ -293,11 +396,11 @@ test('library builds Android-compatible scoped photo urls', async () => {
   assert.equal(scope, 'users/anon-1/')
   assert.equal(
     library.photoUrl('photos/a b.jpg', scope),
-    'https://jianshuo.dev/files/api/photo/users/anon-1/photos/a%20b.jpg'
+    'https://voicedrop.cn/files/api/photo/users/anon-1/photos/a%20b.jpg'
   )
   assert.equal(
     library.photoUrl('photos/community.jpg', 'users/author-2/'),
-    'https://jianshuo.dev/files/api/photo/users/author-2/photos/community.jpg'
+    'https://voicedrop.cn/files/api/photo/users/author-2/photos/community.jpg'
   )
 })
 
@@ -354,25 +457,22 @@ test('library downloads public scoped photos from the photo CDN without a user t
   assert.equal(library.__downloads[0].header.Authorization, undefined)
 })
 
-test('library falls back to the API host when the photo CDN domain is unavailable', async () => {
+test('library does not fall back to the old photo domain when the new domain is unavailable', async () => {
   const downloads = []
   const library = freshLibraryWithWx([], {
     downloadFile: (options) => {
       downloads.push(options.url)
-      if (options.url.startsWith('https://voicedrop.cn/')) {
-        options.fail({ errMsg: 'downloadFile:fail url not in domain list' })
-        return
-      }
-      options.success({ statusCode: 200, tempFilePath: 'wxfile://fallback.jpg' })
+      options.fail({ errMsg: 'downloadFile:fail url not in domain list' })
     }
   })
 
-  const tempPath = await library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/')
+  await assert.rejects(
+    library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/'),
+    (error) => error?.errMsg === 'downloadFile:fail url not in domain list'
+  )
 
-  assert.equal(tempPath, 'wxfile://fallback.jpg')
   assert.deepEqual(downloads, [
-    'https://voicedrop.cn/files/api/photo/users/anon-1/photos/a.jpg',
-    'https://jianshuo.dev/files/api/photo/users/anon-1/photos/a.jpg'
+    'https://voicedrop.cn/files/api/photo/users/anon-1/photos/a.jpg'
   ])
 })
 

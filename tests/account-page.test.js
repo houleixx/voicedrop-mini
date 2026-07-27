@@ -16,10 +16,12 @@ function freshAccountPage(options) {
     adoptToken: (credential) => { calls.push(['adoptToken', credential]); return true },
     isWechatAuthenticated: () => false,
     storeSession: (session) => { calls.push(['storeSession', session]); return true },
-    signOutWechat() {}
+    signOutWechat() {},
+    resetAnonymous() { calls.push(['resetAnonymous']) }
   }
   const library = {
     list: async () => [],
+    deleteAccount: async () => config.deleteAccount !== false,
     ownerScope: async (settings) => {
       calls.push(['ownerScope', settings])
       if (config.ownerScope) return config.ownerScope(settings)
@@ -29,10 +31,15 @@ function freshAccountPage(options) {
   const wechatAuth = {
     exchangeCode: async () => config.result
   }
+  const recordingUploads = {
+    clearAll: async () => { calls.push(['clearRecordingUploads']) }
+  }
   global.Page = (definition) => { page = definition }
   global.wx = {
     login({ success }) { success({ code: 'code-1' }) },
     showToast(options) { calls.push(['toast', options.title]) },
+    showLoading(options) { calls.push(['showLoading', options.title]) },
+    hideLoading() { calls.push(['hideLoading']) },
     setClipboardData(options) { calls.push(['clipboard', options.data]) },
     showModal(options) {
       calls.push(['modal', options])
@@ -44,12 +51,14 @@ function freshAccountPage(options) {
     },
     reLaunch(options) { calls.push(['reLaunch', options.url]) }
   }
-  ;['../pages/account/index', '../services/auth', '../services/library', '../services/wechat-auth'].forEach((id) => {
+  ;['../pages/account/index', '../services/auth', '../services/library', '../services/wechat-auth',
+    '../services/recording-upload-queue'].forEach((id) => {
     delete require.cache[require.resolve(id)]
   })
   require.cache[require.resolve('../services/auth')] = { exports: auth }
   require.cache[require.resolve('../services/library')] = { exports: library }
   require.cache[require.resolve('../services/wechat-auth')] = { exports: wechatAuth }
+  require.cache[require.resolve('../services/recording-upload-queue')] = { exports: recordingUploads }
   require('../pages/account/index')
   return { page, calls }
 }
@@ -205,4 +214,19 @@ test('account page reports a native scope modal failure without switching accoun
 
   assert.equal(calls.some(([name]) => name === 'storeSession'), false)
   assert.deepEqual(calls.find(([name]) => name === 'toast'), ['toast', '账号切换提示打开失败'])
+})
+
+test('account deletion calls the backend, creates a fresh identity, and relaunches home', async () => {
+  const { page, calls } = freshAccountPage({ confirmSwitch: true })
+  const ctx = context(page)
+
+  await page.deleteAccount.call(ctx)
+
+  assert.deepEqual(calls.find(([name]) => name === 'clearRecordingUploads'), ['clearRecordingUploads'])
+  assert.deepEqual(calls.find(([name]) => name === 'resetAnonymous'), ['resetAnonymous'])
+  assert.deepEqual(calls.find(([name]) => name === 'reLaunch'), [
+    'reLaunch',
+    '/pages/recordings/index'
+  ])
+  assert.deepEqual(calls.find(([name]) => name === 'toast'), ['toast', '账户已删除'])
 })

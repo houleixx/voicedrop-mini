@@ -1,10 +1,20 @@
 const audio = require('../../services/audio')
+const recordingUploads = require('../../services/recording-upload-queue')
 const wav = require('../../utils/wav')
+const recording = require('../../utils/recording')
+const photoInsert = require('../../utils/photo-insert')
 const realtimeInterviewer = require('../../services/realtime-interviewer')
 const app = getApp()
 
 // Waveform pattern (Android uses 13 bars with fixed pattern scaled by amplitude)
 const WAVE_PATTERN = [0.30, 0.56, 0.82, 0.48, 0.95, 0.65, 0.38, 0.74, 0.52, 0.86, 0.34, 0.62, 0.44]
+const MIN_PCM_BYTES = 16000 * 2 / 10
+
+function interruptedRecordingError() {
+  const error = new Error('recording contains no usable PCM')
+  error.emptyAudio = true
+  return error
+}
 
 Page({
   data: {
@@ -20,12 +30,22 @@ Page({
     interviewActive: false,
     interviewState: 'idle',
     interviewStateText: '',
-    currentLevel: 0
+    currentLevel: 0,
+    capturedPhotos: []
   },
 
   onLoad(options) {
     this._alive = true
+    this._pageVisible = true
     this._stopping = false
+    this._recordingPausedAt = 0
+    this._recordingPausedMs = 0
+    this._photoPickerRecoveryPending = false
+    this._photoPickerCompleted = false
+    this._photoPickerDidHide = false
+    this._pendingPhotoPickerOpen = null
+    this._photoPickerPauseTimer = null
+    this._recoveringRecorder = false
 
     // Read tag/replyTo from globalData (set by recordings page before navigation)
     const tag = app.globalData.pendingRecordTag || ''
@@ -46,6 +66,9 @@ Page({
 
   onUnload() {
     this._alive = false
+    this._pageVisible = false
+    this.clearPhotoPickerPauseTimer()
+    this._pendingPhotoPickerOpen = null
     if (this._loadingShown) {
       wx.hideLoading()
       this._loadingShown = false
@@ -62,19 +85,38 @@ Page({
   },
 
   onShow() {
+    this._pageVisible = true
     // Reconnect recorder events if page was backgrounded
     if (this.data.recorder) {
       this.bindRecorderEvents()
+      const active = app.globalData.activeRecorderSession || {}
+      if (!this._stopping && active.type === 'record' && active.id === this._recordSessionId) {
+        if (this._photoPickerRecoveryPending) {
+          this.recoverRecordingAfterPicker()
+        } else if (this._recordingPausedAt) {
+          this.resumeOwnedRecorder()
+        } else {
+          this.startTimer()
+        }
+      }
     }
   },
 
   onHide() {
+    this._pageVisible = false
+    if (this._photoSelecting || this._photoPickerRecoveryPending) {
+      this._photoPickerDidHide = true
+      this.markRecordingPaused()
+    }
     this.stopTimer()
   },
 
   startRecording() {
     this._alive = true
     this._stopping = false
+    this._recordingPausedAt = 0
+    this._recordingPausedMs = 0
+    this._recoveringRecorder = false
     const active = app.globalData.activeRecorderSession || {}
     if (active.type === 'record') {
       if (this._alive) {
@@ -101,7 +143,7 @@ Page({
       },
       onAiAudio: (data, delayMs) => {
         if (this._recordSessionId !== sessionId) return
-        const elapsedMs = Math.max(0, Date.now() - this.data.startedAt)
+        const elapsedMs = this.recordingElapsedMilliseconds()
         this._aiAudioSegments.push({
           data,
           sampleRate: 24000,
@@ -111,19 +153,25 @@ Page({
     })
     this.bindRecorderEvents()
 
-    // Start the timer
-    this.data.timerInterval = setInterval(() => {
-      if (!this._alive) return
-      const elapsed = Math.floor((Date.now() - this.data.startedAt) / 1000)
-      this.setData({
-        elapsedSeconds: elapsed,
-        timerDisplay: this.formatTime(elapsed)
-      })
-    }, 200)
+    this.startTimer()
 
     // Start actual recording
     audio.startPcmFrames()
     return true
+  },
+
+  startTimer() {
+    if (this.data.timerInterval) return
+    const update = () => {
+      if (!this._alive) return
+      const elapsed = Math.floor(this.recordingElapsedMilliseconds() / 1000)
+      this.setData({
+        elapsedSeconds: elapsed,
+        timerDisplay: this.formatTime(elapsed)
+      })
+    }
+    update()
+    this.data.timerInterval = setInterval(update, 200)
   },
 
   bindRecorderEvents() {
@@ -133,12 +181,35 @@ Page({
     this._recorderBound = true
 
     this._frameRecordedHandler = (frame) => this.onRecordingFrame(frame)
+    this._pauseHandler = () => {
+      if (!this.ownsActiveRecording()) return
+      this.markRecordingPaused()
+      this.openPhotoPickerAfterPause()
+    }
+    this._resumeHandler = () => {
+      if (!this.ownsActiveRecording()) return
+      this._recoveringRecorder = false
+      this.markRecordingResumed()
+    }
+    this._interruptionBeginHandler = () => {
+      if (!this.ownsActiveRecording()) return
+      this.markRecordingPaused()
+    }
+    this._interruptionEndHandler = () => {
+      if (!this.ownsActiveRecording()) return
+      if (this._photoPickerRecoveryPending) {
+        this.recoverRecordingAfterPicker()
+        return
+      }
+      this.resumeOwnedRecorder()
+    }
     this._stopHandler = (res) => {
       const sessionId = this._recordSessionId
       const startedAt = this.data.startedAt
       const elapsed = Math.max(1, this.data.elapsedSeconds)
       const tag = this.data.tag
       const replyTo = this.data.replyTo
+      const capturedPhotos = (this.data.capturedPhotos || []).slice()
       const active = app.globalData.activeRecorderSession || {}
       if (active.type !== 'record' || active.id !== sessionId) {
         this.unbindRecorderEvents()
@@ -148,6 +219,10 @@ Page({
       this._aiAudioSegments = []
 
       this._stopping = true
+      this._recoveringRecorder = false
+      this._photoPickerRecoveryPending = false
+      this.clearPhotoPickerPauseTimer()
+      this._pendingPhotoPickerOpen = null
       this.stopInterviewer()
       this.stopTimer()
       app.globalData.activeRecorderSession = null
@@ -155,7 +230,6 @@ Page({
       this.unbindRecorderEvents()
       this.data.recorder = null
       const name = audio.nameForSession(new Date(startedAt), elapsed)
-      const wavPath = this.wavPathForSession(sessionId)
 
       // Show uploading toast
       if (this._alive) {
@@ -164,26 +238,27 @@ Page({
       }
 
       // Wrap raw PCM as WAV while retaining the Android-compatible .m4a object key.
+      // Persist the whole upload plan before starting network work. Photos always
+      // gate their audio and survive a later retry from the recordings page.
       this.finalizePcmFile(res.tempFilePath, sessionId, aiAudioSegments)
-        .then((finalizedPath) => audio.uploadFile(finalizedPath, name, 'audio/wav'))
-        .then(() => {
-          // Upload tags if present
-          if (tag) {
-            return audio.uploadTags(name, [tag])
-          }
-          return true
+        .then((finalizedPath) => recordingUploads.stage({
+          name,
+          audioPath: finalizedPath,
+          contentType: 'audio/wav',
+          photos: capturedPhotos,
+          tag,
+          replyTo
+        }))
+        .then((item) => {
+          app.globalData.pendingRecordTag = ''
+          app.globalData.pendingReplyTo = null
+          return recordingUploads.upload(item.name)
         })
         .then(() => {
-          // Handle community reply
-          if (replyTo) {
-            const pendingReplies = require('../../utils/pending-replies')
-            pendingReplies.put(name, replyTo)
-            app.globalData.pendingReplyTo = null
-          }
-
           if (!this._alive) return
           wx.hideLoading()
           this._loadingShown = false
+          this.setData({ capturedPhotos: [] })
           wx.showToast({ title: '已上传' })
 
           // Navigate back to recordings
@@ -203,12 +278,29 @@ Page({
           if (!this._alive) return
           wx.hideLoading()
           this._loadingShown = false
-          wx.showToast({ title: '上传失败', icon: 'error' })
+          if (error && error.emptyAudio) {
+            wx.showModal({
+              title: '录音已中断',
+              content: '没有录到有效声音，请重新录制。打开相册或相机后，录音会自动恢复。',
+              showCancel: false,
+              confirmText: '知道了'
+            })
+            return
+          }
+          if (error && error.photoUpload) {
+            wx.showToast({ title: '照片暂未保存，录音已保留', icon: 'none' })
+            wx.navigateBack()
+            return
+          }
+          wx.showToast({
+            title: '上传失败',
+            icon: 'error'
+          })
         })
-        .finally(() => this.cleanupWavFile(wavPath))
     }
 
     this._errorHandler = (error) => {
+      const recovering = this._recoveringRecorder
       const sessionId = this._recordSessionId
       const active = app.globalData.activeRecorderSession || {}
       if (active.type !== 'record' || active.id !== sessionId) {
@@ -218,6 +310,10 @@ Page({
         return
       }
       this._stopping = true
+      this._recoveringRecorder = false
+      this._photoPickerRecoveryPending = false
+      this.clearPhotoPickerPauseTimer()
+      this._pendingPhotoPickerOpen = null
       this.stopTimer()
       this.stopInterviewer()
       app.globalData.activeRecorderSession = null
@@ -229,8 +325,8 @@ Page({
       const detail = String(error && (error.errMsg || error.message) || '请检查麦克风权限后重试')
       this._recordErrorMessage = detail
       wx.showModal({
-        title: '录音失败',
-        content: `无法开始录音：${detail}`,
+        title: recovering ? '录音已中断' : '录音失败',
+        content: recovering ? `录音恢复失败，请重新录制：${detail}` : `无法开始录音：${detail}`,
         showCancel: false,
         confirmText: '知道了'
       })
@@ -239,6 +335,10 @@ Page({
     manager.onFrameRecorded(this._frameRecordedHandler)
     manager.onStop(this._stopHandler)
     manager.onError(this._errorHandler)
+    if (manager.onPause) manager.onPause(this._pauseHandler)
+    if (manager.onResume) manager.onResume(this._resumeHandler)
+    if (manager.onInterruptionBegin) manager.onInterruptionBegin(this._interruptionBeginHandler)
+    if (manager.onInterruptionEnd) manager.onInterruptionEnd(this._interruptionEndHandler)
   },
 
   unbindRecorderEvents() {
@@ -248,16 +348,26 @@ Page({
       if (manager.offFrameRecorded && this._frameRecordedHandler) manager.offFrameRecorded(this._frameRecordedHandler)
       if (manager.offStop && this._stopHandler) manager.offStop(this._stopHandler)
       if (manager.offError && this._errorHandler) manager.offError(this._errorHandler)
+      if (manager.offPause && this._pauseHandler) manager.offPause(this._pauseHandler)
+      if (manager.offResume && this._resumeHandler) manager.offResume(this._resumeHandler)
+      if (manager.offInterruptionBegin && this._interruptionBeginHandler) manager.offInterruptionBegin(this._interruptionBeginHandler)
+      if (manager.offInterruptionEnd && this._interruptionEndHandler) manager.offInterruptionEnd(this._interruptionEndHandler)
     }
     this._recorderBound = false
     this._frameRecordedHandler = null
     this._stopHandler = null
     this._errorHandler = null
+    this._pauseHandler = null
+    this._resumeHandler = null
+    this._interruptionBeginHandler = null
+    this._interruptionEndHandler = null
   },
 
   onRecordingFrame(frame) {
     const active = app.globalData.activeRecorderSession || {}
     if (!this._alive || active.type !== 'record' || active.id !== this._recordSessionId || !frame || !frame.frameBuffer) return
+    this._recoveringRecorder = false
+    if (this._recordingPausedAt) this.markRecordingResumed()
     const peak = wav.peakAmplitude(frame.frameBuffer)
     this._peakAmplitude = Math.max(this._peakAmplitude || 0, peak)
     const level = Math.min(1, peak / 32767)
@@ -280,6 +390,11 @@ Page({
       fsManager.readFile({
         filePath,
         success: (file) => {
+          const pcmBytes = Number(file && file.data && file.data.byteLength) || 0
+          if (pcmBytes < MIN_PCM_BYTES) {
+            reject(interruptedRecordingError())
+            return
+          }
           const mixedPcm = wav.mixPcm16(
             file.data,
             aiAudioSegments || this._aiAudioSegments || [],
@@ -294,17 +409,6 @@ Page({
     })
   },
 
-  cleanupWavFile(filePath) {
-    return new Promise((resolve) => {
-      const fsManager = wx.getFileSystemManager()
-      if (!fsManager.unlink) {
-        resolve()
-        return
-      }
-      fsManager.unlink({ filePath, success: resolve, fail: resolve })
-    })
-  },
-
   stopInterviewer() {
     try {
       if (this.interviewer) this.interviewer.stop()
@@ -315,28 +419,201 @@ Page({
     }
   },
 
+  ownsActiveRecording() {
+    const active = app.globalData.activeRecorderSession || {}
+    return Boolean(
+      this._alive &&
+      !this._stopping &&
+      active.type === 'record' &&
+      active.id === this._recordSessionId
+    )
+  },
+
+  recordingElapsedMilliseconds(now = Date.now()) {
+    const startedAt = Number(this.data.startedAt) || 0
+    if (!startedAt) return 0
+    const end = this._recordingPausedAt || now
+    return Math.max(0, end - startedAt - (this._recordingPausedMs || 0))
+  },
+
+  markRecordingPaused() {
+    if (!this._recordingPausedAt) this._recordingPausedAt = Date.now()
+    this.stopTimer()
+  },
+
+  markRecordingResumed() {
+    if (this._recordingPausedAt) {
+      this._recordingPausedMs += Math.max(0, Date.now() - this._recordingPausedAt)
+      this._recordingPausedAt = 0
+    }
+    if (this._pageVisible && this.ownsActiveRecording()) this.startTimer()
+  },
+
+  clearPhotoPickerPauseTimer() {
+    if (!this._photoPickerPauseTimer) return
+    clearTimeout(this._photoPickerPauseTimer)
+    this._photoPickerPauseTimer = null
+  },
+
+  openPhotoPickerAfterPause() {
+    const open = this._pendingPhotoPickerOpen
+    if (!open) return false
+    this._pendingPhotoPickerOpen = null
+    this.clearPhotoPickerPauseTimer()
+    if (!this.ownsActiveRecording()) {
+      this._photoSelecting = false
+      this._photoPickerRecoveryPending = false
+      return false
+    }
+    open()
+    return true
+  },
+
+  pauseRecordingForPhotoPicker(open) {
+    const manager = this.data.recorder
+    this._pendingPhotoPickerOpen = open
+    this.markRecordingPaused()
+    if (!manager || typeof manager.pause !== 'function') {
+      return this.openPhotoPickerAfterPause()
+    }
+    this._photoPickerPauseTimer = setTimeout(() => {
+      // Some base-library/device combinations omit onPause even though pause()
+      // has already taken effect. Give the state transition time, then continue.
+      this.openPhotoPickerAfterPause()
+    }, 300)
+    try {
+      manager.pause()
+      return true
+    } catch (_) {
+      return this.openPhotoPickerAfterPause()
+    }
+  },
+
+  resumeOwnedRecorder() {
+    if (!this.ownsActiveRecording()) return false
+    const manager = this.data.recorder
+    if (!manager || typeof manager.resume !== 'function' || this._recoveringRecorder) return false
+    this._recoveringRecorder = true
+    try {
+      manager.resume()
+      return true
+    } catch (error) {
+      this._recoveringRecorder = false
+      this.markRecordingPaused()
+      if (this._alive) {
+        wx.showToast({ title: '录音恢复失败，请重新录制', icon: 'none' })
+      }
+      return false
+    }
+  },
+
+  recoverRecordingAfterPicker() {
+    if (
+      !this._photoPickerRecoveryPending ||
+      !this._photoPickerCompleted ||
+      !this._pageVisible
+    ) return false
+
+    const shouldResume = Boolean(this._photoPickerDidHide || this._recordingPausedAt)
+    this._photoPickerRecoveryPending = false
+    this._photoPickerCompleted = false
+    this._photoPickerDidHide = false
+    if (shouldResume) return this.resumeOwnedRecorder()
+    if (this.ownsActiveRecording()) this.startTimer()
+    return false
+  },
+
   stopRecording() {
     const manager = this.data.recorder
     const active = app.globalData.activeRecorderSession || {}
     if (!manager || this._stopping || active.type !== 'record' || active.id !== this._recordSessionId) return
 
     this._stopping = true
+    this.clearPhotoPickerPauseTimer()
+    this._pendingPhotoPickerOpen = null
     this.stopInterviewer()
     this.stopTimer()
     audio.stop()
   },
 
   takePhoto() {
-    // Camera functionality - same as Android's openCamera
-    wx.chooseMedia({
-      count: 1,
-      mediaType: ['image'],
-      sourceType: ['camera'],
-      success: (res) => {
-        if (!this._alive) return
-        wx.showToast({ title: '拍照功能开发中', icon: 'none' })
+    if (this._photoSelecting || this._stopping) return
+    const current = this.data.capturedPhotos || []
+    const remaining = Math.max(0, 9 - current.length)
+    if (!remaining) {
+      wx.showToast({ title: '每段录音最多添加 9 张照片', icon: 'none' })
+      return
+    }
+    const appendPhotos = (files) => {
+      if (!this._alive) return
+      const known = new Set((this.data.capturedPhotos || []).map((photo) => photo.path))
+      const sessionTs = recording.timestamp(new Date(this.data.startedAt))
+      const fallbackOffset = Math.floor(this.recordingElapsedMilliseconds() / 1000)
+      const additions = (files || [])
+        .map((file) => Object.assign({}, file, { path: file.tempFilePath || file.path || '' }))
+        .filter((file) => file.path && !known.has(file.path))
+        .map((file) => ({
+          path: file.path,
+          key: recording.photoKey(
+            sessionTs,
+            photoInsert.photoOffsetForFile(sessionTs, file, fallbackOffset)
+          )
+        }))
+      this.setData({ capturedPhotos: current.concat(additions).slice(0, 9) })
+    }
+    const finish = () => {
+      this.clearPhotoPickerPauseTimer()
+      this._pendingPhotoPickerOpen = null
+      this._photoSelecting = false
+      this._photoPickerCompleted = true
+      this.recoverRecordingAfterPicker()
+    }
+    this._photoSelecting = true
+    this._photoPickerRecoveryPending = true
+    this._photoPickerCompleted = false
+    this._photoPickerDidHide = false
+    const openPicker = () => {
+      if (wx.chooseMedia) {
+        wx.chooseMedia({
+          count: remaining,
+          mediaType: ['image'],
+          sourceType: ['camera', 'album'],
+          sizeType: ['compressed'],
+          success: (res) => appendPhotos(res.tempFiles || []),
+          fail: finish,
+          complete: finish
+        })
+        return
       }
-    })
+      if (wx.chooseImage) {
+        wx.chooseImage({
+          count: remaining,
+          sourceType: ['camera', 'album'],
+          sizeType: ['compressed'],
+          success: (res) => appendPhotos(
+            res.tempFiles && res.tempFiles.length
+              ? res.tempFiles
+              : (res.tempFilePaths || []).map((path) => ({ path }))
+          ),
+          fail: finish,
+          complete: finish
+        })
+        return
+      }
+      finish()
+      wx.showToast({ title: '当前微信不支持选择图片', icon: 'none' })
+    }
+    this.pauseRecordingForPhotoPicker(openPicker)
+  },
+
+  removePhoto(event) {
+    if (this._stopping) return
+    const index = Number(event && event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.index)
+    if (!Number.isInteger(index) || index < 0) return
+    const photos = (this.data.capturedPhotos || []).slice()
+    if (index >= photos.length) return
+    photos.splice(index, 1)
+    this.setData({ capturedPhotos: photos })
   },
 
   updateWaveform(level) {

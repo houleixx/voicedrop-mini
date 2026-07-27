@@ -61,7 +61,7 @@
       <view wx:if="{{error}}" class="notice">{{error}}</view>
       <view wx:elif="{{loading}}" class="notice loading-notice">
         <view class="loading-spinner" aria-hidden="true"></view>
-        <text>正在加载...</text>
+        <text>加载中...</text>
       </view>
 
       <view wx:if="{{!loading && !error && records.length === 0}}" class="empty card">

@@ -16,6 +16,14 @@
     <view class="waveform">
       <view class="wave-bar" wx:for="{{waveBars}}" wx:key="index" style="height: {{item}}rpx; background-color: {{waveColors[index]}};"></view>
     </view>
+    <scroll-view wx:if="{{capturedPhotos.length}}" class="photo-filmstrip" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="photo-filmstrip-row">
+        <view class="photo-tile" wx:for="{{capturedPhotos}}" wx:key="key">
+          <image class="photo-thumb" src="{{item.path}}" mode="aspectFill" />
+          <view class="photo-remove" data-index="{{index}}" catchtap="removePhoto" aria-label="删除照片">×</view>
+        </view>
+      </view>
+    </scroll-view>
   </view>
 
   <!-- Bottom controls -->

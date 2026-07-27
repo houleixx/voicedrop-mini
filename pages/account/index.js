@@ -1,5 +1,6 @@
 const auth = require('../../services/auth')
 const library = require('../../services/library')
+const recordingUploads = require('../../services/recording-upload-queue')
 const wechatAuth = require('../../services/wechat-auth')
 
 Page({
@@ -185,13 +186,34 @@ Page({
     this.refresh()
   },
 
-  deleteAccount() {
-    wx.showModal({
-      title: '删除账户',
-      content: '当前小程序端还没有接入永久删除接口。请先保留访问令牌，避免数据丢失。',
-      confirmText: '知道了',
-      showCancel: false
+  async deleteAccount() {
+    const confirmed = await new Promise((resolve) => {
+      wx.showModal({
+        title: '永久删除账户？',
+        content: '将永久删除你的全部数据：云端录音、文章、照片、设置、社区分享和登录绑定，本机数据也会清空。此操作不可恢复。',
+        confirmText: '永久删除',
+        confirmColor: '#d8593b',
+        cancelText: '取消',
+        success: (result) => resolve(Boolean(result.confirm)),
+        fail: () => resolve(false)
+      })
     })
+    if (!confirmed) return
+    wx.showLoading({ title: '正在删除' })
+    try {
+      if (!await library.deleteAccount()) {
+        wx.showToast({ title: '删除失败，请稍后再试', icon: 'none' })
+        return
+      }
+      await recordingUploads.clearAll()
+      auth.resetAnonymous()
+      wx.showToast({ title: '账户已删除', icon: 'success' })
+      wx.reLaunch({ url: '/pages/recordings/index' })
+    } catch (_) {
+      wx.showToast({ title: '删除失败，请稍后再试', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
   }
 })
 

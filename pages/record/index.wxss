@@ -82,6 +82,46 @@
   min-height: 8rpx;
 }
 
+.photo-filmstrip {
+  width: calc(100vw - 64rpx);
+  height: 128rpx;
+  margin-top: 44rpx;
+  white-space: nowrap;
+}
+
+.photo-filmstrip-row {
+  display: inline-flex;
+  padding: 8rpx 4rpx;
+}
+
+.photo-tile {
+  position: relative;
+  width: 112rpx;
+  height: 112rpx;
+  margin-right: 16rpx;
+}
+
+.photo-thumb {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 16rpx;
+  background-color: #eee8df;
+}
+
+.photo-remove {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 20rpx;
+  color: #ffffff;
+  background-color: rgba(20, 18, 16, 0.78);
+  font-size: 30rpx;
+  line-height: 38rpx;
+  text-align: center;
+}
+
 /* Bottom controls */
 .bottom-controls {
   position: relative;

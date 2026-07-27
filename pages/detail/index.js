@@ -489,6 +489,7 @@ Page({
       onUpdated: (doc) => this.applyDoc(doc),
       onQueueChanged: (queue) => this.onEditQueueChanged(queue),
       onReply: (text, ok) => this.onEditReply(text, ok),
+      onResolved: () => this.refreshResolvedDoc(),
       onState: (state) => this.setData({ editState: state }),
       onError: (message) => wx.showToast({ title: message || '修改失败', icon: 'error' })
     })
@@ -765,6 +766,15 @@ Page({
     } finally {
       this.setData({ loading: false })
     }
+  },
+
+  async refreshResolvedDoc() {
+    const rec = this.data.rec
+    if (!rec || !rec.stem) return
+    const fresh = await library.fetchDoc(rec.stem).catch(() => null)
+    if (!fresh || !this.data.rec || this.data.rec.stem !== rec.stem) return
+    this.applyDoc(fresh)
+    await this.refreshVersionNav()
   },
 
   async shareArticle() {

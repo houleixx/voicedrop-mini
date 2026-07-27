@@ -1,11 +1,37 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { createStore, CACHE_KEY } = require('../services/prompt-store')
+const { createStore, CACHE_KEY, cacheKeyFor } = require('../services/prompt-store')
+
+test('prompt cache keys are isolated by account', () => {
+  assert.notEqual(cacheKeyFor('anon_first'), cacheKeyFor('anon_second'))
+  assert.equal(cacheKeyFor('anon_first'), cacheKeyFor('anon_first'))
+})
+
+test('prompt store swaps cached items when the active account changes', () => {
+  let identity = 'anon_first'
+  const cached = (label) => JSON.stringify({
+    schema: 1,
+    items: [{ id: `custom_${label}`, type: 'action', label, origin: 'custom', prompt: label, appliesTo: ['text'] }]
+  })
+  const values = new Map([
+    [cacheKeyFor('anon_first'), cached('第一个账号')],
+    [cacheKeyFor('anon_second'), cached('第二个账号')]
+  ])
+  const store = createStore({
+    storage: { get: (key) => values.get(key), set: (key, value) => values.set(key, value) },
+    auth: { bearer: () => identity, session: () => '' },
+    base: 'https://example.test/agent'
+  })
+
+  assert.equal(store.items()[0].label, '第一个账号')
+  identity = 'anon_second'
+  assert.equal(store.items()[0].label, '第二个账号')
+})
 
 const resolved = { schema: 1, items: [{ id: 'sys_concise', type: 'action', label: '精简', origin: 'system', prompt: 'P', appliesTo: ['text'] }] }
 
 function deps() {
-  const values = new Map([[CACHE_KEY, JSON.stringify(resolved)]])
+  const values = new Map([[cacheKeyFor('token'), JSON.stringify(resolved)]])
   const calls = []
   const queue = []
   const request = {}

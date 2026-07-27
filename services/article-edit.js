@@ -4,6 +4,9 @@ const http = require('./request')
 const article = require('../utils/article')
 const agentMessage = require('../utils/agent-message')
 
+const HEARTBEAT_MS = 25000
+const RECONNECT_MS = 1500
+
 function uuid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
@@ -48,6 +51,8 @@ function createSession(stem, handlers) {
   let opened = false
   let closed = false
   let currentSocket = null
+  let heartbeatTimer = null
+  let reconnectTimer = null
   const queueKey = `voicedrop.editqueue.${stem}`
   const queue = loadQueue(queueKey)
 
@@ -62,11 +67,9 @@ function createSession(stem, handlers) {
   function connect() {
     if (typeof wx === 'undefined') return
     closed = false
-    if (socket && opened && socket === currentSocket) return
+    if (socket && socket === currentSocket) return
+    stopReconnect()
     opened = false
-    if (socket) {
-      try { socket.close() } catch (_) {}
-    }
     const newSocket = wx.connectSocket({
       url: `${api.agentWs()}/edit?stem=${api.path(stem)}`,
       header: http.authHeader(auth.bearer())
@@ -79,11 +82,14 @@ function createSession(stem, handlers) {
     newSocket.onOpen(() => {
       if (newSocket !== currentSocket) return
       opened = true
+      stopReconnect()
+      startHeartbeat(newSocket)
       logEdit('open', { stem, queueLength: queue.length })
       notifyState('已连接')
       queue.forEach(send)
     })
     newSocket.onMessage((message) => {
+      if (closed || newSocket !== currentSocket) return
       logEdit('message', { stem, data: message && message.data })
       handle(message.data)
     })
@@ -92,21 +98,69 @@ function createSession(stem, handlers) {
       logEdit('error', { stem, error })
       opened = false
       socket = null
-      if (!closed) notifyState('连接断开')
+      stopHeartbeat()
+      if (!closed) {
+        notifyState('连接断开')
+        scheduleReconnect()
+      }
     })
     newSocket.onClose((event) => {
       if (newSocket !== currentSocket) return
       logEdit('close', { stem, event })
       opened = false
       socket = null
-      if (!closed) notifyState('连接断开')
+      stopHeartbeat()
+      if (!closed) {
+        notifyState('连接断开')
+        scheduleReconnect()
+      }
     })
   }
 
-  function enqueue(text, articleIndex, images, anchor, itemId) {
-    if (!text || !text.trim()) return
+  function startHeartbeat(target) {
+    stopHeartbeat()
+    heartbeatTimer = setInterval(() => {
+      if (closed || !opened || target !== currentSocket) return
+      target.send({
+        data: JSON.stringify({ type: 'ping' }),
+        fail: () => {
+          if (target !== currentSocket || closed) return
+          try { target.close({ code: 4000, reason: 'heartbeat failed' }) } catch (_) {}
+          opened = false
+          socket = null
+          stopHeartbeat()
+          scheduleReconnect()
+        }
+      })
+    }, HEARTBEAT_MS)
+    if (heartbeatTimer && typeof heartbeatTimer.unref === 'function') heartbeatTimer.unref()
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatTimer == null) return
+    clearInterval(heartbeatTimer)
+    heartbeatTimer = null
+  }
+
+  function scheduleReconnect() {
+    if (closed || reconnectTimer != null) return
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      if (!closed && !opened) connect()
+    }, RECONNECT_MS)
+    if (reconnectTimer && typeof reconnectTimer.unref === 'function') reconnectTimer.unref()
+  }
+
+  function stopReconnect() {
+    if (reconnectTimer == null) return
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+
+  function enqueue(text, articleIndex, images, anchor, itemId, requestId) {
+    if (!text || !text.trim()) return ''
     const request = {
-      id: uuid(),
+      id: requestId || uuid(),
       text: text.trim(),
       articleIndex: Math.max(0, articleIndex || 0),
       images: images || [],
@@ -120,6 +174,7 @@ function createSession(stem, handlers) {
     connect()
     send(request)
     notifyState('正在改')
+    return request.id
   }
 
   function send(request) {
@@ -149,7 +204,7 @@ function createSession(stem, handlers) {
         resolve(obj.id)
       } else if (obj.type === 'error') {
         logEdit('server-error', { stem, id: obj.id, message: obj.message })
-        if (handlers && handlers.onError) handlers.onError(obj.message || '修改失败')
+        if (handlers && handlers.onError) handlers.onError(obj.message || '修改失败', obj.id || '')
         resolve(obj.id)
       } else if (obj.type === 'snapshot') {
         logEdit('snapshot', {
@@ -190,6 +245,7 @@ function createSession(stem, handlers) {
     if (changed) persistQueue(queueKey, queue)
     notifyQueue()
     notifyState(queue.length ? '正在改' : '已连接')
+    if (changed && handlers && handlers.onResolved) handlers.onResolved()
   }
 
   function resolve(id) {
@@ -198,11 +254,14 @@ function createSession(stem, handlers) {
     persistQueue(queueKey, queue)
     notifyQueue()
     notifyState(queue.length ? '正在改' : '已完成')
+    if (handlers && handlers.onResolved) handlers.onResolved()
   }
 
   function close() {
     closed = true
     opened = false
+    stopHeartbeat()
+    stopReconnect()
     currentSocket = null
     if (socket) socket.close({ code: 1000, reason: 'bye' })
     socket = null
@@ -233,6 +292,7 @@ function persistQueue(key, queue) {
 }
 
 module.exports = {
+  HEARTBEAT_MS,
   payloadFor,
   updatedDocFromMessage,
   createSession

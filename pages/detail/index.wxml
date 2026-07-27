@@ -34,7 +34,7 @@
 
   <view wx:if="{{loading}}" class="loading-state">
     <view class="loading-spinner" aria-hidden="true"></view>
-    <text>正在加载...</text>
+    <text>加载中...</text>
   </view>
   <view wx:elif="{{!current}}" class="empty card">
     <text class="empty-title">文章还没生成</text>

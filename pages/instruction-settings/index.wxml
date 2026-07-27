@@ -26,6 +26,9 @@
     <view wx:if="{{!reordering}}">
       <view class="market-section">
         <text class="market-heading">社区提示词</text>
+        <view class="market-filters">
+          <view wx:for="{{marketFilters}}" wx:key="key" class="market-filter {{marketFilter === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectMarketFilter">{{item.label}}</view>
+        </view>
         <view class="market-state market-loading-state" wx:if="{{marketLoading && !marketItems.length}}"><view class="prompt-loading-spinner" aria-hidden="true"></view><text>正在加载社区提示词…</text></view>
         <view class="market-state retry" wx:elif="{{marketError}}" bindtap="retryMarket">{{marketError}}</view>
         <view class="market-state" wx:elif="{{!marketItems.length}}">暂时没有可用的社区提示词</view>

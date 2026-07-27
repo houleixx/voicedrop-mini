@@ -91,6 +91,40 @@ test('waits for article edit socket open before sending queued image edits', () 
   }
 })
 
+test('article edit connect is idempotent while the first socket is still opening', () => {
+  let socketCount = 0
+  const previousWx = global.wx
+  global.wx = {
+    getStorageSync: () => '',
+    setStorageSync: () => {},
+    removeStorageSync: () => {},
+    connectSocket: () => {
+      socketCount += 1
+      return {
+        onOpen: () => {},
+        onMessage: () => {},
+        onError: () => {},
+        onClose: () => {},
+        send: () => {},
+        close: () => {}
+      }
+    }
+  }
+
+  try {
+    const session = edit.createSession('VoiceDrop-opening', {})
+    session.connect()
+    session.connect()
+    session.enqueue('排队等待连接', 0)
+
+    assert.equal(socketCount, 1)
+    session.close()
+  } finally {
+    if (previousWx === undefined) delete global.wx
+    else global.wx = previousWx
+  }
+})
+
 test('persists queued image edits so photo insert can resume', () => {
   const storage = {}
   const previousWx = global.wx
@@ -126,6 +160,124 @@ test('parses article edit updated messages through shared agent message contract
   assert.equal(doc.articles[0].title, 'A')
   assert.equal(doc.articles[0].body, 'B')
   assert.equal(edit.updatedDocFromMessage('{"type":"hello"}'), null)
+})
+
+test('article edit terminal events refresh the authoritative doc and keep the socket alive', () => {
+  const storage = {}
+  const previousWx = global.wx
+  const previousSetInterval = global.setInterval
+  const previousClearInterval = global.clearInterval
+  let openHandler = null
+  let messageHandler = null
+  let heartbeat = null
+  let intervalMs = 0
+  const sent = []
+  let resolved = 0
+  global.setInterval = (handler, ms) => {
+    heartbeat = handler
+    intervalMs = ms
+    return 7
+  }
+  global.clearInterval = () => {}
+  global.wx = {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    connectSocket: () => ({
+      onOpen: (handler) => { openHandler = handler },
+      onMessage: (handler) => { messageHandler = handler },
+      onError: () => {},
+      onClose: () => {},
+      send: (payload) => { sent.push(JSON.parse(payload.data)) },
+      close: () => {}
+    })
+  }
+
+  try {
+    const session = edit.createSession('VoiceDrop-converge', {
+      onResolved: () => { resolved += 1 }
+    })
+    session.connect()
+    session.enqueue('插入图片', 0)
+    openHandler()
+    assert.equal(intervalMs, 25000)
+    heartbeat()
+    assert.equal(sent.at(-1).type, 'ping')
+
+    const id = session.queue()[0].id
+    messageHandler({ data: JSON.stringify({ type: 'updated', id, article: null }) })
+    assert.equal(resolved, 1)
+    session.close()
+  } finally {
+    global.setInterval = previousSetInterval
+    global.clearInterval = previousClearInterval
+    if (previousWx === undefined) delete global.wx
+    else global.wx = previousWx
+  }
+})
+
+test('article edit ignores a terminal message from a stale socket after reconnect', () => {
+  const storage = {}
+  const sockets = []
+  const timers = []
+  const previousWx = global.wx
+  const previousSetTimeout = global.setTimeout
+  const previousClearTimeout = global.clearTimeout
+  global.setTimeout = (handler, delay) => {
+    const timer = { handler, delay, cleared: false }
+    timers.push(timer)
+    return timer
+  }
+  global.clearTimeout = (timer) => { if (timer) timer.cleared = true }
+  global.wx = {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    connectSocket: () => {
+      const callbacks = {}
+      const socket = {
+        callbacks,
+        onOpen: (handler) => { callbacks.open = handler },
+        onMessage: (handler) => { callbacks.message = handler },
+        onError: (handler) => { callbacks.error = handler },
+        onClose: (handler) => { callbacks.close = handler },
+        send: () => {},
+        close: () => {}
+      }
+      sockets.push(socket)
+      return socket
+    }
+  }
+
+  try {
+    const session = edit.createSession('VoiceDrop-stale-message', {})
+    session.enqueue('保留这条修改', 0)
+    const id = session.queue()[0].id
+    sockets[0].callbacks.error({ errMsg: 'network lost' })
+    assert.equal(timers[0].delay, 1500)
+    timers[0].handler()
+    assert.equal(sockets.length, 2)
+
+    sockets[0].callbacks.message({
+      data: JSON.stringify({ type: 'updated', id, article: { articles: [] } })
+    })
+
+    assert.equal(session.queue().length, 1)
+  } finally {
+    global.setTimeout = previousSetTimeout
+    global.clearTimeout = previousClearTimeout
+    if (previousWx === undefined) delete global.wx
+    else global.wx = previousWx
+  }
+})
+
+test('detail page wires terminal edit resolution to an authoritative HTTP fetch', () => {
+  const source = require('node:fs').readFileSync(
+    require('node:path').join(__dirname, '../pages/detail/index.js'),
+    'utf8'
+  )
+  assert.match(source, /onResolved:\s*\(\)\s*=>\s*this\.refreshResolvedDoc\(\)/)
+  assert.match(source, /async refreshResolvedDoc\(\)[\s\S]*library\.fetchDoc\(rec\.stem\)/)
 })
 
 test('reconciles snapshot queue done status and applies snapshot article', () => {

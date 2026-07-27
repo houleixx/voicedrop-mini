@@ -1,5 +1,9 @@
 const library = require('../../services/library')
+const auth = require('../../services/auth')
+const accountState = require('../../services/account-state')
 const audio = require('../../services/audio')
+const recordingUploads = require('../../services/recording-upload-queue')
+const photoMarkerRepair = require('../../services/photo-marker-repair')
 const statusSession = require('../../services/status-session')
 const libraryCommand = require('../../services/library-command')
 const asrDictation = require('../../services/asr-dictation')
@@ -80,6 +84,7 @@ Page({
   onLoad(options) {
     this.initialLoadStarted = true
     this.topLevelUiRendered = false
+    this._pageUnloaded = false
     const activeTab = this.initialTab(options)
     this.setData({ activeTab, currentHomeTab: activeTab })
     try {
@@ -102,9 +107,11 @@ Page({
       this.setData({ scrollContentTop, communityScrollContentTop: scrollContentTop + 88 * pxPerRpx })
     }
     this.bindRecorder()
+    this._socketBearer = auth.bearer()
     this.createStatusSession()
     this.createCommandSession()
     this.load()
+    this.drainPendingRecordingUploads()
     if (this.data.activeTab === 'community') {
       const restored = this.restoreCachedCommunityFeed()
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
@@ -112,6 +119,8 @@ Page({
   },
 
   onShow() {
+    this.drainPendingRecordingUploads()
+    this.resetAccountSessionsIfNeeded()
     if (this.statusSession) this.statusSession.connect()
     if (this.commandSession) {
       this.commandSession.setRefs(this.currentCommandRefs())
@@ -133,6 +142,38 @@ Page({
     else this.load({ silent: true, keepDataOnError: true })
   },
 
+  drainPendingRecordingUploads() {
+    if (this._recordingUploadDrain) return this._recordingUploadDrain
+    this._recordingUploadDrain = recordingUploads.drain()
+      .then((count) => {
+        if (count > 0) {
+          wx.showToast({ title: `已续传 ${count} 条录音` })
+          return this.load({ silent: true, keepDataOnError: true })
+        }
+        return true
+      })
+      .finally(() => { this._recordingUploadDrain = null })
+    return this._recordingUploadDrain
+  },
+
+  repairPhotoMarkers(records) {
+    if (this._photoMarkerRepair) return this._photoMarkerRepair
+    this._photoMarkerRepair = photoMarkerRepair.repairReady(records)
+      .then((count) => {
+        if (count > 0 && !this._pageUnloaded) {
+          return this.load({
+            silent: true,
+            keepDataOnError: true,
+            skipPhotoRepair: true
+          })
+        }
+        return count
+      })
+      .catch(() => 0)
+      .finally(() => { this._photoMarkerRepair = null })
+    return this._photoMarkerRepair
+  },
+
   onHide() {
     if (this.statusSession) this.statusSession.close()
     if (this.commandSession) this.commandSession.close()
@@ -140,6 +181,7 @@ Page({
 
   onUnload() {
     audioConsentFlow.dispose(this)
+    this._pageUnloaded = true
     this._communityLoadGeneration = (this._communityLoadGeneration || 0) + 1
     this.recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
     this.recordMetaLoadId = (this.recordMetaLoadId || 0) + 1
@@ -305,6 +347,7 @@ Page({
     if (!silent) this.setData({ loading: true, error: '' })
     try {
       const records = await library.list()
+      if (!options?.skipPhotoRepair) this.repairPhotoMarkers(records)
       const selectedTag = this.selectedTagFor(records)
       const homeTags = recordingUtil.tagsFromRecords(records)
       const homeTabs = this.homeTabsFor(homeTags)
@@ -553,8 +596,8 @@ Page({
       onConfirm: (id, text) => {
         this.confirmLibraryCommand(id, text)
       },
-      onUpdate: () => {
-        if (library.invalidateArticleCaches) library.invalidateArticleCaches()
+      onUpdate: (stems) => {
+        if (library.invalidateArticleCaches) library.invalidateArticleCaches(stems)
         this.load({ silent: true, keepDataOnError: true })
       },
       onState: (state) => {
@@ -565,6 +608,25 @@ Page({
         this.refreshCommandStatus({ commandReply: message, commandReplyOk: false })
       }
     })
+  },
+
+  resetAccountSessionsIfNeeded() {
+    const currentBearer = auth.bearer()
+    if (!accountState.identityChanged(this._socketBearer, currentBearer)) return false
+    this._socketBearer = currentBearer
+    if (this.statusSession) this.statusSession.close()
+    if (this.commandSession) this.commandSession.close()
+    this._libraryCommandConfirms = []
+    this._activeLibraryCommandConfirm = null
+    this.setData({
+      commandQueue: [],
+      commandReply: '',
+      commandReplyOk: true,
+      commandState: ''
+    })
+    this.createStatusSession()
+    this.createCommandSession()
+    return true
   },
 
   confirmLibraryCommand(id, text) {

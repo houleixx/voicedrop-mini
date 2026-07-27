@@ -35,14 +35,90 @@ test('home loading states show a spinner above the loading text', () => {
   const loadingNotice = ruleBody(css, '.loading-notice')
   const spinner = ruleBody(css, '.loading-spinner')
 
-  const loadingStates = wxml.match(/<view wx:(?:if|elif)="\{\{(?:loading|communityLoading)\}\}" class="notice loading-notice">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>正在加载\.\.\.<\/text>\s*<\/view>/g) || []
-
-  assert.equal(loadingStates.length, 2)
+  assert.match(wxml, /<view wx:elif="\{\{loading\}\}" class="notice loading-notice">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>加载中\.\.\.<\/text>\s*<\/view>/)
+  assert.match(wxml, /<view wx:elif="\{\{communityLoading\}\}" class="notice loading-notice">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>正在加载\.\.\.<\/text>\s*<\/view>/)
   assert.match(loadingNotice, /display:\s*flex;/)
   assert.match(loadingNotice, /flex-direction:\s*column;/)
   assert.match(spinner, /border-top-color:\s*#c7432f;/)
   assert.match(spinner, /animation:\s*loading-spin\s+0\.8s\s+linear\s+infinite;/)
   assert.match(css, /@keyframes loading-spin\s*\{[\s\S]*transform:\s*rotate\(360deg\);[\s\S]*\}/)
+})
+
+test('recordings load starts photo marker repair in the background before enriching metadata', () => {
+  const source = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
+  const start = source.indexOf('  async load(options) {')
+  const end = source.indexOf('  async enrichRecordingMeta(', start)
+  const loadSource = source.slice(start, end)
+
+  assert.ok(start >= 0 && end > start)
+  assert.match(loadSource, /const records = await library\.list\(\)\s+if \(!options\?\.skipPhotoRepair\) this\.repairPhotoMarkers\(records\)/)
+  assert.doesNotMatch(loadSource, /await (?:this\.)?repairPhotoMarkers/)
+  assert.ok(
+    loadSource.indexOf('this.repairPhotoMarkers(records)') <
+      loadSource.indexOf('this.enrichRecordingMeta(records, recordMetaLoadId)')
+  )
+})
+
+test('completed background photo repair silently reloads the repaired article once', async () => {
+  const photoMarkerRepair = require('../services/photo-marker-repair')
+  const originalRepairReady = photoMarkerRepair.repairReady
+  const records = [{ stem: 'VoiceDrop-photo', hasArticles: true }]
+  const reloads = []
+  photoMarkerRepair.repairReady = async (value) => {
+    assert.equal(value, records)
+    return 1
+  }
+
+  try {
+    const { page } = freshRecordingsPage()
+    const ctx = Object.assign({}, page, {
+      _pageUnloaded: false,
+      load: async (options) => { reloads.push(options); return true }
+    })
+
+    await page.repairPhotoMarkers.call(ctx, records)
+
+    assert.deepEqual(reloads, [{
+      silent: true,
+      keepDataOnError: true,
+      skipPhotoRepair: true
+    }])
+    assert.equal(ctx._photoMarkerRepair, null)
+  } finally {
+    photoMarkerRepair.repairReady = originalRepairReady
+  }
+})
+
+test('home recreates authenticated sockets after the account bearer changes', () => {
+  const events = []
+  const { page } = freshRecordingsPage({
+    getStorageSync(key) {
+      return key === 'voicedrop.auth.anon' ? 'anon_new_account' : ''
+    },
+    setStorageSync() {}
+  })
+  const ctx = Object.assign({}, page, {
+    _socketBearer: 'anon_old_account',
+    data: Object.assign({}, page.data),
+    setData(update) { Object.assign(this.data, update) },
+    statusSession: { close() { events.push('close-status') } },
+    commandSession: { close() { events.push('close-command') } },
+    createStatusSession() { events.push('create-status') },
+    createCommandSession() { events.push('create-command') },
+    _libraryCommandConfirms: [{ id: 'old' }],
+    _activeLibraryCommandConfirm: { id: 'old' }
+  })
+
+  assert.equal(page.resetAccountSessionsIfNeeded.call(ctx), true)
+  assert.deepEqual(events, [
+    'close-status',
+    'close-command',
+    'create-status',
+    'create-command'
+  ])
+  assert.deepEqual(ctx._libraryCommandConfirms, [])
+  assert.equal(ctx._activeLibraryCommandConfirm, null)
+  assert.equal(ctx._socketBearer, 'anon_new_account')
 })
 
 test('community tab baseline compensation defaults on except for real iOS runtimes', () => {
@@ -470,7 +546,7 @@ test('record button status shows active command feedback above the button', () =
   assert.match(js, /title:\s*'确认操作'/)
   assert.match(js, /confirmText:\s*'删除'/)
   assert.match(js, /cancelText:\s*'取消'/)
-  assert.match(js, /onUpdate:\s*\(\)\s*=>\s*\{[\s\S]*library\.invalidateArticleCaches\(\)[\s\S]*this\.load\(\{\s*silent:\s*true,\s*keepDataOnError:\s*true\s*\}\)/)
+  assert.match(js, /onUpdate:\s*\(stems\)\s*=>\s*\{[\s\S]*library\.invalidateArticleCaches\(stems\)[\s\S]*this\.load\(\{\s*silent:\s*true,\s*keepDataOnError:\s*true\s*\}\)/)
   const transcriptStatus = ruleBody(css, '.fab-status.transcript')
   const transcriptArrow = ruleBody(css, '.fab-status.transcript::after')
   const queueStatus = ruleBody(css, '.fab-status.queue')

@@ -16,10 +16,14 @@ const usageFormat = require('../utils/usage-format')
 
 test('encodes API paths by segment like Android', () => {
   assert.equal(api.path('articles/VoiceDrop-hello world.json'), 'articles/VoiceDrop-hello%20world.json')
-  assert.equal(api.sharePage('abc123'), 'https://jianshuo.dev/voicedrop/abc123')
-  assert.equal(api.downloadUrl('VoiceDrop-a.m4a'), 'https://jianshuo.dev/files/api/download/VoiceDrop-a.m4a')
+  assert.equal(api.filesBase(), 'https://voicedrop.cn/files/api')
+  assert.equal(api.agentBase(), 'https://voicedrop.cn/agent')
+  assert.equal(api.recoBase(), 'https://voicedrop.cn/reco')
+  assert.equal(api.agentWs(), 'wss://jianshuo.dev/agent')
+  assert.equal(api.sharePage('abc123'), 'https://voicedrop.cn/abc123')
+  assert.equal(api.downloadUrl('VoiceDrop-a.m4a'), 'https://voicedrop.cn/files/api/download/VoiceDrop-a.m4a')
   assert.equal(api.photoBase(), 'https://voicedrop.cn/files/api')
-  assert.equal(api.photoUrl('photos/a b.jpg'), 'https://jianshuo.dev/files/api/photo/photos/a%20b.jpg')
+  assert.equal(api.photoUrl('photos/a b.jpg'), 'https://voicedrop.cn/files/api/photo/photos/a%20b.jpg')
   assert.equal(api.photoCdnUrl('photos/a b.jpg'), 'https://voicedrop.cn/files/api/photo/photos/a%20b.jpg')
 })
 
