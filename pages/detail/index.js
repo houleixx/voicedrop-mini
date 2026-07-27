@@ -486,7 +486,10 @@ Page({
   createEditSession(stem) {
     if (!stem) return
     this.editSession = articleEdit.createSession(stem, {
-      onUpdated: (doc) => this.applyDoc(doc),
+      onUpdated: (doc) => {
+        if (library.cacheDoc) library.cacheDoc(stem, doc)
+        this.applyRealtimeDoc(doc)
+      },
       onQueueChanged: (queue) => this.onEditQueueChanged(queue),
       onReply: (text, ok) => this.onEditReply(text, ok),
       onResolved: () => this.refreshResolvedDoc(),
@@ -504,7 +507,16 @@ Page({
     return this.editSession
   },
 
-  applyDoc(doc, photoScope) {
+  applyRealtimeDoc(doc) {
+    if (!articleUtil.shouldRebuild(this.data.doc, doc)) {
+      this.setData({ doc: articleUtil.parseDoc(doc) })
+      return false
+    }
+    this.applyDoc(doc)
+    return true
+  },
+
+  applyDoc(doc, photoScope, options) {
     if (this.data.inlineEditing) {
       this.pendingInlineEditDoc = doc
       return
@@ -527,7 +539,9 @@ Page({
     const styleLabel = current && current.style != null ? `v${current.style} 风格` : '选风格'
     const body = current && current.body ? articleUtil.bodyWithoutDuplicateTitle(current) : ''
     const rawBlocks = body ? articleUtil.bodyBlocks(body) : []
-    const scope = doc.owner || photoScope || this.data.photoScope || ''
+    const deferPhotos = Boolean(options && options.deferPhotos)
+    const scope = doc.owner || photoScope || (deferPhotos ? '' : this.data.photoScope) || ''
+    const previousBlocks = this.data.photoScope === scope ? (this.data.blocks || []) : []
     let lineNo = 0
     let imageNo = 0
     const blocks = rawBlocks.map((block) => {
@@ -536,16 +550,30 @@ Page({
       imageNo += 1
       const key = articleUtil.resolvePhotoKey(block.key, doc.photos || []) || block.key
       const pending = pendingPhotoEdits.find((item) => item.imageNo === imageNo && item.key !== key)
-      return Object.assign({}, block, {
+      const previous = previousBlocks.find((item) =>
+        item && item.type === 'photo' && item.key === key && item.imageNo === imageNo)
+      const next = Object.assign({}, block, {
         key,
         lineNo,
         imageNo,
         url: '',
-        remoteUrl: library.photoUrl(key, scope),
+        remoteUrl: deferPhotos ? '' : library.photoUrl(key, scope),
         loading: true,
         loaded: false,
         photoState: pending ? 'grace' : 'loading'
       })
+      if (!pending && previous && previous.url && previous.loaded && previous.photoState === 'loaded') {
+        Object.assign(next, {
+          url: previous.url,
+          loading: false,
+          loaded: true,
+          failed: false,
+          photoState: 'loaded',
+          width: previous.width,
+          height: previous.height
+        })
+      }
+      return next
     })
     const update = {
       doc,
@@ -562,7 +590,7 @@ Page({
       Object.assign(update, hiddenPhotoInsertPromptData())
     }
     this.setData(update)
-    if (this.loadArticlePhotos) this.loadArticlePhotos(blocks, scope)
+    if (!deferPhotos && this.loadArticlePhotos) this.loadArticlePhotos(blocks, scope)
     pendingPhotoEdits.forEach((pending) => {
       const replacement = blocks.find((block) => block.type === 'photo' && block.imageNo === pending.imageNo && block.key !== pending.key)
       if (replacement) this.startPhotoMaking(replacement.key, { poll: true })
@@ -644,6 +672,9 @@ Page({
     const shouldPoll = !options || options.poll !== false
     this.photoLoadSeq = (this.photoLoadSeq || 0) + 1
     if (!key || !this.updatePhotoMakingBlock(key, { photoState: 'grace', url: '', loaded: false, failed: false })) return
+    const cacheKey = library.scopedPhotoKey ? library.scopedPhotoKey(key, this.data.photoScope) : `${this.data.photoScope || ''}${key}`
+    if (library.removeCachedPhotos) library.removeCachedPhotos([cacheKey])
+    if (this.articlePhotoCache) delete this.articlePhotoCache[cacheKey]
     this.stopPhotoMaking(key)
     this.photoMakingTasks = this.photoMakingTasks || {}
     const generation = (this.photoMakingGeneration || 0) + 1
@@ -681,6 +712,9 @@ Page({
         this.stopPhotoMaking(key)
         return
       }
+      this.articlePhotoCache = this.articlePhotoCache || {}
+      const cacheKey = library.scopedPhotoKey ? library.scopedPhotoKey(key, this.data.photoScope) : `${this.data.photoScope || ''}${key}`
+      this.articlePhotoCache[cacheKey] = url
       this.updatePhotoMakingBlock(key, { photoState: 'loading', url, loading: false, loaded: false, failed: false })
       this.stopPhotoMaking(key)
     } catch (_) {
@@ -753,19 +787,36 @@ Page({
   },
 
   async load() {
-    if (!this.data.rec || !this.data.rec.stem) return
-    this.setData({ loading: true })
-    try {
-      const doc = await library.fetchDoc(this.data.rec.stem)
-      const photoScope = doc && doc.owner ? doc.owner : await library.ownerScope().catch(() => '')
-      if (doc) this.applyDoc(doc, photoScope)
-      await this.refreshVersionNav()
-      this.refreshCommunityShareState()
-    } catch (error) {
-      wx.showToast({ title: '加载失败', icon: 'error' })
-    } finally {
+    const rec = this.data.rec
+    if (!rec || !rec.stem) return
+    const seq = (this._detailLoadSeq || 0) + 1
+    this._detailLoadSeq = seq
+    const cached = library.cachedDoc ? library.cachedDoc(rec.stem) : null
+    if (cached) {
+      this.applyDoc(cached, cached.owner || '', { deferPhotos: !cached.owner })
       this.setData({ loading: false })
+    } else {
+      this.setData({ loading: true })
     }
+    const scopeTask = library.ownerScope().catch(() => '')
+    try {
+      const doc = await library.fetchDoc(rec.stem)
+      if (seq !== this._detailLoadSeq || !this.data.rec || this.data.rec.stem !== rec.stem) return
+      if (doc) {
+        this.applyDoc(doc, doc.owner || '', { deferPhotos: !doc.owner })
+        this.setData({ loading: false })
+      }
+    } catch (error) {
+      if (!cached) wx.showToast({ title: '加载失败', icon: 'error' })
+    } finally {
+      if (seq === this._detailLoadSeq && !cached) this.setData({ loading: false })
+    }
+    this.refreshVersionNav()
+    this.refreshCommunityShareState()
+    const photoScope = await scopeTask
+    if (seq !== this._detailLoadSeq || !photoScope || !this.data.doc ||
+        !this.data.rec || this.data.rec.stem !== rec.stem) return
+    if (photoScope !== this.data.photoScope) this.applyDoc(this.data.doc, photoScope)
   },
 
   async refreshResolvedDoc() {
@@ -773,7 +824,7 @@ Page({
     if (!rec || !rec.stem) return
     const fresh = await library.fetchDoc(rec.stem).catch(() => null)
     if (!fresh || !this.data.rec || this.data.rec.stem !== rec.stem) return
-    this.applyDoc(fresh)
+    this.applyRealtimeDoc(fresh)
     await this.refreshVersionNav()
   },
 
@@ -818,7 +869,8 @@ Page({
     audioSessionReset.preparePlayback()
     wx.showLoading({ title: '加载音频' })
     try {
-      const filePath = await library.downloadTempFile(this.data.rec.audioName)
+      const filePath = this._playbackFilePath || await library.downloadTempFile(this.data.rec.audioName)
+      this._playbackFilePath = filePath
       this.audioContext = wx.createInnerAudioContext()
       this.audioContext.src = filePath
       this.audioContext.onCanplay(() => this.applyPlayback(playbackState.started()))
@@ -1612,7 +1664,11 @@ Page({
       return
     }
     session.enqueue(instruction, articleIndex != null ? articleIndex : 0, images, anchor, itemId)
-    if (this.startPhotoMakingForInstruction) this.startPhotoMakingForInstruction(instruction)
+    if (anchor && anchor.type === 'image' && anchor.key && this.startPhotoMaking) {
+      this.startPhotoMaking(anchor.key, { poll: false })
+    } else if (this.startPhotoMakingForInstruction) {
+      this.startPhotoMakingForInstruction(instruction)
+    }
     if (isPhotoInsertInstruction(instruction, images)) {
       const data = photoInsertPromptData(instruction)
       logPhotoInsert('prompt-from-enqueue', {

@@ -26,6 +26,16 @@ function parseDoc(input) {
   }
 }
 
+function shouldRebuild(current, updated) {
+  if (current === updated) return false
+  if (!current || !updated) return true
+  try {
+    return JSON.stringify(parseDoc(current)) !== JSON.stringify(parseDoc(updated))
+  } catch (_) {
+    return true
+  }
+}
+
 function bodyBlocks(body) {
   const blocks = []
   segments(body).forEach((segment) => {
@@ -215,6 +225,7 @@ function firstArticle(doc) {
 
 module.exports = {
   parseDoc,
+  shouldRebuild,
   bodyBlocks,
   bodyWithoutDuplicateTitle,
   replaceRenderedBodyLine,

@@ -501,6 +501,80 @@ test('detail longpress actions fill exact image key and real text line', () => {
   })
 })
 
+test('detail longpress image command enters making state from its image anchor without requiring a photo marker', async () => {
+  const doc = {
+    owner: 'users/anon/',
+    articles: [{ title: 'A', body: '正文\n[[photo:photos/a.jpg]]' }],
+    photos: []
+  }
+  let authoritative = doc
+  const page = freshDetailPage({
+    fetchDoc: async () => JSON.parse(JSON.stringify(authoritative))
+  })
+  const queued = []
+  const ctx = Object.assign({}, page, {
+    data: {
+      articleIndex: 0,
+      photoScope: 'users/anon/',
+      photoInsertPromptVisible: false,
+      rec: { stem: 'VoiceDrop-test' },
+      doc,
+      longpressTarget: {
+        kind: 'image',
+        block: { type: 'photo', key: 'photos/a.jpg', imageNo: 1, url: 'wxfile://a.jpg', loaded: true, photoState: 'loaded' }
+      },
+      blocks: [
+        { type: 'photo', key: 'photos/a.jpg', imageNo: 1, url: 'wxfile://a.jpg', loaded: true, photoState: 'loaded' }
+      ]
+    },
+    setData(update) { Object.assign(this.data, update) },
+    closeLongpressMenu() {
+      this.data.longpressMenuOpen = false
+    },
+    ensureEditSession() {
+      return {
+        enqueue(...args) { queued.push(args) }
+      }
+    },
+    refreshVersionNav: async () => {}
+  })
+
+  try {
+    page.onLongpressPick.call(ctx, {
+      detail: {
+        node: { id: 'sys_watercolor', instruction: '把 {{KEY}} 处理成水彩风格' }
+      }
+    })
+
+    assert.equal(queued.length, 1)
+    assert.equal(ctx.data.blocks[0].photoState, 'grace')
+    assert.equal(ctx.data.blocks[0].url, '')
+
+    page.applyRealtimeDoc.call(ctx, JSON.parse(JSON.stringify(doc)))
+
+    assert.equal(ctx.data.blocks[0].photoState, 'grace')
+    assert.ok(ctx.photoMakingTasks['photos/a.jpg'])
+
+    authoritative = {
+      owner: 'users/anon/',
+      articles: [{ title: 'A', body: '正文\n[[photo:photos/a-processed.jpg]]' }],
+      photos: []
+    }
+    page.applyRealtimeDoc.call(ctx, authoritative)
+
+    assert.equal(ctx.data.blocks[1].key, 'photos/a-processed.jpg')
+    assert.equal(ctx.data.blocks[1].photoState, 'grace')
+    assert.ok(ctx.photoMakingTasks['photos/a-processed.jpg'])
+
+    await page.refreshResolvedDoc.call(ctx)
+
+    assert.equal(ctx.data.blocks[1].photoState, 'grace')
+    assert.ok(ctx.photoMakingTasks['photos/a-processed.jpg'])
+  } finally {
+    page.stopPhotoMaking.call(ctx)
+  }
+})
+
 test('detail image instruction starts grace then making state for the exact photo key', () => {
   const page = freshDetailPage()
   const timers = []
@@ -602,6 +676,82 @@ test('detail transfers making state from backend old key to replacement key', ()
   assert.equal(ctx.data.blocks[0].photoState, 'grace')
   assert.deepEqual(started, [{ key: 'photos/new-edited.jpg', options: { poll: true } }])
   assert.equal(ctx.loadedBlocks[0].photoState, 'grace')
+})
+
+test('detail invalidates persistent and in-memory photo cache before processing an image', () => {
+  const page = freshDetailPage()
+  const library = require('../services/library')
+  const originalRemoveCachedPhotos = library.removeCachedPhotos
+  const removed = []
+  library.removeCachedPhotos = (keys) => removed.push(...keys)
+  const ctx = Object.assign({}, page, {
+    data: {
+      photoScope: 'users/anon/',
+      blocks: [{
+        type: 'photo',
+        key: 'photos/a.jpg',
+        url: 'wxfile://stale-a.jpg',
+        loaded: true,
+        photoState: 'loaded'
+      }]
+    },
+    articlePhotoCache: {
+      'users/anon/photos/a.jpg': 'wxfile://stale-a.jpg'
+    },
+    setData(update) { Object.assign(this.data, update) },
+    pollMakingPhoto() {}
+  })
+
+  try {
+    page.startPhotoMaking.call(ctx, 'photos/a.jpg', { poll: false })
+    assert.deepEqual(removed, ['users/anon/photos/a.jpg'])
+    assert.equal(ctx.articlePhotoCache['users/anon/photos/a.jpg'], undefined)
+  } finally {
+    page.stopPhotoMaking.call(ctx)
+    library.removeCachedPhotos = originalRemoveCachedPhotos
+  }
+})
+
+test('detail background article revalidation keeps an already displayed photo mounted', () => {
+  const page = freshDetailPage()
+  const doc = {
+    owner: 'users/anon/',
+    articles: [{ title: 'A', body: '正文\n[[photo:photos/a.jpg]]' }],
+    photos: []
+  }
+  const ctx = Object.assign({}, page, {
+    data: {
+      articleIndex: 0,
+      photoScope: 'users/anon/',
+      photoInsertPromptVisible: false,
+      blocks: [{
+        type: 'photo',
+        key: 'photos/a.jpg',
+        lineNo: 2,
+        imageNo: 1,
+        url: 'wxfile://saved-a.jpg',
+        remoteUrl: 'users/anon/photos/a.jpg',
+        loading: false,
+        loaded: true,
+        failed: false,
+        photoState: 'loaded',
+        width: 1200,
+        height: 800
+      }]
+    },
+    setData(update) { Object.assign(this.data, update) },
+    loadArticlePhotos(blocks) { this.revalidatedBlocks = blocks }
+  })
+
+  page.applyDoc.call(ctx, doc, 'users/anon/')
+
+  const photo = ctx.data.blocks[1]
+  assert.equal(photo.url, 'wxfile://saved-a.jpg')
+  assert.equal(photo.photoState, 'loaded')
+  assert.equal(photo.loaded, true)
+  assert.equal(photo.width, 1200)
+  assert.equal(photo.height, 800)
+  assert.equal(ctx.revalidatedBlocks.filter((block) => block.type === 'photo' && block.photoState === 'loading').length, 0)
 })
 
 test('detail image longpress ignores photos without a loaded url', () => {
@@ -1224,6 +1374,23 @@ test('detail explicit playback restores the speaker after audio-session reset', 
   const playback = js.slice(js.indexOf('  async togglePlayback()'), js.indexOf('  stopPlayback()'))
 
   assert.match(playback, /audioSessionReset\.preparePlayback\(\)/)
+})
+
+test('detail reuses the downloaded audio file while the page stays alive', () => {
+  const js = fs.readFileSync(path.join(root, 'pages/detail/index.js'), 'utf8')
+  const playback = js.slice(js.indexOf('  async togglePlayback()'), js.indexOf('  stopPlayback()'))
+
+  assert.match(playback, /this\._playbackFilePath\s*\|\|\s*await library\.downloadTempFile/)
+  assert.match(playback, /this\._playbackFilePath\s*=\s*filePath/)
+})
+
+test('detail page renders a cached article before background revalidation finishes', () => {
+  const js = fs.readFileSync(path.join(root, 'pages/detail/index.js'), 'utf8')
+  const load = js.slice(js.indexOf('  async load()'), js.indexOf('  async refreshResolvedDoc()'))
+
+  assert.match(load, /library\.cachedDoc\(/)
+  assert.match(load, /this\.setData\(\{ loading: false \}\)/)
+  assert.doesNotMatch(load, /await this\.refreshVersionNav\(\)[\s\S]*this\.setData\(\{ loading: false \}\)/)
 })
 
 test('detail page numbers paragraphs and photos while holding to talk like iOS', async () => {

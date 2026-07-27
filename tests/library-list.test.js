@@ -335,6 +335,69 @@ test('library persists complete article metadata and skips doc requests on a new
   assert.equal(secondLibrary.__requests.filter((request) => request.url.endsWith(`/articles/${stem}`)).length, 0)
 })
 
+test('library article enrichment warms an identity-scoped detail snapshot', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const storage = {}
+  const overrides = {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] }
+  }
+  const routes = [
+    {
+      path: '/recordings',
+      data: { recordings: [{ name: `${stem}.m4a`, hasArticles: true, isEmpty: false }] }
+    },
+    {
+      path: `/articles/${stem}`,
+      data: { articles: [{ title: '预热详情', body: '缓存正文' }], tags: [] }
+    }
+  ]
+
+  const firstLibrary = freshLibraryWithWx(routes, overrides)
+  const records = await firstLibrary.list()
+  await firstLibrary.enrichArticleMeta(records)
+
+  const recreatedLibrary = freshLibraryWithWx([], overrides)
+  const cached = recreatedLibrary.cachedDoc(stem)
+  assert.equal(cached.articles[0].title, '预热详情')
+  assert.equal(cached.articles[0].body, '缓存正文')
+})
+
+test('library replaces the detail snapshot after a direct article save', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const storage = {}
+  const current = {
+    schema: 3,
+    articles: [{ title: '修改前', body: '旧正文', style: 2 }],
+    tags: ['work']
+  }
+  const library = freshLibraryWithWx([], {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    request: (options) => {
+      if (options.url.endsWith(`/articles/${stem}`) && (options.method || 'GET') === 'GET') {
+        options.success({ statusCode: 200, data: current })
+        return
+      }
+      if (options.url.endsWith(`/articles/${stem}`) && options.method === 'PUT') {
+        options.success({ statusCode: 200, data: { ok: true } })
+        return
+      }
+      options.success({ statusCode: 404, data: {} })
+    }
+  })
+
+  await library.fetchDoc(stem)
+  await library.saveArticles(stem, [{ title: '修改后', body: '新正文', style: 2 }])
+
+  const cached = library.cachedDoc(stem)
+  assert.equal(cached.articles[0].title, '修改后')
+  assert.equal(cached.articles[0].body, '新正文')
+  assert.deepEqual(cached.tags, ['work'])
+})
+
 test('library bounds cold-cache article enrichment to five concurrent requests', async () => {
   const stems = Array.from({ length: 9 }, (_, index) =>
     `VoiceDrop-2026-06-${String(index + 1).padStart(2, '0')}-143052-0m33s-Thu-Afternoon`)
@@ -455,6 +518,135 @@ test('library downloads public scoped photos from the photo CDN without a user t
   assert.equal(library.__downloads[0].url, 'https://voicedrop.cn/files/api/photo/users/anon-1/photos/a.jpg')
   assert.equal(library.__downloads[0].header['X-VD-Platform'], 'miniapp')
   assert.equal(library.__downloads[0].header.Authorization, undefined)
+})
+
+test('library persists a downloaded article photo and reuses it after recreation', async () => {
+  const storage = {}
+  const savedFiles = new Set()
+  let saveCount = 0
+  const overrides = {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    getFileSystemManager: () => ({
+      accessSync: (path) => {
+        if (!savedFiles.has(path)) throw new Error('missing')
+      },
+      saveFile: ({ success }) => {
+        const path = `wxfile://saved-photo-${++saveCount}.jpg`
+        savedFiles.add(path)
+        success({ savedFilePath: path })
+      },
+      unlinkSync: (path) => savedFiles.delete(path)
+    })
+  }
+  const first = freshLibraryWithWx([
+    { path: '/photo/users/anon-1/photos/a.jpg', tempFilePath: 'wxfile://temporary-a.jpg' }
+  ], overrides)
+
+  assert.equal(await first.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/'), 'wxfile://saved-photo-1.jpg')
+  assert.equal(first.__downloads.length, 1)
+
+  const recreated = freshLibraryWithWx([], overrides)
+  assert.equal(await recreated.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/'), 'wxfile://saved-photo-1.jpg')
+  assert.equal(recreated.__downloads.length, 0)
+})
+
+test('library replaces the persistent photo after a cache-busted image edit', async () => {
+  const storage = {}
+  const savedFiles = new Set()
+  const removed = []
+  let saveCount = 0
+  const library = freshLibraryWithWx([], {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    downloadFile: ({ success }) => success({ statusCode: 200, tempFilePath: `wxfile://temporary-${saveCount + 1}.jpg` }),
+    getFileSystemManager: () => ({
+      accessSync: () => {},
+      saveFile: ({ success }) => {
+        const path = `wxfile://saved-${++saveCount}.jpg`
+        savedFiles.add(path)
+        success({ savedFilePath: path })
+      },
+      unlinkSync: (path) => {
+        removed.push(path)
+        savedFiles.delete(path)
+      }
+    })
+  })
+
+  assert.equal(await library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/'), 'wxfile://saved-1.jpg')
+  assert.equal(
+    await library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/', { cacheBust: Date.now() }),
+    'wxfile://saved-2.jpg'
+  )
+  assert.deepEqual(removed, ['wxfile://saved-1.jpg'])
+  assert.equal(library.cachedPhotoPath('photos/a.jpg', 'users/anon-1/'), 'wxfile://saved-2.jpg')
+})
+
+test('library removes cached image bytes when an article drops its photo marker', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const storage = {}
+  const removed = []
+  const library = freshLibraryWithWx([
+    { path: '/photo/users/anon-1/photos/a.jpg', tempFilePath: 'wxfile://temporary-a.jpg' }
+  ], {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    getFileSystemManager: () => ({
+      accessSync: () => {},
+      saveFile: ({ success }) => success({ savedFilePath: 'wxfile://saved-a.jpg' }),
+      unlinkSync: (path) => removed.push(path)
+    })
+  })
+
+  await library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/')
+  library.cacheDoc(stem, {
+    owner: 'users/anon-1/',
+    articles: [{ title: '有图', body: '正文\n[[photo:photos/a.jpg]]' }]
+  })
+  library.cacheDoc(stem, {
+    owner: 'users/anon-1/',
+    articles: [{ title: '无图', body: '正文' }]
+  })
+
+  assert.deepEqual(removed, ['wxfile://saved-a.jpg'])
+  assert.equal(library.cachedPhotoPath('photos/a.jpg', 'users/anon-1/'), '')
+})
+
+test('library does not resurrect an image cache when deletion races its download', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const storage = {}
+  const removed = []
+  let finishSave
+  const library = freshLibraryWithWx([], {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    downloadFile: ({ success }) => success({ statusCode: 200, tempFilePath: 'wxfile://temporary-a.jpg' }),
+    getFileSystemManager: () => ({
+      accessSync: () => {},
+      saveFile: ({ success }) => { finishSave = success },
+      unlinkSync: (path) => removed.push(path)
+    })
+  })
+  library.cacheDoc(stem, {
+    owner: 'users/anon-1/',
+    articles: [{ title: '有图', body: '[[photo:photos/a.jpg]]' }]
+  })
+  const downloading = library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/')
+
+  library.cacheDoc(stem, {
+    owner: 'users/anon-1/',
+    articles: [{ title: '已删除图片', body: '正文' }]
+  })
+  finishSave({ savedFilePath: 'wxfile://late-a.jpg' })
+  await downloading
+
+  assert.deepEqual(removed, ['wxfile://late-a.jpg'])
+  assert.equal(library.cachedPhotoPath('photos/a.jpg', 'users/anon-1/'), '')
 })
 
 test('library does not fall back to the old photo domain when the new domain is unavailable', async () => {
