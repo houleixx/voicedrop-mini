@@ -4,14 +4,12 @@ const styleSelection = require('../../utils/style-selection')
 Page({
   data: {
     style: '',
-    selectedStyles: [],
-    styleSummary: '未选择风格',
+    styleSummary: '当前风格',
     styleRows: [],
     saving: false,
     styleHistory: { versions: [] },
     styleHistoryOpen: false,
-    compareMode: true,
-    singleSelected: null
+    selectedHead: 0
   },
 
   onShow() {
@@ -35,11 +33,8 @@ Page({
   async load() {
     try {
       const style = await settings.loadStyle()
-      const selectedStyles = styleSelection.normalized(style.styles || [])
       this.setData({
-        style: style.style || '',
-        selectedStyles,
-        styleSummary: styleSelection.summary(selectedStyles)
+        style: style.style || ''
       })
       await this.loadStyleHistory()
     } catch (error) {
@@ -69,50 +64,18 @@ Page({
     const styleHistory = await settings.loadStyleHistory()
     const versions = styleHistory.versions || []
     const head = styleHistory.head || 0
-    const hasSelections = (this.data.selectedStyles && this.data.selectedStyles.length) > 0
-
-    // Find the head version's style content
     const headVersion = versions.find(v => v.v === head)
     const headStyle = headVersion ? headVersion.style : this.data.style
-
-    // In single mode, mark the head version as selected
-    const selectedForDisplay = hasSelections ? this.data.selectedStyles : (head > 0 ? [head] : [])
-
-    // Update summary based on mode
-    let summary = hasSelections ? styleSelection.summary(this.data.selectedStyles) : ''
-    if (!hasSelections && head > 0) {
-      const versionName = `v${head}`
-      summary = headVersion && headVersion.style ? versionName : '未选择风格'
-    } else if (!hasSelections) {
-      summary = '未选择风格'
-    }
+    const rows = styleSelection.selectedRows(versions, head)
+    const currentRow = rows.find(row => row.v === head)
 
     this.setData({
       styleHistory,
       style: headStyle,
-      styleSummary: summary,
-      styleRows: styleSelection.selectedRows(versions, selectedForDisplay),
-      compareMode: hasSelections
+      selectedHead: head,
+      styleSummary: currentRow ? currentRow.preview : '当前风格',
+      styleRows: rows
     })
-  },
-
-  preventToggle() {
-    // Prevent switch tap from bubbling to parent
-  },
-
-  onCompareModeChange(event) {
-    const isChecked = event.detail.value
-    if (!isChecked) {
-      // Turn off compare mode, clear multi-selection
-      this.setData({
-        compareMode: false,
-        selectedStyles: [],
-        styleSummary: '未选择风格',
-        styleRows: styleSelection.selectedRows((this.data.styleHistory && this.data.styleHistory.versions) || [], [])
-      })
-    } else {
-      this.setData({ compareMode: true })
-    }
   },
 
   async toggleStyleHistory() {
@@ -126,60 +89,22 @@ Page({
     }
   },
 
-  async selectStyleHead(event) {
-    const head = Number(event.currentTarget.dataset.head)
-    const ok = await settings.saveStyleHead(head)
-    wx.showToast({ title: ok ? '已切换文风' : '切换失败', icon: ok ? 'success' : 'error' })
-    if (ok) this.load()
-  },
-
-  toggleStyleSelection(event) {
+  async selectStyleVersion(event) {
     const version = Number(event.currentTarget.dataset.version)
     const versions = (this.data.styleHistory && this.data.styleHistory.versions) || []
-    if (this.data.compareMode) {
-      // Multi-selection mode (compare ON)
-      const next = styleSelection.toggle(this.data.selectedStyles, version)
-      if (next.limit) {
-        wx.showToast({ title: '最多选择 3 个', icon: 'error' })
-        return
-      }
-      this.setData({
-        selectedStyles: next.selected,
-        styleSummary: styleSelection.summary(next.selected),
-        styleRows: styleSelection.selectedRows(versions, next.selected)
-      })
-    } else {
-      // Single-selection mode (compare OFF)
-      const selectedVersion = versions.find(v => v.v === version)
-      this.setData({
-        singleSelected: version,
-        style: selectedVersion ? selectedVersion.style : '',
-        styleRows: styleSelection.selectedRows(versions, [version])
-      })
-      // Save the selected head to server immediately
-      settings.saveStyleHead(version)
+    const selectedVersion = versions.find(v => v.v === version)
+    if (!selectedVersion) return
+    this.setData({
+      selectedHead: version,
+      style: selectedVersion.style || '',
+      styleSummary: styleSelection.oneLinePreview(selectedVersion.style),
+      styleRows: styleSelection.selectedRows(versions, version),
+      styleHistoryOpen: false
+    })
+    const ok = await settings.saveStyleHead(version)
+    wx.showToast({ title: ok ? '已切换文风' : '切换失败', icon: ok ? 'success' : 'error' })
+    if (!ok) {
+      await this.load()
     }
-  },
-
-  async saveStyleSelection(options) {
-    const ok = await settings.saveStyleSelection(this.data.selectedStyles)
-    if (!options || !options.silent) {
-      wx.showToast({ title: ok ? '已保存' : '保存失败', icon: ok ? 'success' : 'error' })
-      if (ok) {
-        // Update summary to reflect current selection
-        const hasSelections = (this.data.selectedStyles && this.data.selectedStyles.length) > 0
-        let summary = '未选择风格'
-        if (hasSelections) {
-          summary = styleSelection.summary(this.data.selectedStyles)
-        } else if (this.data.singleSelected > 0) {
-          summary = `v${this.data.singleSelected}`
-        }
-        this.setData({
-          styleSummary: summary,
-          styleHistoryOpen: false
-        })
-      }
-    }
-    return ok
   }
 })

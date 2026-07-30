@@ -31,6 +31,17 @@ function stop() {
   recorder().stop()
 }
 
+function discardFile(filePath) {
+  if (!filePath) return Promise.resolve(false)
+  return new Promise((resolve) => {
+    wx.getFileSystemManager().unlink({
+      filePath,
+      success: () => resolve(true),
+      fail: () => resolve(false)
+    })
+  })
+}
+
 function uploadFile(filePath, name, contentType) {
   return new Promise((resolve, reject) => {
     wx.getFileSystemManager().readFile({
@@ -93,6 +104,7 @@ module.exports = {
   start,
   startPcmFrames,
   stop,
+  discardFile,
   uploadFile,
   uploadTags,
   tagsSidecarUpload,

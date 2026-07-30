@@ -43,8 +43,13 @@ test('import page preserves code and exposes preview failure', async () => {
 test('independent import page uses the shared primary action and sends header back to home', () => {
   const root = path.join(__dirname, '..')
   const wxml = fs.readFileSync(path.join(root, 'pages/prompt-import/index.wxml'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/prompt-import/index.wxss'), 'utf8')
   assert.match(wxml, /<page-header[^>]*backToHome/)
   assert.match(wxml, /class="primary import-button"/)
+  assert.match(wxml, /loading="\{\{loading \|\| importing\}\}"/)
+  assert.match(wxml, /\{\{loading \? '正在读取\.\.\.' : '确认导入'\}\}/)
+  assert.doesNotMatch(wxml, /<view class="state" wx:if="\{\{loading\}\}">正在读取\.\.\.<\/view>/)
+  assert.match(css, /\.code-input\s*\{[^}]*height:\s*120rpx;[^}]*box-sizing:\s*border-box;/s)
 })
 
 test('page header relaunches home only when backToHome is enabled', () => {

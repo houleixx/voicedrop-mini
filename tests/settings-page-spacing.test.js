@@ -36,6 +36,16 @@ test('prompt and writing setting pages inherit the shared content start', () => 
   assert.doesNotMatch(read('pages/usage/index.wxss'), /padding-top:/)
 })
 
+test('writing style settings use one active version without multi-style comparison', () => {
+  const markup = read('pages/style-settings/index.wxml')
+  const logic = read('pages/style-settings/index.js')
+
+  assert.match(markup, /v\{\{selectedHead\}\}/)
+  assert.match(markup, /bindtap="selectStyleVersion"/)
+  assert.doesNotMatch(markup, /多风格对比|compareMode|selectedStyles|最多选 3 个/)
+  assert.doesNotMatch(logic, /saveStyleSelection|onCompareModeChange|selectedStyles/)
+})
+
 test('settings card dividers start at the menu text column', () => {
   const styles = read('pages/settings/index.wxss')
 

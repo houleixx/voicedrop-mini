@@ -160,9 +160,13 @@ Page({
   confirmWechatAccountSwitch(result) {
     wx.showModal({
       title: '该微信已关联另一个云端空间',
-      content: '为避免替换当前访问令牌，请先从已登录该账号的设备复制 anon_ 访问令牌，再回到这里切换。',
-      confirmText: '知道了',
-      showCancel: false,
+      content: '是否切换到微信已绑定的云端空间？当前空间会保存在本机，退出微信登录后会恢复当前空间。',
+      confirmText: '切换',
+      cancelText: '保留当前',
+      showCancel: true,
+      success: (choice) => {
+        if (choice.confirm) this.completeSwitchedWechatLogin(result)
+      },
       fail: () => wx.showToast({ title: '账号切换提示打开失败', icon: 'none' })
     })
   },
@@ -179,6 +183,19 @@ Page({
     wx.showToast({ title: '已登录' })
     this.refresh()
     this.loadStats()
+  },
+
+  completeSwitchedWechatLogin(result) {
+    if (!auth.switchToWechatAccount(result.session)) {
+      wx.showModal({
+        title: '微信登录失败',
+        content: '无效会话',
+        showCancel: false
+      })
+      return
+    }
+    wx.showToast({ title: '已切换到微信空间' })
+    wx.reLaunch({ url: '/pages/recordings/index' })
   },
 
   signOut() {

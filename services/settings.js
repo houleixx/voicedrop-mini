@@ -6,7 +6,7 @@ const WECHAT_CREDENTIAL_HELP_URL = 'https://developers.weixin.qq.com/console/'
 
 async function loadStyle() {
   const res = await http.get(`${api.filesBase()}/style`, auth.bearer())
-  return res.statusCode >= 200 && res.statusCode < 300 ? styleFromResponse(res.data) : { style: '', styles: [] }
+  return res.statusCode >= 200 && res.statusCode < 300 ? styleFromResponse(res.data) : { style: '', name: '' }
 }
 
 async function loadStyleHistory() {
@@ -19,24 +19,11 @@ async function saveStyleHead(head) {
   return res.statusCode >= 200 && res.statusCode < 300
 }
 
-async function saveStyleSelection(styles) {
-  const res = await http.putJson(`${api.filesBase()}/style`, auth.bearer(), styleSelectionBody(styles))
-  return res.statusCode >= 200 && res.statusCode < 300
-}
-
-function styleSelectionBody(styles) {
-  return { styles: styles || [] }
-}
-
 function styleFromResponse(data) {
   const obj = data || {}
   return {
     style: obj.style || '',
-    name: obj.name || '',
-    styles: Array.isArray(obj.styles) ? obj.styles.map((item) => {
-      const value = Number.parseInt(item, 10)
-      return Number.isNaN(value) ? 0 : value
-    }) : []
+    name: obj.name || ''
   }
 }
 
@@ -123,8 +110,6 @@ module.exports = {
   loadStyle,
   loadStyleHistory,
   saveStyleHead,
-  saveStyleSelection,
-  styleSelectionBody,
   styleFromResponse,
   saveStyle,
   saveName,

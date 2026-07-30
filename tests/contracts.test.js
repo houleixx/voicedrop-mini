@@ -25,6 +25,7 @@ test('encodes API paths by segment like Android', () => {
   assert.equal(api.photoBase(), 'https://voicedrop.cn/files/api')
   assert.equal(api.photoUrl('photos/a b.jpg'), 'https://voicedrop.cn/files/api/photo/photos/a%20b.jpg')
   assert.equal(api.photoCdnUrl('photos/a b.jpg'), 'https://voicedrop.cn/files/api/photo/photos/a%20b.jpg')
+  assert.equal(api.photoThumbnailUrl('photos/a b.jpg'), 'https://jianshuo.dev/cdn-cgi/image/width=512,quality=60/files/api/photo/photos/a%20b.jpg')
 })
 
 test('sends Mini Program platform header with authenticated requests', () => {
@@ -118,6 +119,13 @@ test('matches Android recording quality silent detection', () => {
   assert.equal(recordingQuality.looksSilent(80, 12), true)
   assert.equal(recordingQuality.looksSilent(1200, 12), false)
   assert.equal(recordingQuality.looksSilent(0, 0.4), false)
+})
+
+test('rejects recordings shorter than four seconds using RecorderManager milliseconds', () => {
+  assert.equal(recordingQuality.durationSeconds(3999), 3.999)
+  assert.equal(recordingQuality.durationSeconds(0, 4000), 4)
+  assert.equal(recordingQuality.isTooShort(3.999), true)
+  assert.equal(recordingQuality.isTooShort(4), false)
 })
 
 test('creates Android-compatible style extraction task names', () => {
@@ -237,27 +245,21 @@ test('recording deletion succeeds when audio deletion succeeds', () => {
   assert.equal(library.recordingDeleteSucceeded(false, true, true, true), false)
 })
 
-test('builds Android-compatible style selection request body', () => {
-  assert.deepEqual(settings.styleSelectionBody([12, 9, 3]), { styles: [12, 9, 3] })
-  assert.deepEqual(settings.styleSelectionBody([]), { styles: [] })
-})
-
 test('builds Android-compatible profile name request body', () => {
   assert.deepEqual(settings.nameBody('  王小明  '), { name: '王小明' })
   assert.deepEqual(settings.nameBody(null), { name: '' })
 })
 
-test('normalizes Android-compatible style response values', () => {
+test('normalizes the current style response without retired multi-style state', () => {
   assert.deepEqual(settings.styleFromResponse({
     style: '  温柔、克制  ',
     name: '王小明',
-    styles: [12, '9', null, 'x', 3]
+    styles: [12, '9']
   }), {
     style: '  温柔、克制  ',
-    name: '王小明',
-    styles: [12, 9, 0, 0, 3]
+    name: '王小明'
   })
-  assert.deepEqual(settings.styleFromResponse(null), { style: '', name: '', styles: [] })
+  assert.deepEqual(settings.styleFromResponse(null), { style: '', name: '' })
 })
 
 test('exposes official WeChat credential help URL like Android', () => {

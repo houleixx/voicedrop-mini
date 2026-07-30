@@ -46,7 +46,10 @@ function createRecorder() {
     pause() { this.pauseCount += 1 },
     resume() { this.resumeCount += 1 },
     emitFrame(frame) { callbacks.frame.slice().forEach((fn) => fn(frame)) },
-    emitStop(result) { callbacks.stop.slice().forEach((fn) => fn(result)) },
+    emitStop(result) {
+      const payload = Object.assign({ duration: 5000 }, result)
+      callbacks.stop.slice().forEach((fn) => fn(payload))
+    },
     emitError(error) { callbacks.error.slice().forEach((fn) => fn(error)) },
     emitPause() { callbacks.pause.slice().forEach((fn) => fn()) },
     emitResume() { callbacks.resume.slice().forEach((fn) => fn()) },
@@ -68,6 +71,10 @@ function loadPage(overrides = {}) {
     startPcmFrames: () => recorder.start(),
     stop: () => { calls.order.push('recorder.stop'); recorder.stop() },
     nameForSession: () => 'session.m4a',
+    discardFile(filePath) {
+      calls.unlinks.push(filePath)
+      return Promise.resolve(true)
+    },
     uploadFile(filePath, name, contentType) {
       calls.order.push('upload')
       calls.uploads.push({ filePath, name, contentType })
@@ -161,6 +168,23 @@ test('record page owns one guarded recording session', () => {
   assert.match(js, /active\.type !== 'record' \|\| active\.id !== this\._recordSessionId/)
   assert.match(js, /app\.globalData\.activeRecorderSession = null/)
   assert.match(js, /if \(this\._recorderBound\) return/)
+})
+
+test('record page discards a recording shorter than four seconds before staging or upload', async () => {
+  const h = loadPage({
+    globalData: { pendingRecordTag: '工作', pendingReplyTo: 'share-1' }
+  })
+
+  h.recorder.emitStop({ tempFilePath: '/tmp/short.pcm', duration: 3999 })
+  await flush()
+
+  assert.deepEqual(h.calls.unlinks, ['/tmp/short.pcm'])
+  assert.equal(h.calls.uploads.length, 0)
+  assert.equal(h.app.globalData.pendingRecordTag, '')
+  assert.equal(h.app.globalData.pendingReplyTo, null)
+  assert.equal(h.calls.modals.length, 1)
+  assert.equal(h.calls.modals[0].title, '录音太短')
+  assert.match(h.calls.modals[0].content, /不足以产生文章/)
 })
 
 test('record page uses the shared page header and custom navigation', () => {

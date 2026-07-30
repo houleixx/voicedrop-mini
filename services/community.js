@@ -4,6 +4,11 @@ const http = require('./request')
 const article = require('../utils/article')
 
 const FEED_CACHE_PREFIX = 'voicedrop.community.feed.v1.'
+const DETAIL_CACHE_PREFIX = 'voicedrop.community.detail.v1.'
+const DETAIL_CACHE_INDEX_PREFIX = 'voicedrop.community.detail-index.v1.'
+const DETAIL_CACHE_LIMIT = 40
+const detailMemoryCache = new Map()
+const detailFetches = new Map()
 
 // The standalone reco Worker intentionally has no SESSION_SECRET and therefore
 // accepts the stable anon capability token, not a WeChat session JWT.
@@ -146,7 +151,10 @@ function cardPosts(feed, tab) {
       authorInitial: Array.from(author)[0] || '匿',
       avatarColor: avatarColor(author),
       paletteClass: `community-palette-${paletteIndex(post.shareId)}`,
-      coverPhotoUrl: post.coverPhotoKey ? api.photoUrl(post.coverPhotoKey) : '',
+      // Feed cards match native clients: prefer the 512px edge rendition.
+      // The page swaps to photoUrl if this optional transform is unavailable.
+      coverPhotoUrl: post.coverPhotoKey ? api.photoThumbnailUrl(post.coverPhotoKey) : '',
+      coverPhotoOriginalUrl: post.coverPhotoKey ? api.photoUrl(post.coverPhotoKey) : '',
       isReply: Boolean(post.replyTo),
       isPrompt: Boolean(post.isPrompt),
       likeCount: Number(feed && feed.likes && feed.likes[post.shareId]) || 0,
@@ -223,15 +231,116 @@ function rankPayload(posts) {
 }
 
 async function get(shareId) {
-  const res = await http.get(`${api.filesBase()}/community/get/${api.path(shareId)}`, auth.bearer())
-  if (res.statusCode < 200 || res.statusCode >= 300) return null
-  return postFromDetail(res.data && (res.data.post || res.data))
+  const id = trim(shareId)
+  if (!id) return null
+  const requestKey = `${detailIdentity()}:${id}`
+  const existing = detailFetches.get(requestKey)
+  if (existing) return existing
+  const promise = (async () => {
+    const res = await http.get(`${api.filesBase()}/community/get/${api.path(id)}`, auth.bearer())
+    if (res.statusCode < 200 || res.statusCode >= 300) return null
+    return cachePost(res.data && (res.data.post || res.data))
+  })()
+  detailFetches.set(requestKey, promise)
+  try {
+    return await promise
+  } finally {
+    if (detailFetches.get(requestKey) === promise) detailFetches.delete(requestKey)
+  }
 }
 
 function postFromDetail(raw) {
   const post = normalizePost(raw)
   if (!post.doc) post.doc = article.parseDoc(post)
   return post
+}
+
+function detailIdentity() {
+  const identity = auth.libraryCacheIdentity
+    ? auth.libraryCacheIdentity()
+    : auth.anonId()
+  return encodeURIComponent(String(identity || 'default'))
+}
+
+function detailCacheKey(shareId) {
+  return `${DETAIL_CACHE_PREFIX}${detailIdentity()}.${encodeURIComponent(trim(shareId))}`
+}
+
+function detailCacheIndexKey() {
+  return `${DETAIL_CACHE_INDEX_PREFIX}${detailIdentity()}`
+}
+
+function detailCacheIndex() {
+  try {
+    if (typeof wx === 'undefined' || typeof wx.getStorageSync !== 'function') return []
+    const raw = wx.getStorageSync(detailCacheIndexKey())
+    const values = typeof raw === 'string' ? JSON.parse(raw || '[]') : raw
+    return Array.isArray(values) ? values.map(trim).filter(Boolean) : []
+  } catch (_) {
+    return []
+  }
+}
+
+function persistDetailCacheIndex(values) {
+  try {
+    if (typeof wx === 'undefined' || typeof wx.setStorageSync !== 'function') return
+    const entries = (values || []).map(trim).filter(Boolean)
+    if (entries.length) wx.setStorageSync(detailCacheIndexKey(), JSON.stringify(entries))
+    else if (typeof wx.removeStorageSync === 'function') wx.removeStorageSync(detailCacheIndexKey())
+  } catch (_) {
+  }
+}
+
+function hasDetailBody(post) {
+  return Boolean(post && post.shareId && (
+    post.isPrompt && post.promptCode ||
+    post.doc && post.doc.articles && post.doc.articles.length
+  ))
+}
+
+function cachePost(raw) {
+  const post = postFromDetail(raw)
+  if (!hasDetailBody(post)) return post
+  const shareId = post.shareId
+  const memoryKey = `${detailIdentity()}:${shareId}`
+  detailMemoryCache.set(memoryKey, post)
+  try {
+    if (typeof wx === 'undefined' || typeof wx.setStorageSync !== 'function') return post
+    const existing = detailCacheIndex().filter((value) => value !== shareId)
+    const overflow = Math.max(0, existing.length - DETAIL_CACHE_LIMIT + 1)
+    existing.slice(0, overflow).forEach((oldShareId) => {
+      detailMemoryCache.delete(`${detailIdentity()}:${oldShareId}`)
+      if (typeof wx.removeStorageSync === 'function') {
+        try { wx.removeStorageSync(detailCacheKey(oldShareId)) } catch (_) {}
+      }
+    })
+    const next = existing.slice(overflow).concat(shareId)
+    wx.setStorageSync(detailCacheKey(shareId), JSON.stringify(post))
+    persistDetailCacheIndex(next)
+  } catch (_) {
+  }
+  return post
+}
+
+function cachedPost(shareId) {
+  const id = trim(shareId)
+  if (!id) return null
+  const memoryKey = `${detailIdentity()}:${id}`
+  const memory = detailMemoryCache.get(memoryKey)
+  if (hasDetailBody(memory)) return memory
+  try {
+    if (typeof wx === 'undefined' || typeof wx.getStorageSync !== 'function') return null
+    const raw = wx.getStorageSync(detailCacheKey(id))
+    if (!raw) return null
+    const post = postFromDetail(typeof raw === 'string' ? JSON.parse(raw) : raw)
+    if (!hasDetailBody(post)) return null
+    detailMemoryCache.set(memoryKey, post)
+    const index = detailCacheIndex().filter((value) => value !== id).concat(id)
+    persistDetailCacheIndex(index)
+    return post
+  } catch (_) {
+    return null
+  }
 }
 
 function normalizePost(raw) {
@@ -372,6 +481,8 @@ module.exports = {
   paletteIndex,
   rankPayload,
   get,
+  cachePost,
+  cachedPost,
   postFromDetail,
   normalizePost,
   formatCommunityDate,

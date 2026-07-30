@@ -36,12 +36,118 @@ test('home loading states show a spinner above the loading text', () => {
   const spinner = ruleBody(css, '.loading-spinner')
 
   assert.match(wxml, /<view wx:elif="\{\{loading\}\}" class="notice loading-notice">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>加载中\.\.\.<\/text>\s*<\/view>/)
-  assert.match(wxml, /<view wx:elif="\{\{communityLoading\}\}" class="notice loading-notice">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>正在加载\.\.\.<\/text>\s*<\/view>/)
+  assert.match(wxml, /<view wx:elif="\{\{communityLoading \|\| !communityLoaded\}\}" class="notice loading-notice">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>正在加载\.\.\.<\/text>\s*<\/view>/)
   assert.match(loadingNotice, /display:\s*flex;/)
   assert.match(loadingNotice, /flex-direction:\s*column;/)
   assert.match(spinner, /border-top-color:\s*#c7432f;/)
   assert.match(spinner, /animation:\s*loading-spin\s+0\.8s\s+linear\s+infinite;/)
   assert.match(css, /@keyframes loading-spin\s*\{[\s\S]*transform:\s*rotate\(360deg\);[\s\S]*\}/)
+})
+
+test('community starts in loading state instead of showing its empty state before the first response', () => {
+  const { page } = freshRecordingsPage()
+  const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
+
+  assert.equal(page.data.communityLoaded, false)
+  assert.equal(page.data.communityPosts.length, 0)
+  assert.match(wxml, /wx:elif="\{\{communityLoading \|\| !communityLoaded\}\}"/)
+  assert.match(wxml, /wx:elif="\{\{communityPosts\.length === 0\}\}"/)
+})
+
+test('recordings restores a cached snapshot before starting its silent refresh', () => {
+  const library = require('../services/library')
+  const originalCachedRecordings = library.cachedRecordings
+  const source = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  library.cachedRecordings = () => [{
+    stem,
+    audioName: `${stem}.m4a`,
+    uploaded: '2026-06-18T06:31:00Z',
+    hasArticles: true,
+    tags: ['工作'],
+    articleTitle: '缓存文章',
+    rowTitle: '缓存文章'
+  }]
+
+  try {
+    const { page } = freshRecordingsPage()
+    const coverLoads = []
+    const ctx = Object.assign({}, page, {
+      data: Object.assign({}, page.data),
+      topLevelUiRendered: false,
+      setData(update) { Object.assign(this.data, update) },
+      loadRecordingCovers(records) { coverLoads.push(records) },
+      commandSession: { setRefs() {} }
+    })
+
+    assert.equal(page.restoreCachedRecordings.call(ctx), true)
+    assert.equal(ctx.topLevelUiRendered, true)
+    assert.equal(ctx.data.loading, false)
+    assert.equal(ctx.data.records[0].rowTitle, '缓存文章')
+    assert.deepEqual(ctx.data.homeTags, ['工作'])
+    assert.equal(coverLoads.length, 1)
+    assert.match(source, /const restored = this\.restoreCachedRecordings\(\)\s+this\.load\(restored \? \{ silent: true, keepDataOnError: true \} : undefined\)/)
+  } finally {
+    library.cachedRecordings = originalCachedRecordings
+  }
+})
+
+test('recordings first onShow does not duplicate the refresh already started by onLoad', () => {
+  const { page } = freshRecordingsPage()
+  let loads = 0
+  const ctx = Object.assign({}, page, {
+    data: Object.assign({}, page.data),
+    _awaitingInitialShow: true,
+    drainPendingRecordingUploads() {},
+    resetAccountSessionsIfNeeded() {},
+    applyPendingHomeTab() {},
+    currentCommandRefs: () => [],
+    statusSession: { connect() {} },
+    commandSession: { connect() {}, setRefs() {} },
+    load() { loads += 1 }
+  })
+
+  page.onShow.call(ctx)
+
+  assert.equal(loads, 0)
+  assert.equal(ctx._awaitingInitialShow, false)
+})
+
+test('recordings serializes overlapping refresh triggers into one follow-up request', async () => {
+  const library = require('../services/library')
+  const originalList = library.list
+  const pending = []
+  let listCalls = 0
+  library.list = () => {
+    listCalls += 1
+    return new Promise((resolve) => pending.push(resolve))
+  }
+
+  try {
+    const { page } = freshRecordingsPage()
+    const ctx = Object.assign({}, page, {
+      data: Object.assign({}, page.data),
+      setData(update) { Object.assign(this.data, update) },
+      repairPhotoMarkers() {},
+      loadRecordingCovers() {},
+      enrichRecordingMeta() {},
+      publishPendingReplies() {}
+    })
+    const options = { silent: true, keepDataOnError: true, skipPhotoRepair: true }
+    const first = page.load.call(ctx, options)
+    const second = page.load.call(ctx, options)
+    const third = page.load.call(ctx, options)
+
+    assert.equal(listCalls, 1)
+    pending.shift()([])
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(listCalls, 2)
+    pending.shift()([])
+    await Promise.all([first, second, third])
+    assert.equal(listCalls, 2)
+  } finally {
+    library.list = originalList
+  }
 })
 
 test('recordings load starts photo marker repair in the background before enriching metadata', () => {
@@ -462,6 +568,39 @@ test('community combines overlapping refreshes into one network request', async 
     assert.deepEqual(ctx.data.communityPosts.map((post) => post.shareId), ['fresh'])
   } finally {
     community.loadFeed = originalLoadFeed
+  }
+})
+
+test('community warms at most four visible details with two concurrent requests', async () => {
+  const community = require('../services/community')
+  const originalGet = community.get
+  const originalCachedPost = community.cachedPost
+  const calls = []
+  let active = 0
+  let maxActive = 0
+  community.cachedPost = () => null
+  community.get = async (shareId) => {
+    calls.push(shareId)
+    active += 1
+    maxActive = Math.max(maxActive, active)
+    await new Promise((resolve) => setImmediate(resolve))
+    active -= 1
+    return { shareId }
+  }
+  try {
+    const { page } = freshRecordingsPage()
+    const ctx = Object.assign({}, page, {
+      _pageUnloaded: false
+    })
+    const posts = Array.from({ length: 6 }, (_, index) => ({ shareId: `share-${index + 1}` }))
+
+    await page.warmCommunityDetails.call(ctx, posts)
+
+    assert.deepEqual(calls, ['share-1', 'share-2', 'share-3', 'share-4'])
+    assert.equal(maxActive, 2)
+  } finally {
+    community.get = originalGet
+    community.cachedPost = originalCachedPost
   }
 })
 

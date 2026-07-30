@@ -5,10 +5,14 @@ const article = require('../utils/article')
 const recording = require('../utils/recording')
 
 const META_CACHE_PREFIX = 'voicedrop.library.meta.v1.'
+const LIST_CACHE_PREFIX = 'voicedrop.library.list.v1.'
 const DOC_CACHE_PREFIX = 'voicedrop.library.doc.v1.'
 const DOC_CACHE_INDEX_PREFIX = 'voicedrop.library.doc-index.v1.'
 const PHOTO_CACHE_INDEX_PREFIX = 'voicedrop.library.photo-index.v1.'
+const AUDIO_CACHE_INDEX_PREFIX = 'voicedrop.library.audio-index.v1.'
+const DOC_CACHE_LIMIT = 40
 const PHOTO_CACHE_LIMIT = 160
+const AUDIO_CACHE_LIMIT = 8
 const META_CONCURRENCY = 5
 let metaCacheIdentity = ''
 let titleCache = {}
@@ -18,6 +22,12 @@ let staleMetaKeys = new Set()
 let cachedScope = ''
 let cachedScopeToken = ''
 let photoCacheGenerations = {}
+let missingPhotoThumbnails = new Set()
+let docCacheGenerations = {}
+let audioCacheGenerations = {}
+const docFetches = new Map()
+const audioDownloads = new Map()
+const photoDownloads = new Map()
 
 async function list() {
   ensureMetaCache()
@@ -25,7 +35,68 @@ async function list() {
   if (!records) records = await legacyRecordings()
   records.sort((a, b) => (b.uploaded || '').localeCompare(a.uploaded || '') || b.audioName.localeCompare(a.audioName))
   applyCachedArticleMeta(records)
+  storeRecordingsSnapshot(records)
   return records
+}
+
+function listCacheKey() {
+  return `${LIST_CACHE_PREFIX}${docCacheIdentity()}`
+}
+
+function recordingSnapshot(records) {
+  return {
+    recordings: (records || [])
+      .filter((rec) => rec && rec.audioName && !rec.uploading)
+      .map((rec) => ({
+        name: rec.audioName,
+        uploaded: rec.uploaded || '',
+        hasArticles: Boolean(rec.hasArticles),
+        isEmpty: Boolean(rec.isEmpty),
+        blocked: Boolean(rec.blocked),
+        hasTags: Boolean(rec.hasTags)
+      }))
+  }
+}
+
+function storeRecordingsSnapshot(records) {
+  if (typeof wx === 'undefined' || !wx.setStorageSync) return
+  try {
+    wx.setStorageSync(listCacheKey(), JSON.stringify(recordingSnapshot(records)))
+  } catch (_) {
+  }
+}
+
+function cachedRecordings() {
+  ensureMetaCache()
+  if (typeof wx === 'undefined' || !wx.getStorageSync) return null
+  try {
+    const raw = wx.getStorageSync(listCacheKey())
+    if (!raw) return null
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!data || !Array.isArray(data.recordings)) return null
+    const records = data.recordings
+      .filter((item) => recording.isRecordingFile(item && item.name))
+      .map(recording.fromRecordingIndex)
+      .sort((a, b) => (b.uploaded || '').localeCompare(a.uploaded || '') || b.audioName.localeCompare(a.audioName))
+    applyCachedArticleMeta(records)
+    return records
+  } catch (_) {
+    return null
+  }
+}
+
+function removeRecordingFromSnapshot(audioName) {
+  const records = cachedRecordings()
+  if (!Array.isArray(records)) return
+  storeRecordingsSnapshot(records.filter((rec) => rec.audioName !== audioName))
+}
+
+function updateRecordingSnapshot(stem, update) {
+  const records = cachedRecordings()
+  if (!Array.isArray(records)) return
+  storeRecordingsSnapshot(records.map((rec) => rec.stem === stem
+    ? Object.assign({}, rec, update || {})
+    : rec))
 }
 
 async function indexedRecordings() {
@@ -48,10 +119,27 @@ async function legacyRecordings() {
 }
 
 async function fetchDoc(stem) {
-  const res = await http.get(`${api.filesBase()}/articles/${api.path(stem)}`, auth.bearer())
-  if (res.statusCode < 200 || res.statusCode >= 300) return null
-  cacheDoc(stem, res.data)
-  return article.parseDoc(res.data)
+  const normalizedStem = String(stem || '').trim()
+  if (!normalizedStem) return null
+  const requestKey = docRequestKey(normalizedStem)
+  const existing = docFetches.get(requestKey)
+  if (existing) return existing.promise
+  const generation = Number(docCacheGenerations[requestKey] || 0)
+  const promise = (async () => {
+    const res = await http.get(`${api.filesBase()}/articles/${api.path(normalizedStem)}`, auth.bearer())
+    if (res.statusCode < 200 || res.statusCode >= 300) return null
+    if (docRequestKey(normalizedStem) !== requestKey ||
+        Number(docCacheGenerations[requestKey] || 0) !== generation) return null
+    cacheDoc(normalizedStem, res.data)
+    return article.parseDoc(res.data)
+  })()
+  docFetches.set(requestKey, { stem: normalizedStem, promise })
+  try {
+    return await promise
+  } finally {
+    const current = docFetches.get(requestKey)
+    if (current && current.promise === promise) docFetches.delete(requestKey)
+  }
 }
 
 async function fetchDocByArticleKey(articleKey) {
@@ -119,7 +207,7 @@ async function mapLimit(items, limit, worker) {
 }
 
 function metaIdentity() {
-  return auth.anonId ? auth.anonId() : 'default'
+  return docCacheIdentity()
 }
 
 function ensureMetaCache() {
@@ -155,7 +243,14 @@ function persistMetaCache() {
 }
 
 function docCacheIdentity() {
-  return auth.anonId ? auth.anonId() : 'default'
+  const identity = auth.libraryCacheIdentity
+    ? auth.libraryCacheIdentity()
+    : (auth.anonId ? auth.anonId() : 'default')
+  return encodeURIComponent(String(identity || 'default'))
+}
+
+function docRequestKey(stem) {
+  return `${docCacheIdentity()}:${String(stem || '')}`
 }
 
 function docCacheKey(stem) {
@@ -168,6 +263,10 @@ function docCacheIndexKey() {
 
 function photoCacheIndexKey() {
   return `${PHOTO_CACHE_INDEX_PREFIX}${docCacheIdentity()}`
+}
+
+function audioCacheIndexKey(identity) {
+  return `${AUDIO_CACHE_INDEX_PREFIX}${identity || docCacheIdentity()}`
 }
 
 function photoCacheIndex() {
@@ -203,6 +302,95 @@ function deleteCachedPhotoFile(path) {
   }
 }
 
+function audioCacheIndex(identity) {
+  try {
+    const raw = wx.getStorageSync(audioCacheIndexKey(identity))
+    const values = typeof raw === 'string' ? JSON.parse(raw || '[]') : raw
+    return Array.isArray(values)
+      ? values.filter((item) => item && item.key && item.path)
+      : []
+  } catch (_) {
+    return []
+  }
+}
+
+function persistAudioCacheIndex(entries, identity) {
+  try {
+    if (entries.length) wx.setStorageSync(audioCacheIndexKey(identity), JSON.stringify(entries))
+    else wx.removeStorageSync(audioCacheIndexKey(identity))
+  } catch (_) {
+  }
+}
+
+function cachedAudioPath(key, identity) {
+  if (!key) return ''
+  const entries = audioCacheIndex(identity)
+  const hit = entries.find((item) => item.key === key)
+  if (!hit) return ''
+  try {
+    const fs = wx.getFileSystemManager && wx.getFileSystemManager()
+    if (fs && fs.accessSync) fs.accessSync(hit.path)
+    const next = entries.filter((item) => item.key !== key)
+    next.push(Object.assign({}, hit, { at: Date.now() }))
+    persistAudioCacheIndex(next, identity)
+    return hit.path
+  } catch (_) {
+    persistAudioCacheIndex(entries.filter((item) => item.key !== key), identity)
+    return ''
+  }
+}
+
+function removeCachedAudio(keys) {
+  const identity = docCacheIdentity()
+  const entries = audioCacheIndex(identity)
+  const requested = (keys || []).filter(Boolean)
+  const targets = new Set(requested.length ? requested : entries.map((item) => item.key))
+  targets.forEach((key) => {
+    const generationKey = `${identity}:${key}`
+    audioCacheGenerations[generationKey] = Number(audioCacheGenerations[generationKey] || 0) + 1
+    audioDownloads.delete(generationKey)
+  })
+  entries.forEach((item) => {
+    if (targets.has(item.key)) deleteCachedPhotoFile(item.path)
+  })
+  persistAudioCacheIndex(entries.filter((item) => !targets.has(item.key)), identity)
+}
+
+function persistDownloadedAudio(key, tempFilePath, generation, identity) {
+  return new Promise((resolve) => {
+    const fs = wx.getFileSystemManager && wx.getFileSystemManager()
+    const saveFile = fs && fs.saveFile ? fs.saveFile.bind(fs) : wx.saveFile
+    if (!saveFile) {
+      resolve(tempFilePath)
+      return
+    }
+    saveFile({
+      tempFilePath,
+      success: (res) => {
+        const savedPath = res.savedFilePath || res.tempFilePath || tempFilePath
+        const generationKey = `${identity}:${key}`
+        if (docCacheIdentity() !== identity ||
+            Number(audioCacheGenerations[generationKey] || 0) !== generation) {
+          deleteCachedPhotoFile(savedPath)
+          resolve(tempFilePath)
+          return
+        }
+        const entries = audioCacheIndex(identity)
+        const previous = entries.find((item) => item.key === key)
+        const next = entries.filter((item) => item.key !== key)
+        next.push({ key, path: savedPath, at: Date.now() })
+        const kept = next.slice(-AUDIO_CACHE_LIMIT)
+        next.slice(0, Math.max(0, next.length - AUDIO_CACHE_LIMIT))
+          .forEach((item) => deleteCachedPhotoFile(item.path))
+        if (previous && previous.path !== savedPath) deleteCachedPhotoFile(previous.path)
+        persistAudioCacheIndex(kept, identity)
+        resolve(savedPath)
+      },
+      fail: () => resolve(tempFilePath)
+    })
+  })
+}
+
 function cachedPhotoPath(key, scope) {
   const fullKey = scopedPhotoKey(key, scope)
   if (!fullKey) return ''
@@ -224,12 +412,17 @@ function removeCachedPhotos(fullKeys) {
   if (!targets.size) return
   targets.forEach((key) => {
     photoCacheGenerations[key] = Number(photoCacheGenerations[key] || 0) + 1
+    photoCacheGenerations[`${key}#w512`] = Number(photoCacheGenerations[`${key}#w512`] || 0) + 1
+  })
+  photoDownloads.forEach((item, requestKey) => {
+    const originalKey = item.cacheKey.replace(/#w512$/, '')
+    if (targets.has(item.cacheKey) || targets.has(originalKey)) photoDownloads.delete(requestKey)
   })
   const entries = photoCacheIndex()
   entries.forEach((item) => {
-    if (targets.has(item.key)) deleteCachedPhotoFile(item.path)
+    if (targets.has(item.key) || targets.has(item.key.replace(/#w512$/, ''))) deleteCachedPhotoFile(item.path)
   })
-  persistPhotoCacheIndex(entries.filter((item) => !targets.has(item.key)))
+  persistPhotoCacheIndex(entries.filter((item) => !targets.has(item.key) && !targets.has(item.key.replace(/#w512$/, ''))))
 }
 
 function persistDownloadedPhoto(fullKey, tempFilePath, generation) {
@@ -246,7 +439,7 @@ function persistDownloadedPhoto(fullKey, tempFilePath, generation) {
         const savedPath = res.savedFilePath || res.tempFilePath || tempFilePath
         if (Number(photoCacheGenerations[fullKey] || 0) !== generation) {
           deleteCachedPhotoFile(savedPath)
-          resolve(savedPath)
+          resolve('')
           return
         }
         const entries = photoCacheIndex()
@@ -290,21 +483,51 @@ function docCacheIndex() {
   }
 }
 
+function persistDocCacheIndex(stems) {
+  try {
+    if (stems.length) wx.setStorageSync(docCacheIndexKey(), JSON.stringify(stems))
+    else wx.removeStorageSync(docCacheIndexKey())
+    return true
+  } catch (_) {
+    return false
+  }
+}
+
 function cacheDoc(stem, doc) {
   if (!stem || !doc || typeof wx === 'undefined' || !wx.setStorageSync) return null
+  let raw
+  let parsed
   try {
-    const previous = cachedDoc(stem)
-    const raw = typeof doc === 'string' ? doc : JSON.stringify(doc)
-    const parsed = article.parseDoc(typeof doc === 'string' ? JSON.parse(doc || '{}') : doc)
-    if (!parsed || !parsed.articles || !parsed.articles.length) return null
-    wx.setStorageSync(docCacheKey(stem), raw)
-    const index = docCacheIndex()
-    if (!index.includes(stem)) wx.setStorageSync(docCacheIndexKey(), JSON.stringify(index.concat(stem)))
-    const nextPhotos = new Set(articlePhotoKeys(parsed))
-    removeCachedPhotos(articlePhotoKeys(previous).filter((key) => !nextPhotos.has(key)))
-    return parsed
+    raw = typeof doc === 'string' ? doc : JSON.stringify(doc)
+    parsed = article.parseDoc(typeof doc === 'string' ? JSON.parse(doc || '{}') : doc)
   } catch (_) {
     return null
+  }
+  if (!parsed || !parsed.articles || !parsed.articles.length) return null
+  const previous = cachedDoc(stem)
+  let candidates = docCacheIndex().filter((value) => value !== stem)
+  const overflow = Math.max(0, candidates.length - DOC_CACHE_LIMIT + 1)
+  if (overflow > 0) {
+    removeCachedDocs(candidates.slice(0, overflow))
+    candidates = docCacheIndex().filter((value) => value !== stem)
+  }
+  while (true) {
+    let wroteDoc = false
+    try {
+      wx.setStorageSync(docCacheKey(stem), raw)
+      wroteDoc = true
+      if (!persistDocCacheIndex(candidates.concat(stem))) throw new Error('doc cache index write failed')
+      const nextPhotos = new Set(articlePhotoKeys(parsed))
+      removeCachedPhotos(articlePhotoKeys(previous).filter((key) => !nextPhotos.has(key)))
+      return parsed
+    } catch (_) {
+      if (wroteDoc) {
+        try { wx.removeStorageSync(docCacheKey(stem)) } catch (_) {}
+      }
+      if (!candidates.length) return null
+      removeCachedDocs([candidates[0]])
+      candidates = docCacheIndex().filter((value) => value !== stem)
+    }
   }
 }
 
@@ -330,11 +553,21 @@ function removeCachedDocs(stems) {
     try { wx.removeStorageSync(docCacheKey(stem)) } catch (_) {}
   })
   const remaining = existing.filter((stem) => !targets.includes(stem))
-  try {
-    if (remaining.length) wx.setStorageSync(docCacheIndexKey(), JSON.stringify(remaining))
-    else wx.removeStorageSync(docCacheIndexKey())
-  } catch (_) {
-  }
+  persistDocCacheIndex(remaining)
+}
+
+function invalidateDocFetches(stems) {
+  const requested = Array.isArray(stems) ? stems.filter(Boolean) : []
+  const targets = requested.length
+    ? requested
+    : Array.from(new Set(docCacheIndex().concat(
+      Array.from(docFetches.values()).map((item) => item.stem)
+    )))
+  targets.forEach((stem) => {
+    const requestKey = docRequestKey(stem)
+    docCacheGenerations[requestKey] = Number(docCacheGenerations[requestKey] || 0) + 1
+    docFetches.delete(requestKey)
+  })
 }
 
 function invalidateArticleCaches(stems, options) {
@@ -354,7 +587,10 @@ function invalidateArticleCaches(stems, options) {
     }
   }
   persistMetaCache()
-  if (!(options && options.keepDoc)) removeCachedDocs(values)
+  if (!(options && options.keepDoc)) {
+    invalidateDocFetches(values)
+    removeCachedDocs(values)
+  }
 }
 
 async function deleteRecording(rec) {
@@ -366,7 +602,11 @@ async function deleteRecording(rec) {
     httpOk(results[2]),
     httpOk(results[3])
   )
-  if (ok) invalidateArticleCaches([rec.stem])
+  if (ok) {
+    invalidateArticleCaches([rec.stem])
+    removeCachedAudio([rec.audioName])
+    removeRecordingFromSnapshot(rec.audioName)
+  }
   return ok
 }
 
@@ -374,12 +614,35 @@ async function deleteArticle(rec) {
   const keys = [recording.articleKey(rec.stem), recording.srtKey(rec.stem), recording.emptyKey(rec.stem), recording.tagsKey(rec.stem)]
   await Promise.all(keys.map((key) => http.del(`${api.filesBase()}/file/${api.path(key)}`, auth.bearer()).catch(() => null)))
   invalidateArticleCaches([rec.stem])
+  updateRecordingSnapshot(rec.stem, { hasArticles: false, isEmpty: false })
   return true
 }
 
 async function deleteAccount() {
   const res = await http.postJson(`${api.filesBase()}/account/delete`, auth.bearer())
-  return res.statusCode >= 200 && res.statusCode < 300
+  const ok = res.statusCode >= 200 && res.statusCode < 300
+  if (ok) clearLocalLibraryCaches()
+  return ok
+}
+
+function clearLocalLibraryCaches() {
+  invalidateDocFetches([])
+  removeCachedDocs([])
+  removeCachedPhotos(photoCacheIndex().map((item) => item.key))
+  removeCachedAudio([])
+  try {
+    wx.removeStorageSync(listCacheKey())
+    wx.removeStorageSync(`${META_CACHE_PREFIX}${docCacheIdentity()}`)
+  } catch (_) {
+  }
+  metaCacheIdentity = ''
+  titleCache = {}
+  tagsCache = {}
+  coverCache = {}
+  staleMetaKeys = new Set()
+  cachedScope = ''
+  cachedScopeToken = ''
+  missingPhotoThumbnails = new Set()
 }
 
 async function shareUrl(rec, section) {
@@ -501,14 +764,45 @@ function downloadTempFile(key) {
   })
 }
 
+function downloadAudioFile(key) {
+  const normalizedKey = String(key || '').trim()
+  if (!normalizedKey) return Promise.reject(new Error('audio key required'))
+  const identity = docCacheIdentity()
+  const cachedPath = cachedAudioPath(normalizedKey, identity)
+  if (cachedPath) return Promise.resolve(cachedPath)
+  const generationKey = `${identity}:${normalizedKey}`
+  const existing = audioDownloads.get(generationKey)
+  if (existing) return existing
+  const generation = Number(audioCacheGenerations[generationKey] || 0)
+  const promise = downloadTempFile(normalizedKey)
+    .then((tempFilePath) => persistDownloadedAudio(
+      normalizedKey,
+      tempFilePath,
+      generation,
+      identity
+    ))
+  audioDownloads.set(generationKey, promise)
+  return promise.finally(() => {
+    if (audioDownloads.get(generationKey) === promise) audioDownloads.delete(generationKey)
+  })
+}
+
 function downloadPhotoTemp(key, scope, options) {
   const scopedKey = scopedPhotoKey(key, scope)
-  const generation = Number(photoCacheGenerations[scopedKey] || 0)
-  const cachedPath = !(options && options.cacheBust) ? cachedPhotoPath(key, scope) : ''
+  const preferThumb = Boolean(options && options.preferThumb)
+  const cacheKey = preferThumb ? `${scopedKey}#w512` : scopedKey
+  const generation = Number(photoCacheGenerations[cacheKey] || 0)
+  const cachedPath = !(options && options.cacheBust) ? cachedPhotoPath(cacheKey) : ''
   if (cachedPath) return Promise.resolve(cachedPath)
-  return new Promise((resolve, reject) => {
-    const cacheBust = options && options.cacheBust
-    const urls = Array.from(new Set([api.photoCdnUrl(scopedKey), api.photoUrl(scopedKey)]))
+  const cacheBust = options && options.cacheBust
+  const requestKey = `${cacheKey}:${cacheBust || ''}`
+  const existing = photoDownloads.get(requestKey)
+  if (existing) return existing.promise
+  const promise = new Promise((resolve, reject) => {
+    const originalUrls = [api.photoCdnUrl(scopedKey), api.photoUrl(scopedKey)]
+    const thumbnailUrls = preferThumb && !missingPhotoThumbnails.has(scopedKey)
+      ? [api.photoThumbnailUrl(scopedKey)] : []
+    const urls = Array.from(new Set(thumbnailUrls.concat(originalUrls)))
       .map((baseUrl) => cacheBust ? `${baseUrl}?v=${encodeURIComponent(cacheBust)}` : baseUrl)
     const attempt = (index, previousError) => {
       const url = urls[index]
@@ -521,21 +815,29 @@ function downloadPhotoTemp(key, scope, options) {
         success: (res) => {
           logPhotoUpload('download-photo-response', { key, scope, scopedKey, url, statusCode: res.statusCode, tempFilePath: res.tempFilePath || '' })
           if (res.statusCode >= 200 && res.statusCode < 300 && res.tempFilePath) {
-            persistDownloadedPhoto(scopedKey, res.tempFilePath, generation).then(resolve)
+            const fetchedThumbnail = index < thumbnailUrls.length
+            persistDownloadedPhoto(fetchedThumbnail ? cacheKey : scopedKey, res.tempFilePath, generation).then(resolve)
             return
           }
+          if (index < thumbnailUrls.length) missingPhotoThumbnails.add(scopedKey)
           const error = new Error(`photo download HTTP ${res.statusCode}`)
           if (index + 1 < urls.length) attempt(index + 1, error)
           else reject(previousError || error)
         },
         fail: (error) => {
           logPhotoUpload('download-photo-fail', { key, scope, scopedKey, url, error })
+          if (index < thumbnailUrls.length) missingPhotoThumbnails.add(scopedKey)
           if (index + 1 < urls.length) attempt(index + 1, error)
           else reject(previousError || error)
         }
       })
     }
     attempt(0)
+  })
+  photoDownloads.set(requestKey, { cacheKey, promise })
+  return promise.finally(() => {
+    const current = photoDownloads.get(requestKey)
+    if (current && current.promise === promise) photoDownloads.delete(requestKey)
   })
 }
 
@@ -691,6 +993,8 @@ function uploadPhotoRaw(filePath, key) {
 
 module.exports = {
   list,
+  cachedRecordings,
+  storeRecordingsSnapshot,
   enrichArticleMeta,
   invalidateArticleCaches,
   cacheDoc,
@@ -717,6 +1021,9 @@ module.exports = {
   scopedPhotoKey,
   uploadPhoto,
   downloadTempFile,
+  downloadAudioFile,
+  cachedAudioPath,
+  removeCachedAudio,
   downloadPhotoTemp,
   cachedPhotoPath,
   removeCachedPhotos,

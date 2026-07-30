@@ -334,7 +334,10 @@ Page({
 
   onLoad(options) {
     const stem = decodeURIComponent(options.stem || '')
-    const rec = app.globalData.currentRecording || {
+    const localRecording = app.globalData.currentRecording
+    this.openedFromSharedArticle = String(options.fromShare || '') === '1' || !localRecording || localRecording.stem !== stem || app.globalData.sharedArticleStem === stem
+    if (app.globalData.sharedArticleStem === stem) app.globalData.sharedArticleStem = ''
+    const rec = localRecording || {
       stem,
       audioName: stem ? `${stem}.m4a` : ''
     }
@@ -437,6 +440,10 @@ Page({
   },
 
   goBack() {
+    if (this.openedFromSharedArticle) {
+      wx.reLaunch({ url: '/pages/recordings/index?tab=community' })
+      return
+    }
     const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : []
     const previous = pages && pages.length > 1 ? pages[pages.length - 2] : null
     if (previous && previous.route === 'pages/insert-photo/index') {
@@ -460,10 +467,11 @@ Page({
       wx.redirectTo({ url: '/pages/recordings/index' })
       return
     }
-    // If there's no previous page, or navigateBack would leave us
-    // on the same page, redirect to recordings instead.
+    // A detail page opened from a WeChat share is the root page of the
+    // mini program. There is no page for navigateBack to pop, so return to
+    // the VD community feed where shared articles are discovered.
     if (!previous) {
-      wx.redirectTo({ url: '/pages/recordings/index' })
+      wx.reLaunch({ url: '/pages/recordings/index?tab=community' })
       return
     }
     wx.navigateBack()
@@ -472,7 +480,7 @@ Page({
   onShareAppMessage() {
     return {
       title: this.data.current && this.data.current.title || 'VoiceDrop 文章',
-      path: `/pages/detail/index?stem=${encodeURIComponent(this.data.rec && this.data.rec.stem || '')}`
+      path: `/pages/detail/index?stem=${encodeURIComponent(this.data.rec && this.data.rec.stem || '')}&fromShare=1`
     }
   },
 
@@ -850,7 +858,12 @@ Page({
       return
     }
     const text = articleUtil.shareText(this.data.doc.articles)
-    wx.setClipboardData({ data: articleUtil.shareTextForTarget(text, url, 'wechat') })
+    wx.setClipboardData({
+      data: articleUtil.shareTextForTarget(text, url, 'wechat'),
+      success: () => {
+        if (wx.hideToast) wx.hideToast()
+      }
+    })
   },
 
   async togglePlayback() {
@@ -869,7 +882,7 @@ Page({
     audioSessionReset.preparePlayback()
     wx.showLoading({ title: '加载音频' })
     try {
-      const filePath = this._playbackFilePath || await library.downloadTempFile(this.data.rec.audioName)
+      const filePath = this._playbackFilePath || await library.downloadAudioFile(this.data.rec.audioName)
       this._playbackFilePath = filePath
       this.audioContext = wx.createInnerAudioContext()
       this.audioContext.src = filePath
@@ -1003,7 +1016,7 @@ Page({
       const currentVersion = this.data.current && this.data.current.style != null
         ? Number(this.data.current.style)
         : null
-      const rows = styleSelection.selectedRows(versions, currentVersion != null ? [currentVersion] : [])
+      const rows = styleSelection.selectedRows(versions, currentVersion)
         .map((row) => Object.assign({}, row, {
           generated: !!generated[row.v],
           actionText: styleRewrite.buttonText(row.v, generated)

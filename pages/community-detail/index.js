@@ -5,6 +5,7 @@ const articleUtil = require('../../utils/article')
 const blockStore = require('../../utils/block-store')
 const communityReply = require('../../utils/community-reply')
 const pendingReplies = require('../../utils/pending-replies')
+const recordingQuality = require('../../utils/recording-quality')
 const prefs = require('../../utils/prefs')
 const api = require('../../services/api')
 const audioConsentFlow = require('../../utils/audio-consent-flow')
@@ -49,6 +50,7 @@ Page({
 
   onLoad(options) {
     const shareId = decodeURIComponent(options.shareId || '')
+    this.openedFromShare = String(options.fromShare || '') === '1'
     const post = app.globalData.currentCommunityPost
     const initialPost = post && (!shareId || post.shareId === shareId) ? post : null
     const sysInfo = wx.getSystemInfoSync()
@@ -85,7 +87,7 @@ Page({
   onShareAppMessage() {
     return {
       title: this.data.article && this.data.article.title || this.data.post && this.data.post.title || '社区文章',
-      path: `/pages/community-detail/index?shareId=${encodeURIComponent(this.data.shareId || '')}`
+      path: `/pages/community-detail/index?shareId=${encodeURIComponent(this.data.shareId || '')}&fromShare=1`
     }
   },
 
@@ -99,6 +101,10 @@ Page({
   goBack() {
     if (this.data.replyRecording) {
       this.cancelReplyRecording()
+      return
+    }
+    if (this.openedFromShare) {
+      wx.reLaunch({ url: '/pages/recordings/index?tab=community' })
       return
     }
     wx.navigateBack()
@@ -131,34 +137,77 @@ Page({
       this.setData({ loading: false })
       return
     }
-    this.setData({ loading: true })
+    const seq = (this._communityDetailLoadSeq || 0) + 1
+    this._communityDetailLoadSeq = seq
+    const summaryPost = this.data.post ? community.postFromDetail(this.data.post) : null
+    const cachedPost = community.cachedPost ? community.cachedPost(shareId) : null
+    let visiblePost = cachedPost || (summaryPost && summaryPost.doc &&
+      summaryPost.doc.articles && summaryPost.doc.articles.length ? summaryPost : null)
+    if (visiblePost) {
+      const cachedSections = this.articleSections(visiblePost, visiblePost.doc)
+      this.setData({
+        post: visiblePost,
+        article: articleUtil.firstArticle(visiblePost.doc),
+        blocks: cachedSections.length ? cachedSections[0].blocks : [],
+        sections: cachedSections,
+        loading: false
+      })
+    } else {
+      this.setData({ loading: true })
+    }
+    const feedStatesPromise = community.feedStates([shareId]).catch(() => ({}))
     try {
-      const feedStatesPromise = community.feedStates([shareId]).catch(() => ({}))
-      const cachedPost = this.data.post ? community.postFromDetail(this.data.post) : null
       const fullPost = await community.get(shareId).catch(() => null)
-      const post = community.postFromDetail(fullPost || cachedPost)
+      if (seq !== this._communityDetailLoadSeq) return
+      const post = community.postFromDetail(fullPost || cachedPost || summaryPost)
       let doc = post.doc
       if ((!doc || !doc.articles || !doc.articles.length) && post.articleKey) {
         doc = await library.fetchDocByArticleKey(post.articleKey)
       }
+      if (seq !== this._communityDetailLoadSeq) return
+      if (doc && doc.articles && doc.articles.length) {
+        post.doc = doc
+        if (community.cachePost) visiblePost = community.cachePost(post)
+      } else {
+        visiblePost = post
+      }
       const first = articleUtil.firstArticle(doc)
       const sections = this.articleSections(post, doc)
-      const replies = post.isPrompt ? [] : await this.loadFullReplies(shareId)
-      const replyToPost = !post.isPrompt && post.replyTo ? await community.get(post.replyTo) : null
-      const feedStates = await feedStatesPromise
-      this.setData({
-        post,
+      const sameDocument = cachedPost && !articleUtil.shouldRebuild(cachedPost.doc, doc)
+      const articleUpdate = {
+        post: visiblePost,
+        loading: false
+      }
+      if (!sameDocument) Object.assign(articleUpdate, {
         article: first,
         blocks: sections.length ? sections[0].blocks : [],
-        sections,
+        sections
+      })
+      this.setData(articleUpdate)
+      community.engage(shareId, 'view')
+
+      const repliesPromise = post.isPrompt
+        ? Promise.resolve([])
+        : this.loadFullReplies(shareId).catch(() => [])
+      const replyToPromise = !post.isPrompt && post.replyTo
+        ? community.get(post.replyTo).catch(() => null)
+        : Promise.resolve(null)
+      const [replies, replyToPost, feedStates] = await Promise.all([
+        repliesPromise,
+        replyToPromise,
+        feedStatesPromise
+      ])
+      if (seq !== this._communityDetailLoadSeq) return
+      this.setData({
         replies,
         replyToPost,
         fed: Boolean(feedStates[shareId] && feedStates[shareId].fed),
         promptImported: Boolean(post.isPrompt && post.promptCode && promptTree.containsImport(promptStore.items(), post.promptCode))
       })
-      community.engage(shareId, 'view')
     } finally {
-      this.setData({ loading: false })
+      if (seq === this._communityDetailLoadSeq && this.data.loading) {
+        this.setData({ loading: false })
+      }
     }
   },
 
@@ -344,13 +393,26 @@ Page({
     this.clearReplyTimer()
     const replyTo = this._replyToShareId
     const startedAt = this._replyStartedAt || Date.now()
-    const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000))
+    const durationSeconds = recordingQuality.durationSeconds(
+      res && res.duration,
+      Date.now() - startedAt
+    )
+    const elapsed = Math.max(1, Math.round(durationSeconds))
     const name = audio.nameForSession(new Date(startedAt), elapsed)
     this._replyToShareId = null
+    this._replyStartedAt = 0
 
     if (this._replyCanceled) {
       this._replyCanceled = false
       this.setData({ replyRecording: false, replyUploading: false })
+      await audio.discardFile(res && res.tempFilePath)
+      return
+    }
+
+    if (recordingQuality.isTooShort(durationSeconds)) {
+      await audio.discardFile(res && res.tempFilePath)
+      this.setData({ replyRecording: false, replyUploading: false })
+      wx.showToast({ title: '时间太短，不足以产生文章', icon: 'none' })
       return
     }
 

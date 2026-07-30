@@ -1,9 +1,9 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 
-function freshCommunityDetailPage(routes, currentCommunityPost) {
+function freshCommunityDetailPage(routes, currentCommunityPost, sharedStorage) {
   let page
-  const storage = {}
+  const storage = sharedStorage || {}
   const requests = []
   const app = {
     globalData: {
@@ -93,6 +93,20 @@ test('community detail refreshes list summaries before rendering article body', 
   assert.equal(ctx.data.loading, false)
 })
 
+test('community share card marks its route and returns to VD community', () => {
+  const page = freshCommunityDetailPage([], null)
+  const relaunches = []
+  global.wx.reLaunch = ({ url }) => relaunches.push(url)
+  const payload = page.onShareAppMessage.call({
+    data: { shareId: 'share-1', post: { title: '社区文章' }, article: null }
+  })
+
+  page.goBack.call({ data: { replyRecording: false }, openedFromShare: true })
+
+  assert.equal(payload.path, '/pages/community-detail/index?shareId=share-1&fromShare=1')
+  assert.deepEqual(relaunches, ['/pages/recordings/index?tab=community'])
+})
+
 test('community detail shows loading state while article body is fetching', async () => {
   const page = freshCommunityDetailPage([
     {
@@ -138,6 +152,106 @@ test('community detail shows loading state while article body is fetching', asyn
 
   assert.deepEqual(loadingUpdates, [true, false])
   assert.equal(ctx.data.sections[0].blocks[0].text, '正文内容')
+})
+
+test('community detail restores a persistent article snapshot before revalidation', async () => {
+  const storage = {}
+  const fullPost = {
+    shareId: 'share-cache',
+    title: '缓存标题',
+    authorName: '作者',
+    articles: [{ title: '缓存标题', body: '缓存正文' }],
+    photos: []
+  }
+  const firstPage = freshCommunityDetailPage([{
+    path: '/community/get/share-cache',
+    data: { post: fullPost }
+  }], {
+    shareId: 'share-cache',
+    title: '列表标题'
+  }, storage)
+  const first = {
+    data: {
+      shareId: 'share-cache',
+      post: { shareId: 'share-cache', title: '列表标题' },
+      sections: [],
+      replies: []
+    },
+    setData(update) { Object.assign(this.data, update) },
+    articleSections: firstPage.articleSections,
+    loadFullReplies: async () => []
+  }
+  await firstPage.load.call(first)
+  assert.equal(first.data.article.title, '缓存标题')
+
+  const secondPage = freshCommunityDetailPage([], {
+    shareId: 'share-cache',
+    title: '列表标题'
+  }, storage)
+  const updates = []
+  const second = {
+    data: {
+      shareId: 'share-cache',
+      post: { shareId: 'share-cache', title: '列表标题' },
+      sections: [],
+      replies: [],
+      loading: true
+    },
+    setData(update) {
+      updates.push(update)
+      Object.assign(this.data, update)
+    },
+    articleSections: secondPage.articleSections,
+    loadFullReplies: async () => []
+  }
+
+  const loading = secondPage.load.call(second)
+  assert.equal(second.data.loading, false)
+  assert.equal(second.data.article.title, '缓存标题')
+  assert.equal(second.data.sections[0].blocks[0].text, '缓存正文')
+  assert.equal(updates.some((update) => update.loading === true), false)
+  await loading
+})
+
+test('community detail reveals the main article before replies finish loading', async () => {
+  const page = freshCommunityDetailPage([{
+    path: '/community/get/share-progressive',
+    data: {
+      post: {
+        shareId: 'share-progressive',
+        title: '先显示正文',
+        articles: [{ title: '先显示正文', body: '正文不等回应' }],
+        photos: []
+      }
+    }
+  }], {
+    shareId: 'share-progressive',
+    title: '列表标题'
+  })
+  let finishReplies
+  const replies = new Promise((resolve) => { finishReplies = resolve })
+  const ctx = {
+    data: {
+      shareId: 'share-progressive',
+      post: { shareId: 'share-progressive', title: '列表标题' },
+      sections: [],
+      replies: [],
+      loading: true
+    },
+    setData(update) { Object.assign(this.data, update) },
+    articleSections: page.articleSections,
+    loadFullReplies: () => replies
+  }
+
+  const loading = page.load.call(ctx)
+  await new Promise((resolve) => setImmediate(resolve))
+
+  assert.equal(ctx.data.loading, false)
+  assert.equal(ctx.data.article.title, '先显示正文')
+  assert.equal(ctx.data.sections[0].blocks[0].text, '正文不等回应')
+
+  finishReplies([])
+  await loading
 })
 
 test('community detail has custom actions and loading markup', () => {
@@ -407,7 +521,7 @@ test('community detail saves uploaded reply recording for automatic community pu
       replyUploading: false
     },
     _replyToShareId: 'share-parent',
-    _replyStartedAt: Date.now() - 1200,
+    _replyStartedAt: Date.now() - 5000,
     setData(update) {
       Object.assign(this.data, update)
     },
@@ -418,12 +532,41 @@ test('community detail saves uploaded reply recording for automatic community pu
   audio.uploadFile = async () => true
   audio.nameForSession = () => 'VoiceDrop-reply.m4a'
 
-  await page.finishReplyRecording.call(ctx, { tempFilePath: '/tmp/reply.aac' })
+  await page.finishReplyRecording.call(ctx, { tempFilePath: '/tmp/reply.aac', duration: 5000 })
 
   assert.equal(storage['vd.pendingReply.VoiceDrop-reply.m4a'], 'share-parent')
   assert.equal(ctx.data.replyRecording, false)
   assert.equal(ctx.data.replyUploading, false)
   assert.equal(toasts[0].title, '回应已保存，正在生成文章')
+})
+
+test('community detail discards and explains a reply shorter than four seconds', async () => {
+  const page = freshCommunityDetailPage([], null)
+  const toasts = []
+  const discarded = []
+  global.wx.showToast = (options) => toasts.push(options)
+  const ctx = {
+    data: {
+      replyRecording: true,
+      replyUploading: false
+    },
+    _replyToShareId: 'share-parent',
+    _replyStartedAt: Date.now() - 3999,
+    setData(update) {
+      Object.assign(this.data, update)
+    },
+    clearReplyTimer() {}
+  }
+  const audio = require('../services/audio')
+  audio.discardFile = async (filePath) => { discarded.push(filePath); return true }
+  audio.uploadFile = async () => assert.fail('short recording must not upload')
+
+  await page.finishReplyRecording.call(ctx, { tempFilePath: '/tmp/short-reply.aac', duration: 3999 })
+
+  assert.deepEqual(discarded, ['/tmp/short-reply.aac'])
+  assert.equal(ctx.data.replyRecording, false)
+  assert.equal(ctx.data.replyUploading, false)
+  assert.equal(toasts[0].title, '时间太短，不足以产生文章')
 })
 
 test('community detail tip action feeds article like Android', async () => {

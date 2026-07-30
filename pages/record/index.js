@@ -2,6 +2,7 @@ const audio = require('../../services/audio')
 const recordingUploads = require('../../services/recording-upload-queue')
 const wav = require('../../utils/wav')
 const recording = require('../../utils/recording')
+const recordingQuality = require('../../utils/recording-quality')
 const photoInsert = require('../../utils/photo-insert')
 const realtimeInterviewer = require('../../services/realtime-interviewer')
 const app = getApp()
@@ -206,7 +207,11 @@ Page({
     this._stopHandler = (res) => {
       const sessionId = this._recordSessionId
       const startedAt = this.data.startedAt
-      const elapsed = Math.max(1, this.data.elapsedSeconds)
+      const durationSeconds = recordingQuality.durationSeconds(
+        res && res.duration,
+        this.recordingElapsedMilliseconds()
+      )
+      const elapsed = Math.max(1, Math.round(durationSeconds))
       const tag = this.data.tag
       const replyTo = this.data.replyTo
       const capturedPhotos = (this.data.capturedPhotos || []).slice()
@@ -229,6 +234,24 @@ Page({
       this._recordSessionId = null
       this.unbindRecorderEvents()
       this.data.recorder = null
+
+      if (recordingQuality.isTooShort(durationSeconds)) {
+        app.globalData.pendingRecordTag = ''
+        app.globalData.pendingReplyTo = null
+        this.setData({ capturedPhotos: [] })
+        audio.discardFile(res && res.tempFilePath).catch(() => {})
+        if (this._alive) {
+          wx.showModal({
+            title: '录音太短',
+            content: '时间太短，不足以产生文章，这条录音不会上传。',
+            showCancel: false,
+            confirmText: '知道了',
+            success: () => wx.navigateBack()
+          })
+        }
+        return
+      }
+
       const name = audio.nameForSession(new Date(startedAt), elapsed)
 
       // Show uploading toast

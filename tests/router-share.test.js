@@ -38,6 +38,14 @@ test('parses Android voicedrop deep links into mini program routes', () => {
     type: 'navigateTo',
     url: '/pages/detail/index?stem=VoiceDrop-a'
   })
+  assert.deepEqual(appRouter.routeFor(appRouter.parseQuery({ stem: 'VoiceDrop-a', fromShare: '1' })), {
+    type: 'navigateTo',
+    url: '/pages/detail/index?stem=VoiceDrop-a&fromShare=1'
+  })
+  assert.deepEqual(appRouter.routeFor(appRouter.parseQuery({ shareId: 'community-1', fromShare: '1' })), {
+    type: 'navigateTo',
+    url: '/pages/community-detail/index?shareId=community-1&fromShare=1'
+  })
   assert.deepEqual(appRouter.routeFor({ kind: 'recordings' }), {
     type: 'reLaunch',
     url: '/pages/recordings/index',
@@ -103,6 +111,18 @@ test('app still opens an article route from another page', async () => {
   app.onShow({ query: { stem: 'VoiceDrop-a' } })
   await flushRoutes()
 
+  assert.deepEqual(calls, [
+    { type: 'navigateTo', url: '/pages/detail/index?stem=VoiceDrop-a' }
+  ])
+})
+
+test('app marks an article opened from a chat share so its back button can return to VD community', async () => {
+  const { app, calls } = freshApp({}, [{ route: 'pages/recordings/index', options: {} }])
+
+  app.onShow({ scene: 1007, query: { stem: 'VoiceDrop-a' } })
+  await flushRoutes()
+
+  assert.equal(app.globalData.sharedArticleStem, 'VoiceDrop-a')
   assert.deepEqual(calls, [
     { type: 'navigateTo', url: '/pages/detail/index?stem=VoiceDrop-a' }
   ])

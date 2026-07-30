@@ -1,6 +1,7 @@
 const HOST = 'voicedrop.cn'
 const PHOTO_HOST = HOST
 const WS_HOST = 'jianshuo.dev'
+const PHOTO_TRANSFORM_HOST = WS_HOST
 
 function filesBase() {
   return `https://${HOST}/files/api`
@@ -38,6 +39,12 @@ function photoCdnUrl(key) {
   return `${photoBase()}/photo/${path(key)}`
 }
 
+// Cloudflare Images is only available on the CF host.  This is intentionally
+// separate from photoCdnUrl: EdgeOne accelerates the original; it does not resize it.
+function photoThumbnailUrl(key) {
+  return `https://${PHOTO_TRANSFORM_HOST}/cdn-cgi/image/width=512,quality=60/files/api/photo/${path(key)}`
+}
+
 function path(key) {
   return String(key || '')
     .split('/')
@@ -48,6 +55,7 @@ function path(key) {
 module.exports = {
   HOST,
   PHOTO_HOST,
+  PHOTO_TRANSFORM_HOST,
   WS_HOST,
   filesBase,
   photoBase,
@@ -58,5 +66,6 @@ module.exports = {
   downloadUrl,
   photoUrl,
   photoCdnUrl,
+  photoThumbnailUrl,
   path
 }

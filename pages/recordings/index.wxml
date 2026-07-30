@@ -3,7 +3,7 @@
         data-share-id="{{item.shareId}}" bindtap="openPost" bindlongpress="confirmCommunityUnshare">
     <image wx:if="{{item.coverPhotoUrl}}" class="community-card-image"
            src="{{item.coverPhotoUrl}}" mode="widthFix" lazy-load
-           data-cover-key="{{item.coverPhotoKey}}" bindload="onCommunityCoverLoad" />
+           data-cover-key="{{item.coverPhotoKey}}" data-share-id="{{item.shareId}}" bindload="onCommunityCoverLoad" binderror="onCommunityCoverError" />
     <view class="community-card-body">
       <view wx:if="{{item.isPrompt}}" class="community-prompt-badge">提示词</view>
       <view wx:if="{{item.isReply}}" class="community-reply-badge">
@@ -109,7 +109,7 @@
 
     <block wx:elif="{{activeTab === 'community'}}">
       <view wx:if="{{communityError}}" class="notice">{{communityError}}</view>
-      <view wx:elif="{{communityLoading}}" class="notice loading-notice">
+      <view wx:elif="{{communityLoading || !communityLoaded}}" class="notice loading-notice">
         <view class="loading-spinner" aria-hidden="true"></view>
         <text>正在加载...</text>
       </view>

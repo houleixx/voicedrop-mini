@@ -112,6 +112,39 @@ test('library list falls back to the legacy full list when the recordings index 
   )
 })
 
+test('library restores the last successful recordings snapshot without a network request', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const storage = {}
+  const overrides = {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] }
+  }
+  const first = freshLibraryWithWx([{
+    path: '/recordings',
+    data: {
+      recordings: [{
+        name: `${stem}.m4a`,
+        uploaded: '2026-06-18T06:31:00Z',
+        hasArticles: true,
+        isEmpty: false,
+        blocked: false,
+        hasTags: true
+      }]
+    }
+  }], overrides)
+
+  await first.list()
+
+  const recreated = freshLibraryWithWx([], overrides)
+  const cached = recreated.cachedRecordings()
+  assert.equal(cached.length, 1)
+  assert.equal(cached[0].stem, stem)
+  assert.equal(cached[0].hasArticles, true)
+  assert.equal(cached[0].hasTags, true)
+  assert.equal(recreated.__requests.length, 0)
+})
+
 test('library publishes recording rows before enriching title and tags', async () => {
   const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
   const library = freshLibraryWithWx([
@@ -364,6 +397,97 @@ test('library article enrichment warms an identity-scoped detail snapshot', asyn
   assert.equal(cached.articles[0].body, '缓存正文')
 })
 
+test('library coalesces concurrent requests for the same article document', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const pending = []
+  const library = freshLibraryWithWx([], {
+    request: (options) => pending.push(options)
+  })
+
+  const first = library.fetchDoc(stem)
+  const second = library.fetchDoc(stem)
+
+  assert.equal(pending.length, 1)
+  pending[0].success({
+    statusCode: 200,
+    data: { articles: [{ title: '合并请求', body: '正文' }] }
+  })
+  const [left, right] = await Promise.all([first, second])
+  assert.equal(left.articles[0].title, '合并请求')
+  assert.equal(right.articles[0].title, '合并请求')
+})
+
+test('library ignores a stale article response after that stem is invalidated', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const pending = []
+  const library = freshLibraryWithWx([], {
+    request: (options) => pending.push(options)
+  })
+
+  const stale = library.fetchDoc(stem)
+  library.invalidateArticleCaches([stem])
+  const fresh = library.fetchDoc(stem)
+  assert.equal(pending.length, 2)
+
+  pending[0].success({
+    statusCode: 200,
+    data: { articles: [{ title: '旧内容', body: '旧正文' }] }
+  })
+  pending[1].success({
+    statusCode: 200,
+    data: { articles: [{ title: '新内容', body: '新正文' }] }
+  })
+
+  assert.equal(await stale, null)
+  assert.equal((await fresh).articles[0].title, '新内容')
+  assert.equal(library.cachedDoc(stem).articles[0].title, '新内容')
+})
+
+test('library bounds persistent article snapshots and evicts the oldest entries', () => {
+  const storage = {}
+  const library = freshLibraryWithWx([], {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] }
+  })
+
+  for (let index = 0; index < 45; index += 1) {
+    library.cacheDoc(`VoiceDrop-cache-${index}`, {
+      articles: [{ title: `文章${index}`, body: '正文' }]
+    })
+  }
+
+  const docKeys = Object.keys(storage)
+    .filter((key) => key.startsWith('voicedrop.library.doc.v1.'))
+  assert.equal(docKeys.length, 40)
+  assert.equal(library.cachedDoc('VoiceDrop-cache-0'), null)
+  assert.equal(library.cachedDoc('VoiceDrop-cache-44').articles[0].title, '文章44')
+})
+
+test('library evicts an old article and retries when storage quota rejects a new snapshot', () => {
+  const storage = {}
+  const docPrefix = 'voicedrop.library.doc.v1.'
+  const library = freshLibraryWithWx([], {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => {
+      const docCount = Object.keys(storage).filter((item) => item.startsWith(docPrefix)).length
+      if (key.startsWith(docPrefix) && !storage[key] && docCount >= 2) {
+        throw new Error('storage quota exceeded')
+      }
+      storage[key] = value
+    },
+    removeStorageSync: (key) => { delete storage[key] }
+  })
+
+  library.cacheDoc('VoiceDrop-quota-1', { articles: [{ title: '一', body: '正文' }] })
+  library.cacheDoc('VoiceDrop-quota-2', { articles: [{ title: '二', body: '正文' }] })
+  library.cacheDoc('VoiceDrop-quota-3', { articles: [{ title: '三', body: '正文' }] })
+
+  assert.equal(library.cachedDoc('VoiceDrop-quota-1'), null)
+  assert.equal(library.cachedDoc('VoiceDrop-quota-3').articles[0].title, '三')
+  assert.equal(Object.keys(storage).filter((key) => key.startsWith(docPrefix)).length, 2)
+})
+
 test('library replaces the detail snapshot after a direct article save', async () => {
   const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
   const storage = {}
@@ -503,6 +627,131 @@ test('library refreshes its cached owner scope after the anonymous account token
   assert.equal(reads, 2)
 })
 
+test('library persists downloaded audio and reuses it after service recreation', async () => {
+  const storage = {}
+  const savedFiles = new Set()
+  let downloadCount = 0
+  let saveCount = 0
+  const overrides = {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    downloadFile: ({ success }) => {
+      downloadCount += 1
+      success({ statusCode: 200, tempFilePath: `wxfile://temporary-audio-${downloadCount}.m4a` })
+    },
+    getFileSystemManager: () => ({
+      accessSync: (filePath) => {
+        if (!savedFiles.has(filePath)) throw new Error('missing saved file')
+      },
+      saveFile: ({ success }) => {
+        const filePath = `wxfile://saved-audio-${++saveCount}.m4a`
+        savedFiles.add(filePath)
+        success({ savedFilePath: filePath })
+      },
+      unlinkSync: (filePath) => savedFiles.delete(filePath)
+    })
+  }
+
+  const first = freshLibraryWithWx([], overrides)
+  assert.equal(await first.downloadAudioFile('VoiceDrop-a.m4a'), 'wxfile://saved-audio-1.m4a')
+  const recreated = freshLibraryWithWx([], overrides)
+  assert.equal(await recreated.downloadAudioFile('VoiceDrop-a.m4a'), 'wxfile://saved-audio-1.m4a')
+  assert.equal(downloadCount, 1)
+})
+
+test('library coalesces audio downloads and keeps only the eight most recent files', async () => {
+  const storage = {}
+  const savedFiles = new Set()
+  const removed = []
+  const pending = []
+  let saveCount = 0
+  const overrides = {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    downloadFile: (options) => pending.push(options),
+    getFileSystemManager: () => ({
+      accessSync: (filePath) => {
+        if (!savedFiles.has(filePath)) throw new Error('missing saved file')
+      },
+      saveFile: ({ success }) => {
+        const filePath = `wxfile://saved-audio-${++saveCount}.m4a`
+        savedFiles.add(filePath)
+        success({ savedFilePath: filePath })
+      },
+      unlinkSync: (filePath) => {
+        removed.push(filePath)
+        savedFiles.delete(filePath)
+      }
+    })
+  }
+  const library = freshLibraryWithWx([], overrides)
+
+  const first = library.downloadAudioFile('VoiceDrop-0.m4a')
+  const duplicate = library.downloadAudioFile('VoiceDrop-0.m4a')
+  assert.equal(pending.length, 1)
+  pending.shift().success({ statusCode: 200, tempFilePath: 'wxfile://temporary-0.m4a' })
+  assert.equal(await first, 'wxfile://saved-audio-1.m4a')
+  assert.equal(await duplicate, 'wxfile://saved-audio-1.m4a')
+
+  for (let index = 1; index < 9; index += 1) {
+    const loading = library.downloadAudioFile(`VoiceDrop-${index}.m4a`)
+    pending.shift().success({ statusCode: 200, tempFilePath: `wxfile://temporary-${index}.m4a` })
+    await loading
+  }
+
+  assert.equal(library.cachedAudioPath('VoiceDrop-0.m4a'), '')
+  assert.equal(library.cachedAudioPath('VoiceDrop-8.m4a'), 'wxfile://saved-audio-9.m4a')
+  assert.deepEqual(removed, ['wxfile://saved-audio-1.m4a'])
+})
+
+test('library removes persistent audio and list snapshots after deleting a recording', async () => {
+  const stem = 'VoiceDrop-2026-06-18-143052-0m33s-Thu-Afternoon'
+  const audioName = `${stem}.m4a`
+  const storage = {}
+  const removed = []
+  const library = freshLibraryWithWx([], {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    request: (options) => options.success({ statusCode: 204, data: {} }),
+    downloadFile: ({ success }) => success({ statusCode: 200, tempFilePath: 'wxfile://temporary-audio.m4a' }),
+    getFileSystemManager: () => ({
+      accessSync: () => {},
+      saveFile: ({ success }) => success({ savedFilePath: 'wxfile://saved-audio.m4a' }),
+      unlinkSync: (filePath) => removed.push(filePath)
+    })
+  })
+  library.storeRecordingsSnapshot([{
+    audioName,
+    stem,
+    uploaded: '2026-06-18T06:31:00Z',
+    hasArticles: true
+  }])
+  await library.downloadAudioFile(audioName)
+
+  assert.equal(await library.deleteRecording({ audioName, stem }), true)
+  assert.equal(library.cachedAudioPath(audioName), '')
+  assert.deepEqual(library.cachedRecordings(), [])
+  assert.deepEqual(removed, ['wxfile://saved-audio.m4a'])
+})
+
+test('library coalesces concurrent downloads for the same article photo', async () => {
+  const pending = []
+  const library = freshLibraryWithWx([], {
+    downloadFile: (options) => pending.push(options)
+  })
+
+  const first = library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/')
+  const second = library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/')
+
+  assert.equal(pending.length, 1)
+  pending[0].success({ statusCode: 200, tempFilePath: 'wxfile://photo-a.jpg' })
+  assert.equal(await first, 'wxfile://photo-a.jpg')
+  assert.equal(await second, 'wxfile://photo-a.jpg')
+})
+
 test('library downloads public scoped photos from the photo CDN without a user token', async () => {
   const library = freshLibraryWithWx([
     {
@@ -518,6 +767,19 @@ test('library downloads public scoped photos from the photo CDN without a user t
   assert.equal(library.__downloads[0].url, 'https://voicedrop.cn/files/api/photo/users/anon-1/photos/a.jpg')
   assert.equal(library.__downloads[0].header['X-VD-Platform'], 'miniapp')
   assert.equal(library.__downloads[0].header.Authorization, undefined)
+})
+
+test('library prefers a 512px edge thumbnail for card-sized photos and falls back to the original', async () => {
+  const library = freshLibraryWithWx([
+    { path: '/cdn-cgi/image/width=512,quality=60/files/api/photo/users/anon-1/photos/a.jpg', statusCode: 404 },
+    { path: '/photo/users/anon-1/photos/a.jpg', tempFilePath: 'wxfile://original-a.jpg' }
+  ])
+
+  const tempPath = await library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/', { preferThumb: true })
+
+  assert.equal(tempPath, 'wxfile://original-a.jpg')
+  assert.equal(library.__downloads[0].url, 'https://jianshuo.dev/cdn-cgi/image/width=512,quality=60/files/api/photo/users/anon-1/photos/a.jpg')
+  assert.equal(library.__downloads[1].url, 'https://voicedrop.cn/files/api/photo/users/anon-1/photos/a.jpg')
 })
 
 test('library persists a downloaded article photo and reuses it after recreation', async () => {

@@ -83,6 +83,7 @@ Page({
 
   onLoad(options) {
     this.initialLoadStarted = true
+    this._awaitingInitialShow = true
     this.topLevelUiRendered = false
     this._pageUnloaded = false
     const activeTab = this.initialTab(options)
@@ -110,7 +111,8 @@ Page({
     this._socketBearer = auth.bearer()
     this.createStatusSession()
     this.createCommandSession()
-    this.load()
+    const restored = this.restoreCachedRecordings()
+    this.load(restored ? { silent: true, keepDataOnError: true } : undefined)
     this.drainPendingRecordingUploads()
     if (this.data.activeTab === 'community') {
       const restored = this.restoreCachedCommunityFeed()
@@ -127,6 +129,10 @@ Page({
       this.commandSession.connect()
     }
     this.applyPendingHomeTab()
+    if (this._awaitingInitialShow) {
+      this._awaitingInitialShow = false
+      return
+    }
     if (this.initialLoadStarted && !this.topLevelUiRendered) return
     if (!this.initialLoadStarted) {
       this.load()
@@ -310,9 +316,25 @@ Page({
         return
       }
 
-      const elapsed = Math.max(1, Math.round((Date.now() - this.data.startedAt) / 1000))
+      const durationSeconds = recordingQuality.durationSeconds(
+        res && res.duration,
+        Date.now() - this.data.startedAt
+      )
+      const elapsed = Math.max(1, Math.round(durationSeconds))
       const name = audio.nameForSession(new Date(this.data.startedAt), elapsed)
       this.setData({ recording: false, seconds: elapsed })
+      if (recordingQuality.isTooShort(durationSeconds)) {
+        await audio.discardFile(res && res.tempFilePath)
+        app.globalData.pendingRecordTag = ''
+        app.globalData.pendingReplyTo = null
+        wx.showModal({
+          title: '录音太短',
+          content: '时间太短，不足以产生文章，这条录音不会上传。',
+          showCancel: false,
+          confirmText: '知道了'
+        })
+        return
+      }
       if (recordingQuality.looksSilent(res.peakAmplitude, elapsed)) {
         wx.showToast({ title: '没有检测到明显声音', icon: 'none' })
       }
@@ -341,7 +363,68 @@ Page({
     })
   },
 
+  restoreCachedRecordings() {
+    const records = library.cachedRecordings && library.cachedRecordings()
+    if (!Array.isArray(records)) return false
+    const selectedTag = this.selectedTagFor(records)
+    const homeTags = recordingUtil.tagsFromRecords(records)
+    const homeTabs = this.homeTabsFor(homeTags)
+    const recordsWithRefs = this.preserveRecordingCovers(this.assignCommandRefs(records))
+    const filteredRecords = this.commandRecordsFor(recordsWithRefs, selectedTag)
+    const currentHomeTab = this.data.activeTab === 'community'
+      ? 'community'
+      : (selectedTag ? `tag:${selectedTag}` : 'recordings')
+    const recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
+    this.recordCoverLoadId = recordCoverLoadId
+    this.topLevelUiRendered = true
+    this.setData({
+      allRecords: recordsWithRefs,
+      homeTags,
+      homeTabs,
+      selectedTag,
+      selectedTagMissing: Boolean(selectedTag && !homeTags.includes(selectedTag)),
+      currentHomeTab,
+      records: filteredRecords,
+      loading: false,
+      error: ''
+    })
+    this.loadRecordingCovers(recordsWithRefs, recordCoverLoadId)
+    if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
+    return true
+  },
+
   async load(options) {
+    if (this._libraryLoadPromise) {
+      const incoming = options || {}
+      const queued = this._libraryLoadQueuedOptions
+      this._libraryLoadQueuedOptions = {
+        silent: queued ? queued.silent && Boolean(incoming.silent) : Boolean(incoming.silent),
+        keepDataOnError: true,
+        skipPhotoRepair: queued
+          ? queued.skipPhotoRepair && Boolean(incoming.skipPhotoRepair)
+          : Boolean(incoming.skipPhotoRepair)
+      }
+      return this._libraryLoadPromise
+    }
+    const task = (async () => {
+      let currentOptions = options
+      let result = false
+      do {
+        this._libraryLoadQueuedOptions = null
+        result = await this.fetchLibrary(currentOptions)
+        currentOptions = this._libraryLoadQueuedOptions
+      } while (currentOptions)
+      return result
+    })()
+    this._libraryLoadPromise = task
+    try {
+      return await task
+    } finally {
+      if (this._libraryLoadPromise === task) this._libraryLoadPromise = null
+    }
+  },
+
+  async fetchLibrary(options) {
     const silent = Boolean(options && options.silent)
     const keepDataOnError = Boolean(options && options.keepDataOnError)
     if (!silent) this.setData({ loading: true, error: '' })
@@ -442,7 +525,7 @@ Page({
     if (!scope || loadId !== this.recordCoverLoadId) return
     await Promise.all(candidates.map(async (rec) => {
       try {
-        const coverPhotoUrl = await library.downloadPhotoTemp(rec.coverPhotoKey, scope)
+        const coverPhotoUrl = await library.downloadPhotoTemp(rec.coverPhotoKey, scope, { preferThumb: true })
         if (!coverPhotoUrl || loadId !== this.recordCoverLoadId) return
         this.updateRecordingCover(rec.stem, coverPhotoUrl)
       } catch (_) {
@@ -488,6 +571,7 @@ Page({
       communityLoading: false,
       communityError: ''
     })
+    this.warmCommunityDetails(postData.communityPosts)
     return true
   },
 
@@ -519,6 +603,7 @@ Page({
         communityLoaded: true,
         communityError: ''
       })
+      this.warmCommunityDetails(postData.communityPosts)
       return true
     } catch (error) {
       if (generation !== this._communityLoadGeneration) return false
@@ -551,6 +636,23 @@ Page({
     }
   },
 
+  warmCommunityDetails(posts) {
+    if (!community.get) return
+    const candidates = (posts || []).slice(0, 4).filter((post) =>
+      post && post.shareId && !(community.cachedPost && community.cachedPost(post.shareId)))
+    if (!candidates.length) return
+    const generation = (this._communityWarmGeneration || 0) + 1
+    this._communityWarmGeneration = generation
+    const queue = candidates.slice()
+    const worker = async () => {
+      while (queue.length && generation === this._communityWarmGeneration && !this._pageUnloaded) {
+        const post = queue.shift()
+        await community.get(post.shareId).catch(() => null)
+      }
+    }
+    return Promise.all([worker(), worker()]).catch(() => [])
+  },
+
   onCommunityCoverLoad(event) {
     const key = event.currentTarget.dataset.coverKey
     const width = Number(event.detail && event.detail.width)
@@ -562,6 +664,18 @@ Page({
     this._communityCoverAspects[key] = aspect
     const columns = community.masonryColumns(this.data.communityPosts, this._communityCoverAspects)
     this.setData({ communityLeftPosts: columns.left, communityRightPosts: columns.right })
+  },
+
+  onCommunityCoverError(event) {
+    const shareId = event.currentTarget.dataset.shareId || ''
+    if (!shareId) return
+    const replace = (posts) => (posts || []).map((post) => {
+      if (post.shareId !== shareId || !post.coverPhotoOriginalUrl || post.coverPhotoUrl === post.coverPhotoOriginalUrl) return post
+      return Object.assign({}, post, { coverPhotoUrl: post.coverPhotoOriginalUrl })
+    })
+    const communityPosts = replace(this.data.communityPosts)
+    const columns = community.masonryColumns(communityPosts, this._communityCoverAspects)
+    this.setData({ communityPosts, communityLeftPosts: columns.left, communityRightPosts: columns.right })
   },
 
   createStatusSession() {

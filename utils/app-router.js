@@ -29,8 +29,18 @@ function parseQuery(query) {
   if (query.route === 'community') return { kind: 'community', stem: '', tag: '' }
   if (query.route === 'settings') return { kind: 'settings', stem: '', tag: '' }
   if (query.route === 'record') return { kind: 'record', stem: '', tag: query.tag || '' }
-  if (query.stem) return { kind: 'article', stem: query.stem, tag: '' }
-  if (query.shareId) return { kind: 'community-detail', stem: query.shareId, tag: '' }
+  if (query.stem) {
+    return Object.assign(
+      { kind: 'article', stem: query.stem, tag: '' },
+      String(query.fromShare || '') === '1' ? { fromShare: true } : {}
+    )
+  }
+  if (query.shareId) {
+    return Object.assign(
+      { kind: 'community-detail', stem: query.shareId, tag: '' },
+      String(query.fromShare || '') === '1' ? { fromShare: true } : {}
+    )
+  }
   return none()
 }
 
@@ -40,8 +50,14 @@ function routeFor(deepLink) {
   if (link.kind === 'community') return { type: 'reLaunch', url: '/pages/recordings/index?tab=community', tab: 'community' }
   if (link.kind === 'settings') return { type: 'navigateTo', url: '/pages/settings/index' }
   if (link.kind === 'record') return { type: 'reLaunch', url: '/pages/recordings/index', tab: 'recordings', tag: link.tag || '' }
-  if (link.kind === 'article') return { type: 'navigateTo', url: `/pages/detail/index?stem=${encodeURIComponent(link.stem)}` }
-  if (link.kind === 'community-detail') return { type: 'navigateTo', url: `/pages/community-detail/index?shareId=${encodeURIComponent(link.stem)}` }
+  if (link.kind === 'article') {
+    const share = link.fromShare ? '&fromShare=1' : ''
+    return { type: 'navigateTo', url: `/pages/detail/index?stem=${encodeURIComponent(link.stem)}${share}` }
+  }
+  if (link.kind === 'community-detail') {
+    const share = link.fromShare ? '&fromShare=1' : ''
+    return { type: 'navigateTo', url: `/pages/community-detail/index?shareId=${encodeURIComponent(link.stem)}${share}` }
+  }
   return null
 }
 

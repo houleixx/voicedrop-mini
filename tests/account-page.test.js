@@ -16,6 +16,7 @@ function freshAccountPage(options) {
     adoptToken: (credential) => { calls.push(['adoptToken', credential]); return true },
     isWechatAuthenticated: () => false,
     storeSession: (session) => { calls.push(['storeSession', session]); return true },
+    switchToWechatAccount: (session) => { calls.push(['switchToWechatAccount', session]); return true },
     signOutWechat() {},
     resetAnonymous() { calls.push(['resetAnonymous']) }
   }
@@ -156,7 +157,8 @@ function context(page) {
     refresh() {},
     loadStats() {},
     confirmWechatAccountSwitch: page.confirmWechatAccountSwitch,
-    completeWechatLogin: page.completeWechatLogin
+    completeWechatLogin: page.completeWechatLogin,
+    completeSwitchedWechatLogin: page.completeSwitchedWechatLogin
   }
 }
 
@@ -172,7 +174,7 @@ test('account page stores a WeChat session immediately when scopes match', async
   assert.equal(calls.some(([name]) => name === 'modal'), false)
 })
 
-test('account page keeps anon account when WeChat is linked to another scope', async () => {
+test('account page switches to the existing WeChat space after confirmation like Android', async () => {
   const { page, calls } = freshAccountPage({
     currentScope: 'users/anon-current/',
     result: { ok: true, session: 'session-token', scope: 'users/wechat-existing/' },
@@ -183,11 +185,13 @@ test('account page keeps anon account when WeChat is linked to another scope', a
 
   const modal = calls.find(([name]) => name === 'modal')[1]
   assert.equal(modal.title, '该微信已关联另一个云端空间')
-  assert.equal(modal.confirmText, '知道了')
-  assert.equal(modal.showCancel, false)
+  assert.equal(modal.confirmText, '切换')
+  assert.equal(modal.cancelText, '保留当前')
+  assert.equal(modal.showCancel, true)
   assert.ok(modal.confirmText.length <= 4)
   assert.equal(calls.some(([name]) => name === 'storeSession'), false)
-  assert.equal(calls.some(([name]) => name === 'reLaunch'), false)
+  assert.deepEqual(calls.find(([name]) => name === 'switchToWechatAccount'), ['switchToWechatAccount', 'session-token'])
+  assert.deepEqual(calls.find(([name]) => name === 'reLaunch'), ['reLaunch', '/pages/recordings/index'])
 })
 
 test('account page keeps the anonymous account when scope switch is canceled', async () => {

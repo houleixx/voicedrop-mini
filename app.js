@@ -24,6 +24,10 @@ function currentPageMatchesRoute(route) {
   })
 }
 
+function isChatShareScene(scene) {
+  return [1007, 1008, 1044].includes(Number(scene))
+}
+
 App({
   globalData: {
     appName: 'VoiceDrop Mini',
@@ -78,8 +82,12 @@ App({
       }, 0)
       return
     }
-    const route = router.routeFor(router.parseQuery(options && options.query))
+    const deepLink = router.parseQuery(options && options.query)
+    const route = router.routeFor(deepLink)
     if (!route) return
+    if (deepLink.kind === 'article' && isChatShareScene(options && options.scene)) {
+      this.globalData.sharedArticleStem = deepLink.stem
+    }
     if (route.tag) this.globalData.pendingRecordTag = route.tag
     if (route.tab) this.globalData.pendingHomeTab = route.tab
     if (currentPageMatchesRoute(route)) return

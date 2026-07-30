@@ -401,7 +401,6 @@ function createSession(handlers, runtime) {
       } else if (obj.type === 'snapshot') {
         clearSnapshotTimer()
         snapshotReady = true
-        if (handlers.onUpdate) handlers.onUpdate(obj.stems || [])
         reconcile(obj.queue)
         flushControls()
       }

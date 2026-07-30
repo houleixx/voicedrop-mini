@@ -19,6 +19,7 @@ function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, as
   const app = { globalData: {} }
   const library = Object.assign({
     fetchDoc: async () => ({ articles: [{ title: 'A', body: '正文' }] }),
+    downloadAudioFile: async () => 'wxfile://cached-audio.m4a',
     saveDoc: async (stem, doc) => doc,
     uploadPhoto: async () => true,
     photoUrl: (key, scope) => `${scope || ''}${key}`,
@@ -52,6 +53,7 @@ function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, as
     hideLoading: () => {},
     navigateBack: (options) => { app.navigatedBack = options || {} },
     redirectTo: (options) => { app.redirectedTo = options.url },
+    reLaunch: (options) => { app.reLaunchedTo = options.url },
     navigateTo: (options) => { app.navigatedTo = options.url }
   }, wxOverrides || {})
   ;[
@@ -968,6 +970,77 @@ test('detail page back skips stale insert photo page in navigation stack', () =>
   assert.deepEqual(app.navigatedBack, { delta: 2 })
 })
 
+test('detail page opened from a WeChat share returns to the VD community feed when it has no back stack', () => {
+  const page = freshDetailPage()
+  const app = page.__app
+  global.getCurrentPages = () => [{ route: 'pages/detail/index' }]
+
+  page.goBack()
+
+  assert.equal(app.reLaunchedTo, '/pages/recordings/index?tab=community')
+  assert.equal(app.navigatedBack, undefined)
+})
+
+test('article share card marks its route as a share entry', () => {
+  const page = freshDetailPage()
+  const payload = page.onShareAppMessage.call({
+    data: { current: { title: '分享文章' }, rec: { stem: 'VoiceDrop-shared' } }
+  })
+
+  assert.equal(payload.path, '/pages/detail/index?stem=VoiceDrop-shared&fromShare=1')
+})
+
+test('shared article detail returns to VD community even when WeChat adds a previous page', () => {
+  const page = freshDetailPage()
+  const app = page.__app
+  page.openedFromSharedArticle = true
+  global.getCurrentPages = () => [
+    { route: 'pages/recordings/index' },
+    { route: 'pages/detail/index' }
+  ]
+
+  page.goBack()
+
+  assert.equal(app.reLaunchedTo, '/pages/recordings/index?tab=community')
+  assert.equal(app.navigatedBack, undefined)
+})
+
+test('article share copy dismisses the automatic clipboard toast', async () => {
+  const copied = []
+  const hidden = []
+  const page = freshDetailPage({ shareUrl: async () => 'https://voicedrop.cn/article' }, {
+    setClipboardData(options) { copied.push(options.data); if (options.success) options.success() },
+    hideToast() { hidden.push(true) }
+  })
+  const ctx = {
+    data: {
+      rec: { stem: 'VoiceDrop-shared' },
+      doc: { articles: [{ title: '标题', body: '正文' }] }
+    }
+  }
+
+  await page.copyArticleWithLink.call(ctx)
+
+  assert.equal(copied.length, 1)
+  assert.deepEqual(hidden, [true])
+})
+
+test('detail marks an entry without a matching local recording as a shared article', () => {
+  const page = freshDetailPage()
+  const ctx = {
+    data: Object.assign({}, page.data),
+    setData(update, done) { Object.assign(this.data, update); if (done) done() },
+    restorePhotoPickerDraft() {},
+    createEditSession() {},
+    loadMenus() {},
+    load() {}
+  }
+
+  page.onLoad.call(ctx, { stem: 'VoiceDrop-shared' })
+
+  assert.equal(ctx.openedFromSharedArticle, true)
+})
+
 test('detail page opens inline photo sheet instead of navigating to insert photo page', () => {
   const page = freshDetailPage()
   const ctx = {
@@ -1376,11 +1449,11 @@ test('detail explicit playback restores the speaker after audio-session reset', 
   assert.match(playback, /audioSessionReset\.preparePlayback\(\)/)
 })
 
-test('detail reuses the downloaded audio file while the page stays alive', () => {
+test('detail reuses the persistent downloaded audio file while the page stays alive', () => {
   const js = fs.readFileSync(path.join(root, 'pages/detail/index.js'), 'utf8')
   const playback = js.slice(js.indexOf('  async togglePlayback()'), js.indexOf('  stopPlayback()'))
 
-  assert.match(playback, /this\._playbackFilePath\s*\|\|\s*await library\.downloadTempFile/)
+  assert.match(playback, /this\._playbackFilePath\s*\|\|\s*await library\.downloadAudioFile/)
   assert.match(playback, /this\._playbackFilePath\s*=\s*filePath/)
 })
 

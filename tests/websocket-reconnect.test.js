@@ -407,7 +407,7 @@ test('library command refreshes updated stems and resolves the matching request'
   assert.deepEqual(session.queue(), [])
 })
 
-test('library command refreshes authoritative state after a snapshot without stems', () => {
+test('library command snapshot reconciles only the queue without evicting article caches', () => {
   const socket = socketHarness()
   const updates = []
   const session = libraryCommand.createSession({ onUpdate: (stems) => updates.push(stems) }, { wx: socket.wx })
@@ -417,7 +417,7 @@ test('library command refreshes authoritative state after a snapshot without ste
     data: JSON.stringify({ type: 'snapshot', queue: [] })
   })
 
-  assert.deepEqual(updates, [[]])
+  assert.deepEqual(updates, [])
 })
 
 test('library command uses the queue head for old-server terminal messages without ids', () => {
