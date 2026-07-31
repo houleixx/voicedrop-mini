@@ -234,17 +234,92 @@ Page({
 
   articleSections(post, doc) {
     if (!doc || !doc.articles || !doc.articles.length) return []
+    const previousPhotos = {}
+    const previousSections = this && this.data && this.data.sections || []
+    previousSections.forEach((section) => {
+      ;(section.blocks || []).forEach((block) => {
+        if (block && block.type === 'photo' && block.key && block.url) {
+          previousPhotos[`${block.key}|${block.url}`] = block
+        }
+      })
+    })
     return doc.articles.map((article) => ({
       title: article.title && article.title !== post.title ? article.title : '',
       blocks: articleUtil.bodyBlocks(article.body).map((block) => {
         if (block.type !== 'photo') return block
         const key = articleUtil.resolvePhotoKey(block.key, doc.photos || []) || block.key
-        return Object.assign({}, block, {
+        const url = library.photoUrl(key, doc.owner)
+        const previous = previousPhotos[`${key}|${url}`]
+        const next = Object.assign({}, block, {
           key,
-          url: library.photoUrl(key, doc.owner)
+          url,
+          photoState: 'loading',
+          loading: true,
+          loaded: false,
+          failed: false
         })
+        if (previous && previous.loaded && previous.photoState === 'loaded') {
+          Object.assign(next, {
+            photoState: 'loaded',
+            loading: false,
+            loaded: true,
+            width: previous.width,
+            height: previous.height
+          })
+        }
+        return next
       })
     }))
+  },
+
+  updateCommunityPhotoBlock(sectionIndex, blockIndex, patch) {
+    const sections = (this.data.sections || []).slice()
+    const section = sections[sectionIndex]
+    if (!section || !section.blocks || !section.blocks[blockIndex] ||
+      section.blocks[blockIndex].type !== 'photo') return
+    const blocks = section.blocks.slice()
+    blocks[blockIndex] = Object.assign({}, blocks[blockIndex], patch)
+    sections[sectionIndex] = Object.assign({}, section, { blocks })
+    const update = { sections }
+    if (sectionIndex === 0) update.blocks = blocks
+    this.setData(update)
+  },
+
+  communityPhotoFromEvent(event) {
+    const dataset = event && event.currentTarget && event.currentTarget.dataset || {}
+    const sectionIndex = Number(dataset.sectionIndex)
+    const blockIndex = Number(dataset.blockIndex)
+    if (!Number.isInteger(sectionIndex) || !Number.isInteger(blockIndex)) return null
+    const section = (this.data.sections || [])[sectionIndex]
+    const block = section && section.blocks && section.blocks[blockIndex]
+    if (!block || block.type !== 'photo') return null
+    if (dataset.key && dataset.key !== block.key) return null
+    if (dataset.url && dataset.url !== block.url) return null
+    return { sectionIndex, blockIndex, block }
+  },
+
+  onCommunityImageLoad(event) {
+    const target = this.communityPhotoFromEvent(event)
+    if (!target) return
+    this.updateCommunityPhotoBlock(target.sectionIndex, target.blockIndex, {
+      photoState: 'loaded',
+      loading: false,
+      loaded: true,
+      failed: false,
+      width: Number(event && event.detail && event.detail.width) || target.block.width,
+      height: Number(event && event.detail && event.detail.height) || target.block.height
+    })
+  },
+
+  onCommunityImageError(event) {
+    const target = this.communityPhotoFromEvent(event)
+    if (!target) return
+    this.updateCommunityPhotoBlock(target.sectionIndex, target.blockIndex, {
+      photoState: 'loadFailed',
+      loading: false,
+      loaded: false,
+      failed: true
+    })
   },
 
   async loadFullReplies(shareId) {

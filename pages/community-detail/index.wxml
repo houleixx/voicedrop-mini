@@ -16,7 +16,7 @@
     </view>
   </view>
 
-  <view class="detail-body" style="padding-top: 115px;">
+  <view class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight}}px + 54rpx);">
     <view class="article-head">
       <text class="article-title">{{article.title || post.title || '社区文章'}}</text>
       <view class="prompt-meta" wx:if="{{post.isPrompt}}">
@@ -44,7 +44,13 @@
           <block wx:for="{{sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="sectionIndex">
             <block wx:for="{{section.blocks}}" wx:for-item="item" wx:key="index">
               <text wx:if="{{item.type === 'paragraph'}}" class="prompt-body-text">{{item.text}}</text>
-              <image wx:else class="prompt-body-image" src="{{item.url}}" mode="widthFix" />
+              <view wx:else class="community-photo prompt-photo-block">
+                <image wx:if="{{item.url}}" class="prompt-body-image community-photo-image {{item.photoState !== 'loaded' ? 'preloading' : ''}}" src="{{item.url}}" mode="widthFix" data-section-index="{{sectionIndex}}" data-block-index="{{index}}" data-key="{{item.key}}" data-url="{{item.url}}" bindload="onCommunityImageLoad" binderror="onCommunityImageError" />
+                <view wx:if="{{item.photoState === 'loading'}}" class="community-photo-placeholder community-photo-loading">
+                  <view class="photo-loading-spinner" aria-hidden="true"></view>
+                </view>
+                <view wx:elif="{{item.photoState === 'loadFailed'}}" class="community-photo-placeholder">图片加载失败</view>
+              </view>
             </block>
           </block>
           <text class="prompt-body-text" wx:if="{{!sections.length}}">提示词内容暂不可读，请稍后刷新。</text>
@@ -73,8 +79,12 @@
             <text wx:if="{{section.title}}" class="section-title">{{section.title}}</text>
             <block wx:for="{{section.blocks}}" wx:for-item="item" wx:key="index">
               <text wx:if="{{item.type === 'paragraph'}}" class="paragraph">{{item.text}}</text>
-              <view wx:else class="photo-block">
-                <image class="article-image" src="{{item.url}}" mode="widthFix" />
+              <view wx:else class="photo-block community-photo">
+                <image wx:if="{{item.url}}" class="article-image community-photo-image {{item.photoState !== 'loaded' ? 'preloading' : ''}}" src="{{item.url}}" mode="widthFix" data-section-index="{{sectionIndex}}" data-block-index="{{index}}" data-key="{{item.key}}" data-url="{{item.url}}" bindload="onCommunityImageLoad" binderror="onCommunityImageError" />
+                <view wx:if="{{item.photoState === 'loading'}}" class="community-photo-placeholder community-photo-loading">
+                  <view class="photo-loading-spinner" aria-hidden="true"></view>
+                </view>
+                <view wx:elif="{{item.photoState === 'loadFailed'}}" class="community-photo-placeholder">图片加载失败</view>
               </view>
             </block>
           </block>

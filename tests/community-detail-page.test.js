@@ -300,10 +300,10 @@ test('community detail has custom actions and loading markup', () => {
   assert.doesNotMatch(wxml, /ri-share-forward-line/)
   assert.match(wxml, /ri-flag-line/)
   assert.match(wxml, /ri-hand/)
-  assert.match(toolbarActionsRule, /gap:\s*22rpx;/)
+  assert.match(toolbarActionsRule, /gap:\s*14rpx;/)
   assert.doesNotMatch(toolbarActionsRule, /column-gap|margin-(left|right):/)
-  assert.match(toolButtonRule, /width:\s*64rpx;/)
-  assert.match(toolButtonRule, /height:\s*64rpx;/)
+  assert.match(toolButtonRule, /width:\s*72rpx;/)
+  assert.match(toolButtonRule, /height:\s*72rpx;/)
   assert.doesNotMatch(iconButtonRule, /margin-(left|right):/)
   assert.match(actionIconRule, /width:\s*42rpx;/)
   assert.match(actionIconRule, /height:\s*42rpx;/)
@@ -318,12 +318,33 @@ test('community detail has custom actions and loading markup', () => {
   assert.match(loadingSpinnerRule, /border-top-color:\s*#c7432f;/)
   assert.match(loadingSpinnerRule, /animation:\s*loading-spin\s+0\.8s\s+linear\s+infinite;/)
   assert.doesNotMatch(wxss, /\.coin-action-icon/)
-  assert.match(moreMenuCardRule, /right:\s*40rpx;/)
+  assert.match(moreMenuCardRule, /right:\s*32rpx;/)
   assert.match(moreMenuCardRule, /background:\s*#ffffff;/)
   assert.match(moreMenuRowRule, /background:\s*#ffffff;/)
   assert.match(moreMenuRowRule, /border-radius:\s*0;/)
   assert.match(moreMenuShareButtonRule, /position:\s*absolute;/)
   assert.match(moreMenuShareButtonRule, /opacity:\s*0;/)
+})
+
+test('community article detail shares the list gutter and audio-detail reading rhythm', () => {
+  const fs = require('node:fs')
+  const path = require('node:path')
+  const wxml = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxml'), 'utf8')
+  const wxss = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxss'), 'utf8')
+
+  assert.match(wxml, /padding-top: calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 54rpx\)/)
+  assert.doesNotMatch(wxml, /padding-top: 115px/)
+  assert.match(wxss, /\.community-detail-screen\s*\{[^}]*padding:\s*0 32rpx 72rpx;/s)
+  assert.match(wxss, /\.detail-toolbar\s*\{[^}]*padding:\s*0 15rpx 0 32rpx;/s)
+  assert.match(wxss, /\.article-head\s*\{[^}]*padding:\s*0 0 44rpx;/s)
+  assert.match(wxss, /\.article,\s*\.empty\s*\{[^}]*padding:\s*0;/s)
+  assert.match(wxss, /\.article-title\s*\{[^}]*font-size:\s*48rpx;[^}]*font-weight:\s*800;[^}]*line-height:\s*1\.28;/s)
+  assert.match(wxss, /\.meta\s*\{[^}]*color:\s*#817b72;[^}]*font-size:\s*28rpx;[^}]*line-height:\s*1\.4;/s)
+  assert.match(wxss, /\.paragraph\s*\{[^}]*font-size:\s*35rpx;[^}]*line-height:\s*1\.72;/s)
+  assert.match(wxss, /\.article-image\s*\{[^}]*border-radius:\s*20rpx;/s)
+  assert.match(wxss, /\.community-photo\s*\{[^}]*border-radius:\s*20rpx;/s)
+  assert.match(wxss, /\.prompt-detail-content\s*\{[^}]*padding:\s*0 0 calc\(36rpx \+ env\(safe-area-inset-bottom\)\);/s)
+  assert.match(wxss, /\.reply-recording-dock\s*\{[^}]*padding:\s*24rpx 32rpx calc\(30rpx \+ env\(safe-area-inset-bottom\)\);/s)
 })
 
 test('community detail starts with article body hidden behind loading state', () => {
@@ -334,6 +355,91 @@ test('community detail starts with article body hidden behind loading state', ()
   assert.deepEqual(page.data.replies, [])
   assert.equal(page.data.promptImported, false)
   assert.equal(page.data.promptImporting, false)
+})
+
+test('community article images keep a loading placeholder until the matching image loads', () => {
+  const fs = require('node:fs')
+  const path = require('node:path')
+  const wxml = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxml'), 'utf8')
+  const wxss = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxss'), 'utf8')
+  const page = freshCommunityDetailPage([], null)
+  const sections = page.articleSections.call({ data: { sections: [] } }, {
+    title: '社区文章'
+  }, {
+    owner: 'users/anon/',
+    articles: [{ title: '社区文章', body: '正文\n[[photo:photos/a.jpg]]' }],
+    photos: []
+  })
+  const photo = sections[0].blocks.find((block) => block.type === 'photo')
+  const blockIndex = sections[0].blocks.indexOf(photo)
+  const ctx = Object.assign({}, page, {
+    data: { sections },
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  assert.equal(photo.photoState, 'loading')
+  assert.equal(photo.loaded, false)
+  assert.match(wxml, /bindload="onCommunityImageLoad"/)
+  assert.match(wxml, /binderror="onCommunityImageError"/)
+  assert.match(wxml, /community-photo-loading/)
+  assert.match(wxml, /photo-loading-spinner/)
+  assert.match(wxss, /\.community-photo-image\.preloading\s*\{[^}]*position:\s*absolute;[^}]*opacity:\s*0;/s)
+
+  page.onCommunityImageLoad.call(ctx, {
+    currentTarget: {
+      dataset: {
+        sectionIndex: 0,
+        blockIndex,
+        key: photo.key,
+        url: photo.url
+      }
+    },
+    detail: { width: 640, height: 480 }
+  })
+
+  assert.equal(ctx.data.sections[0].blocks[blockIndex].photoState, 'loaded')
+  assert.equal(ctx.data.sections[0].blocks[blockIndex].loaded, true)
+})
+
+test('community article ignores stale image events and exposes a terminal load failure', () => {
+  const page = freshCommunityDetailPage([], null)
+  const photo = {
+    type: 'photo',
+    key: 'photos/new.jpg',
+    url: 'https://example.com/new.jpg',
+    photoState: 'loading',
+    loaded: false,
+    failed: false
+  }
+  const ctx = Object.assign({}, page, {
+    data: { sections: [{ title: '', blocks: [photo] }] },
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  page.onCommunityImageLoad.call(ctx, {
+    currentTarget: {
+      dataset: {
+        sectionIndex: 0,
+        blockIndex: 0,
+        key: 'photos/old.jpg',
+        url: 'https://example.com/old.jpg'
+      }
+    }
+  })
+  assert.equal(ctx.data.sections[0].blocks[0].photoState, 'loading')
+
+  page.onCommunityImageError.call(ctx, {
+    currentTarget: {
+      dataset: {
+        sectionIndex: 0,
+        blockIndex: 0,
+        key: photo.key,
+        url: photo.url
+      }
+    }
+  })
+  assert.equal(ctx.data.sections[0].blocks[0].photoState, 'loadFailed')
+  assert.equal(ctx.data.sections[0].blocks[0].failed, true)
 })
 
 test('community prompt detail uses its own iOS-aligned layout without replacing ordinary article markup', () => {

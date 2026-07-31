@@ -182,13 +182,13 @@
 }
 
 .list {
-  margin-top: 34rpx;
+  margin-top: 22rpx;
 }
 
 /* Swipe-to-delete row container */
 .record-row {
   position: relative;
-  margin-bottom: 24rpx;
+  margin-bottom: 20rpx;
 }
 
 .record-card {
@@ -196,8 +196,8 @@
   z-index: 1;
   transition: transform 0.2s ease-out;
   display: flex;
-  min-height: 148rpx;
-  padding: 30rpx 28rpx 30rpx 32rpx;
+  min-height: 140rpx;
+  padding: 26rpx 28rpx 26rpx 32rpx;
   overflow: hidden;
   border-radius: 34rpx;
   align-items: center;
@@ -227,7 +227,7 @@
   position: relative;
   width: 88rpx;
   height: 88rpx;
-  margin-right: 30rpx;
+  margin-right: 26rpx;
   flex: 0 0 auto;
 }
 
@@ -310,9 +310,9 @@
   display: block;
   overflow: hidden;
   color: #27231f;
-  font-size: 34rpx;
-  font-weight: 900;
-  line-height: 1.2;
+  font-size: 32rpx;
+  font-weight: 800;
+  line-height: 40rpx;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -320,12 +320,12 @@
 .record-meta {
   display: flex;
   min-width: 0;
-  margin-top: 18rpx;
+  margin-top: 14rpx;
   align-items: center;
-  color: #a9a297;
-  font-size: 26rpx;
+  color: #756f66;
+  font-size: 24rpx;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 32rpx;
   white-space: nowrap;
 }
 
@@ -336,31 +336,31 @@
 }
 
 .duration {
-  margin-left: 24rpx;
+  margin-left: 20rpx;
 }
 
 .status-dot {
   width: 10rpx;
   height: 10rpx;
-  margin: 0 14rpx 0 22rpx;
+  margin: 0 12rpx 0 16rpx;
   border-radius: 50%;
-  background: #4e886c;
+  background: #47775f;
 }
 
 .status {
   overflow: hidden;
   max-width: 142rpx;
-  color: #5f9278;
+  color: #47775f;
   text-overflow: ellipsis;
 }
 
 .chevron {
-  margin-left: 20rpx;
-  flex: 0 0 30rpx;
-  width: 30rpx;
-  color: #cec8bd;
-  font-size: 58rpx;
-  font-weight: 300;
+  margin-left: 16rpx;
+  flex: 0 0 36rpx;
+  width: 36rpx;
+  color: #8d8578;
+  font-size: 36rpx;
+  font-weight: 400;
   line-height: 1;
   text-align: right;
 }
@@ -482,10 +482,10 @@
 
 .dock-hint {
   margin-top: 18rpx;
-  color: #8d8578;
-  font-size: 25rpx;
+  color: #756f66;
+  font-size: 24rpx;
   font-weight: 500;
-  line-height: 1;
+  line-height: 32rpx;
   text-shadow: 0 2rpx 6rpx rgba(250, 246, 239, 0.9), 0 0 2rpx #faf6ef;
   transition: color 0.2s;
 }

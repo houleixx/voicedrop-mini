@@ -86,7 +86,7 @@ function holdEditContext(page, articleIndex) {
     data: {
       articleIndex: articleIndex || 0,
       holdEditState: 'idle',
-      holdEditButtonText: '按住 说话 修改',
+      holdEditButtonText: '按住说话，修改文章',
       holdEditBubbleVisible: false,
       holdEditTranscriptText: ''
     },
@@ -174,7 +174,7 @@ test('detail page exposes inline paragraph editing from the text longpress menu'
   assert.match(wxml, /<textarea[^>]*class="inline-paragraph-editor"[^>]*height:\s*\{\{inlineEditHeightPx\}\}px;/)
   assert.doesNotMatch(wxml, /class="inline-paragraph-editor"[^>]*auto-height/)
   assert.match(wxml, /<view class="edit-dock" wx:if="\{\{!inlineEditing\}\}">/)
-  assert.match(css, /\.inline-paragraph-editor\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*0;[^}]*padding:\s*0 8rpx;[^}]*font-size:\s*36rpx;[^}]*line-height:\s*1\.9;/s)
+  assert.match(css, /\.inline-paragraph-editor\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*0;[^}]*padding:\s*0 8rpx;[^}]*font-size:\s*35rpx;[^}]*line-height:\s*1\.72;/s)
 
   const page = freshDetailPage()
   const ctx = Object.assign({}, page, {
@@ -464,12 +464,17 @@ test('detail tall text menu stays beside the paragraph and scrolls in the larger
   assert.equal(ctx.data.longpressAnchor.menuMaxHeight, 403)
 })
 
-test('detail keeps a square grace placeholder until the image bindload event', () => {
+test('detail keeps a visible image loading placeholder until the matching image bindload event', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
-  assert.match(wxml, /photoState === 'loading' \? 'preloading' : ''/)
-  assert.match(wxml, /photoState === 'loading'[^>]*photo-placeholder photo-making grace/)
+  assert.match(wxml, /photoState !== 'loaded' \? 'preloading' : ''/)
+  assert.match(wxml, /data-key="\{\{item\.key\}\}"/)
+  assert.match(wxml, /data-url="\{\{item\.url\}\}"/)
+  assert.match(wxml, /photoState === 'loading'[^>]*photo-placeholder photo-loading/)
+  assert.match(wxml, /photoState === 'grace' \? 'photo-making grace' : ''/)
+  assert.match(wxml, /photo-loading-spinner/)
   assert.match(css, /\.article-image\.preloading\s*\{[^}]*position:\s*absolute;[^}]*opacity:\s*0;/s)
+  assert.match(css, /\.photo-loading-spinner\s*\{[^}]*animation:\s*loading-spin\s+0\.8s\s+linear\s+infinite;/s)
 
   const page = freshDetailPage()
   const ctx = Object.assign({}, page, {
@@ -477,8 +482,93 @@ test('detail keeps a square grace placeholder until the image bindload event', (
     data: { blocks: [{ type: 'photo', key: 'photos/a.jpg', url: 'wxfile://a.jpg', photoState: 'loading' }] },
     setData(update) { Object.assign(this.data, update) }
   })
-  page.onArticleImageLoad.call(ctx, { currentTarget: { dataset: { index: 0 } }, detail: { width: 640, height: 480 } })
+  page.onArticleImageLoad.call(ctx, {
+    currentTarget: { dataset: { index: 0, key: 'photos/a.jpg', url: 'wxfile://a.jpg' } },
+    detail: { width: 640, height: 480 }
+  })
   assert.equal(ctx.data.blocks[0].photoState, 'loaded')
+})
+
+test('detail page keeps a compact readable rhythm and responsive safe-area toolbar spacing', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+  const js = fs.readFileSync(path.join(root, 'pages/detail/index.js'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
+
+  assert.match(wxml, /padding-top: calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 54rpx\)/)
+  assert.doesNotMatch(wxml, /padding-top: 115px/)
+  assert.match(wxml, /class="hold-edit-button \{\{holdEditState\}\}"[^>]*aria-label="\{\{holdEditButtonText\}\}"/s)
+  assert.match(js, /holdEditButtonText: '按住说话，修改文章'/)
+  assert.match(css, /\.detail-screen\s*\{[^}]*padding:\s*0 32rpx 204rpx;/s)
+  assert.match(css, /\.detail-toolbar\s*\{[^}]*padding-left:\s*32rpx;/s)
+  assert.match(css, /\.toolbar-actions\s*\{[^}]*gap:\s*14rpx;/s)
+  assert.match(css, /\.tool-button\s*\{[^}]*width:\s*72rpx;[^}]*height:\s*72rpx;/s)
+  assert.match(css, /\.article-head\s*\{[^}]*padding:\s*0 0 44rpx;/s)
+  assert.match(css, /\.article\s*\{[^}]*padding:\s*0;/s)
+  assert.match(css, /\.article-tabs\s*\{[^}]*padding:\s*0;/s)
+  assert.match(css, /\.article-title\s*\{[^}]*font-size:\s*48rpx;[^}]*font-weight:\s*800;[^}]*line-height:\s*1\.28;/s)
+  assert.match(css, /\.article-meta\s*\{[^}]*color:\s*#817b72;[^}]*font-size:\s*28rpx;/s)
+  assert.match(css, /\.paragraph\s*\{[^}]*font-size:\s*35rpx;[^}]*line-height:\s*1\.72;/s)
+  assert.match(css, /\.paragraph-locator\s*\{[^}]*left:\s*-28rpx;/s)
+  assert.match(css, /\.photo-line-locator\s*\{[^}]*left:\s*-28rpx;/s)
+  assert.match(css, /\.article-image\s*\{[^}]*border-radius:\s*20rpx;/s)
+  assert.match(css, /\.hold-edit-button\s*\{[^}]*width:\s*calc\(100vw - 64rpx\);[^}]*height:\s*112rpx;[^}]*border-radius:\s*32rpx;/s)
+})
+
+test('detail ignores a stale image event after an image instruction replaces its loading target', () => {
+  const page = freshDetailPage()
+  const ctx = Object.assign({}, page, {
+    photoLoadSeq: 2,
+    data: {
+      blocks: [{
+        type: 'photo',
+        key: 'photos/new.jpg',
+        url: 'wxfile://new.jpg',
+        photoState: 'loading',
+        loaded: false
+      }]
+    },
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  page.onArticleImageLoad.call(ctx, {
+    currentTarget: { dataset: { index: 0, key: 'photos/old.jpg', url: 'wxfile://old.jpg' } },
+    detail: { width: 640, height: 480 }
+  })
+
+  assert.equal(ctx.data.blocks[0].photoState, 'loading')
+  assert.equal(ctx.data.blocks[0].loaded, false)
+})
+
+test('detail keeps loading during the remote image fallback and ends in a failure state', () => {
+  const page = freshDetailPage()
+  const ctx = Object.assign({}, page, {
+    photoLoadSeq: 3,
+    data: {
+      blocks: [{
+        type: 'photo',
+        key: 'photos/a.jpg',
+        url: 'wxfile://a.jpg',
+        remoteUrl: 'https://example.com/a.jpg',
+        photoState: 'loading',
+        loaded: false,
+        failed: false
+      }]
+    },
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  page.onArticleImageError.call(ctx, {
+    currentTarget: { dataset: { index: 0, key: 'photos/a.jpg', url: 'wxfile://a.jpg' } }
+  })
+  assert.equal(ctx.data.blocks[0].url, 'https://example.com/a.jpg')
+  assert.equal(ctx.data.blocks[0].photoState, 'loading')
+
+  page.onArticleImageError.call(ctx, {
+    currentTarget: { dataset: { index: 0, key: 'photos/a.jpg', url: 'https://example.com/a.jpg' } }
+  })
+  assert.equal(ctx.data.blocks[0].url, '')
+  assert.equal(ctx.data.blocks[0].photoState, 'loadFailed')
+  assert.equal(ctx.data.blocks[0].failed, true)
 })
 
 test('detail longpress actions fill exact image key and real text line', () => {
@@ -659,6 +749,7 @@ test('detail making photo poll times out and retry returns to grace', async () =
 test('detail transfers making state from backend old key to replacement key', () => {
   const page = freshDetailPage()
   const started = []
+  const deadline = Date.now() + 10000
   const ctx = Object.assign({}, page, {
     data: {
       articleIndex: 0,
@@ -666,7 +757,7 @@ test('detail transfers making state from backend old key to replacement key', ()
       photoInsertPromptVisible: false,
       blocks: [{ type: 'photo', key: 'photos/old.jpg', imageNo: 1, photoState: 'making' }]
     },
-    photoMakingTasks: { 'photos/old.jpg': { generation: 1, deadline: Date.now() + 10000, timer: null } },
+    photoMakingTasks: { 'photos/old.jpg': { generation: 1, deadline, timer: null } },
     setData(update) { Object.assign(this.data, update) },
     loadArticlePhotos(blocks) { this.loadedBlocks = blocks },
     startPhotoMaking(key, options) { started.push({ key, options }) }
@@ -675,9 +766,71 @@ test('detail transfers making state from backend old key to replacement key', ()
   page.applyDoc.call(ctx, { articles: [{ title: 'A', body: '[[photo:photos/new-edited.jpg]]' }], photos: [] })
 
   assert.equal(ctx.data.blocks[0].key, 'photos/new-edited.jpg')
-  assert.equal(ctx.data.blocks[0].photoState, 'grace')
-  assert.deepEqual(started, [{ key: 'photos/new-edited.jpg', options: { poll: true } }])
-  assert.equal(ctx.loadedBlocks[0].photoState, 'grace')
+  assert.equal(ctx.data.blocks[0].photoState, 'making')
+  assert.deepEqual(started, [{
+    key: 'photos/new-edited.jpg',
+    options: {
+      poll: true,
+      skipGrace: true,
+      deadline
+    }
+  }])
+  assert.equal(ctx.loadedBlocks[0].photoState, 'making')
+})
+
+test('detail does not fall back to loading when a making photo receives its replacement key', () => {
+  const page = freshDetailPage()
+  const originalSetTimeout = global.setTimeout
+  const originalClearTimeout = global.clearTimeout
+  const timers = []
+  const polled = []
+  global.setTimeout = (callback, delay) => {
+    const timer = { callback, delay, cleared: false }
+    timers.push(timer)
+    return timer
+  }
+  global.clearTimeout = (timer) => {
+    if (timer) timer.cleared = true
+  }
+  const ctx = Object.assign({}, page, {
+    data: {
+      articleIndex: 0,
+      photoScope: 'users/anon/',
+      photoInsertPromptVisible: false,
+      blocks: [{
+        type: 'photo',
+        key: 'photos/old.jpg',
+        imageNo: 1,
+        url: 'wxfile://old.jpg',
+        loaded: true,
+        photoState: 'loaded'
+      }]
+    },
+    setData(update) { Object.assign(this.data, update) },
+    loadArticlePhotos() {},
+    pollMakingPhoto(key, generation) { polled.push({ key, generation }) }
+  })
+
+  try {
+    page.startPhotoMaking.call(ctx, 'photos/old.jpg', { poll: false })
+    timers[0].callback()
+    assert.equal(ctx.data.blocks[0].photoState, 'making')
+
+    page.applyDoc.call(ctx, {
+      owner: 'users/anon/',
+      articles: [{ title: 'A', body: '[[photo:photos/new.jpg]]' }],
+      photos: []
+    })
+
+    assert.equal(ctx.data.blocks[0].key, 'photos/new.jpg')
+    assert.equal(ctx.data.blocks[0].photoState, 'making')
+    assert.equal(polled.length, 1)
+    assert.equal(polled[0].key, 'photos/new.jpg')
+  } finally {
+    page.stopPhotoMaking.call(ctx)
+    global.setTimeout = originalSetTimeout
+    global.clearTimeout = originalClearTimeout
+  }
 })
 
 test('detail invalidates persistent and in-memory photo cache before processing an image', () => {
@@ -1476,7 +1629,7 @@ test('detail page numbers paragraphs and photos while holding to talk like iOS',
       photoScope: '',
       holdEditLocatorsVisible: false,
       holdEditState: 'idle',
-      holdEditButtonText: '按住 说话 修改',
+      holdEditButtonText: '按住说话，修改文章',
       holdEditBubbleVisible: false,
       holdEditTranscriptText: ''
     },
@@ -1816,7 +1969,7 @@ test('detail page maps edit queue and reply into iOS feedback stack', () => {
     data: {
       history: null,
       holdEditState: 'idle',
-      holdEditButtonText: '按住 说话 修改'
+      holdEditButtonText: '按住说话，修改文章'
     },
     setData(update) {
       Object.assign(this.data, update)

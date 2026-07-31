@@ -93,7 +93,7 @@ Page({
       let deviceInfo = {}
       try { deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : {} } catch (_) {}
       const statusBarPx = info.statusBarHeight
-      const topRpx = 200
+      const topRpx = 184
       const pxPerRpx = info.windowWidth / 750
       const scrollContentTop = statusBarPx + topRpx * pxPerRpx
       this.setData({
@@ -104,7 +104,7 @@ Page({
       })
     } catch (_) {
       const pxPerRpx = (wx.getSystemInfoSync?.().windowWidth || 375) / 750
-      const scrollContentTop = 200 * pxPerRpx + 20
+      const scrollContentTop = 184 * pxPerRpx + 20
       this.setData({ scrollContentTop, communityScrollContentTop: scrollContentTop + 88 * pxPerRpx })
     }
     this.bindRecorder()

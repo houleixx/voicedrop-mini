@@ -9,7 +9,7 @@
     </view>
     <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;" wx:if="{{!inlineEditing}}">
       <button class="play-button {{playbackMode === 'playing' ? 'playing' : ''}}" bindtap="togglePlayback" aria-label="{{playbackMode === 'playing' ? '停止播放' : '播放录音'}}">
-        <canvas class="playback-ring-canvas" canvas-id="playbackRingCanvas" width="72" height="72" wx:if="{{playbackMode !== 'idle'}}"></canvas>
+        <canvas class="playback-ring-canvas" canvas-id="playbackRingCanvas" width="78" height="78" wx:if="{{playbackMode !== 'idle'}}"></canvas>
         <text class="play-icon ri-play-fill"></text>
       </button>
       <button class="tool-button" bindtap="insertPhoto" aria-label="插入图片">
@@ -40,7 +40,7 @@
     <text class="empty-title">文章还没生成</text>
     <text class="empty-sub">稍后刷新，或回到列表查看处理状态。</text>
   </view>
-  <view wx:else class="detail-body" style="padding-top: 115px;">
+  <view wx:else class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight}}px + 54rpx);">
     <view class="article-head">
       <text class="article-title">{{current.title}}</text>
       <view class="article-meta">
@@ -67,8 +67,10 @@
         <view wx:else class="photo-block" data-index="{{index}}" bindtouchstart="startImageLongpress" bindtouchmove="moveImageLongpress" bindtouchend="finishImageLongpress" bindtouchcancel="finishImageLongpress">
           <text class="photo-line-locator" wx:if="{{holdEditLocatorsVisible}}">{{item.lineNo}}</text>
           <text class="photo-image-locator" wx:if="{{holdEditLocatorsVisible && item.imageNo}}">图{{item.imageNo}}</text>
-          <image wx:if="{{item.url}}" id="article-photo-{{index}}" class="article-image {{item.photoState === 'loading' ? 'preloading' : ''}}" src="{{item.url}}" mode="widthFix" data-index="{{index}}" bindload="onArticleImageLoad" binderror="onArticleImageError" />
-          <view wx:if="{{item.photoState === 'loading' || item.photoState === 'grace'}}" class="photo-placeholder photo-making grace"></view>
+          <image wx:if="{{item.url}}" id="article-photo-{{index}}" class="article-image {{item.photoState !== 'loaded' ? 'preloading' : ''}}" src="{{item.url}}" mode="widthFix" data-index="{{index}}" data-key="{{item.key}}" data-url="{{item.url}}" bindload="onArticleImageLoad" binderror="onArticleImageError" />
+          <view wx:if="{{item.photoState === 'loading' || item.photoState === 'grace'}}" class="photo-placeholder photo-loading {{item.photoState === 'grace' ? 'photo-making grace' : ''}}">
+            <view class="photo-loading-spinner" aria-hidden="true"></view>
+          </view>
           <view wx:elif="{{item.photoState === 'making'}}" class="photo-placeholder photo-making">
             <text class="photo-making-icon ri-image-line"></text>
             <text class="photo-making-title">正在制作中</text>
@@ -193,6 +195,7 @@
     </view>
     <button
       class="hold-edit-button {{holdEditState}}"
+      aria-label="{{holdEditButtonText}}"
       bindtouchstart="startHoldArticleEdit"
       bindtouchmove="moveHoldArticleEdit"
       bindtouchend="finishHoldArticleEdit"

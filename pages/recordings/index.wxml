@@ -100,7 +100,7 @@
                 <text class="status">{{item.statusLabel}}</text>
               </view>
             </view>
-            <text class="chevron" aria-hidden="true">›</text>
+            <text class="chevron ri-arrow-right-s-line" aria-hidden="true"></text>
           </view>
           <view class="delete-btn" data-index="{{index}}" bindtap="confirmDelete">删除</view>
         </view>

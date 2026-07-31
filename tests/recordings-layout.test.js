@@ -338,6 +338,34 @@ test('recording rows replace the waveform with an Android-style article cover', 
   assert.match(css, /\.record-cover\s*\{[^}]*width:\s*88rpx;[^}]*height:\s*88rpx;[^}]*border-radius:\s*20rpx;/s)
 })
 
+test('recording rows use the compact readable home-list treatment', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/recordings/index.wxss'), 'utf8')
+  const list = ruleBody(css, '.list')
+  const card = ruleBody(css, '.record-card')
+  const title = ruleBody(css, '.record-name')
+  const meta = ruleBody(css, '.record-meta')
+  const chevron = ruleBody(css, '.chevron')
+
+  assert.match(list, /margin-top:\s*22rpx;/)
+  assert.match(card, /min-height:\s*140rpx;/)
+  assert.match(card, /padding:\s*26rpx 28rpx 26rpx 32rpx;/)
+  assert.match(title, /font-size:\s*32rpx;/)
+  assert.match(title, /font-weight:\s*800;/)
+  assert.match(meta, /margin-top:\s*14rpx;/)
+  assert.match(meta, /color:\s*#756f66;/)
+  assert.match(meta, /font-size:\s*24rpx;/)
+  assert.match(wxml, /class="chevron ri-arrow-right-s-line" aria-hidden="true"><\/text>/)
+  assert.match(chevron, /font-size:\s*36rpx;/)
+})
+
+test('recordings content offset follows the tightened home header', () => {
+  const source = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
+
+  assert.match(source, /const topRpx = 184/)
+  assert.match(source, /const scrollContentTop = 184 \* pxPerRpx \+ 20/)
+})
+
 test('silent list refresh preserves unchanged recording covers without downloading them again', async () => {
   const library = require('../services/library')
   const originalOwnerScope = library.ownerScope
