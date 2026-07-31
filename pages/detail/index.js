@@ -20,6 +20,7 @@ const capsuleLayout = require('../../utils/capsule-layout')
 const audioSessionReset = require('../../utils/audio-session-reset')
 
 const app = getApp()
+const ARTICLE_PHOTO_CONCURRENCY = 3
 
 function logPhotoInsert(stage, details) {
   if (typeof console === 'undefined' || !console.log) return
@@ -400,6 +401,7 @@ Page({
 
   onUnload() {
     audioConsentFlow.dispose(this)
+    this.photoLoadSeq = (this.photoLoadSeq || 0) + 1
     this.longpressQuerySeq = (this.longpressQuerySeq || 0) + 1
     if (this.finishImageLongpress) this.finishImageLongpress()
     if (this.stopPhotoMaking) this.stopPhotoMaking()
@@ -571,6 +573,8 @@ Page({
         lineNo,
         imageNo,
         url: '',
+        previewUrl: '',
+        imageVariant: '',
         remoteUrl: deferPhotos ? '' : library.photoUrl(key, scope),
         loading: true,
         loaded: false,
@@ -579,6 +583,8 @@ Page({
       if (!pending && previous && previous.url && previous.loaded && previous.photoState === 'loaded') {
         Object.assign(next, {
           url: previous.url,
+          previewUrl: previous.previewUrl || '',
+          imageVariant: previous.imageVariant || '',
           loading: false,
           loaded: true,
           failed: false,
@@ -625,24 +631,116 @@ Page({
     this.photoLoadSeq = (this.photoLoadSeq || 0) + 1
     const seq = this.photoLoadSeq
     this.articlePhotoCache = this.articlePhotoCache || {}
-    photoBlocks.forEach((block) => {
-      const cacheKey = library.scopedPhotoKey ? library.scopedPhotoKey(block.key, scope) : `${scope || ''}${block.key}`
-      const cached = this.articlePhotoCache[cacheKey]
-      if (cached) {
-        this.updateArticlePhotoBlock(seq, block.index, { url: cached, loading: false, loaded: false, photoState: 'loading' })
-        return
-      }
-      library.downloadPhotoTemp(block.key, scope)
-        .then((tempPath) => {
-          this.articlePhotoCache[cacheKey] = tempPath
-          if (this.inspectDownloadedArticlePhoto) this.inspectDownloadedArticlePhoto(tempPath, block.key, scope)
-          this.updateArticlePhotoBlock(seq, block.index, { url: tempPath, loading: false, loaded: false, photoState: 'loading' })
+    const pending = photoBlocks.slice()
+    const loadNext = () => {
+      if (seq !== this.photoLoadSeq) return Promise.resolve()
+      const block = pending.shift()
+      if (!block) return Promise.resolve()
+      return this.loadArticlePhoto(seq, block, scope).finally(loadNext)
+    }
+    const workerCount = Math.min(ARTICLE_PHOTO_CONCURRENCY, pending.length)
+    for (let index = 0; index < workerCount; index += 1) loadNext()
+  },
+
+  loadArticlePhoto(seq, block, scope) {
+    const cacheKey = library.scopedPhotoKey
+      ? library.scopedPhotoKey(block.key, scope)
+      : `${scope || ''}${block.key}`
+    const memoryCached = this.articlePhotoCache[cacheKey]
+    const diskCached = !memoryCached && library.cachedPhotoPath
+      ? library.cachedPhotoPath(block.key, scope)
+      : ''
+    const originalPath = memoryCached || diskCached
+    if (originalPath) {
+      this.articlePhotoCache[cacheKey] = originalPath
+      this.updateArticlePhotoBlock(seq, block.index, {
+        url: originalPath,
+        previewUrl: '',
+        imageVariant: 'original',
+        loading: false,
+        loaded: false,
+        failed: false,
+        photoState: 'loading'
+      }, block.key)
+      return Promise.resolve()
+    }
+
+    const previewPath = library.cachedPhotoPath
+      ? library.cachedPhotoPath(block.key, scope, { preferThumb: true })
+      : ''
+    if (previewPath) {
+      this.updateArticlePhotoBlock(seq, block.index, {
+        url: previewPath,
+        previewUrl: previewPath,
+        imageVariant: 'thumbnail',
+        loading: false,
+        loaded: false,
+        failed: false,
+        photoState: 'loading'
+      }, block.key)
+      this.loadArticleOriginalPhoto(seq, block.index, block.key, scope, previewPath)
+      return Promise.resolve()
+    }
+
+    return library.downloadPhotoTemp(block.key, scope)
+      .then((tempPath) => {
+        if (!tempPath) throw new Error('empty photo path')
+        this.articlePhotoCache[cacheKey] = tempPath
+        if (this.inspectDownloadedArticlePhoto) this.inspectDownloadedArticlePhoto(tempPath, block.key, scope)
+        this.updateArticlePhotoBlock(seq, block.index, {
+          url: tempPath,
+          previewUrl: '',
+          imageVariant: 'original',
+          loading: false,
+          loaded: false,
+          failed: false,
+          photoState: 'loading'
+        }, block.key)
+      })
+      .catch((error) => {
+        logPhotoInsert('render-download-fail', { key: block.key, scope, error })
+        this.updateArticlePhotoBlock(seq, block.index, {
+          loading: false,
+          failed: true,
+          photoState: 'loadFailed'
+        }, block.key)
+      })
+  },
+
+  loadArticleOriginalPhoto(seq, index, key, scope, previewPath) {
+    const cacheKey = library.scopedPhotoKey
+      ? library.scopedPhotoKey(key, scope)
+      : `${scope || ''}${key}`
+    return library.downloadPhotoTemp(key, scope)
+      .then((originalPath) => {
+        if (!originalPath || seq !== this.photoLoadSeq) return
+        const block = (this.data.blocks || [])[index]
+        if (!block || block.type !== 'photo' || block.key !== key) return
+        this.articlePhotoCache[cacheKey] = originalPath
+        if (!wx.getImageInfo) return
+        wx.getImageInfo({
+          src: originalPath,
+          success: (info) => {
+            this.updateArticlePhotoBlock(seq, index, {
+              url: originalPath,
+              previewUrl: previewPath,
+              imageVariant: 'original',
+              photoState: 'loaded',
+              loading: false,
+              loaded: true,
+              failed: false,
+              width: Number(info && info.width) || block.width,
+              height: Number(info && info.height) || block.height
+            }, key)
+          },
+          fail: () => {
+            // Keep the rendered thumbnail. The original remains cached for next time.
+          }
         })
-        .catch((error) => {
-          logPhotoInsert('render-download-fail', { key: block.key, scope, error })
-          this.updateArticlePhotoBlock(seq, block.index, { loading: false, failed: true, photoState: 'loadFailed' })
-        })
-    })
+      })
+      .catch(() => {
+        // A thumbnail is already visible, so original-image failure is not terminal.
+      })
   },
 
   inspectDownloadedArticlePhoto(filePath, key, scope) {
@@ -666,10 +764,11 @@ Page({
     })
   },
 
-  updateArticlePhotoBlock(seq, index, patch) {
+  updateArticlePhotoBlock(seq, index, patch, expectedKey) {
     if (seq !== this.photoLoadSeq) return
     const current = (this.data.blocks || []).slice()
     if (!current[index] || current[index].type !== 'photo') return
+    if (expectedKey && current[index].key !== expectedKey) return
     current[index] = Object.assign({}, current[index], patch)
     this.setData({ blocks: current })
   },
@@ -695,6 +794,8 @@ Page({
     if (!key || !this.updatePhotoMakingBlock(key, {
       photoState: skipGrace ? 'making' : 'grace',
       url: '',
+      previewUrl: '',
+      imageVariant: '',
       loaded: false,
       failed: false
     })) return
@@ -750,7 +851,15 @@ Page({
       this.articlePhotoCache = this.articlePhotoCache || {}
       const cacheKey = library.scopedPhotoKey ? library.scopedPhotoKey(key, this.data.photoScope) : `${this.data.photoScope || ''}${key}`
       this.articlePhotoCache[cacheKey] = url
-      this.updatePhotoMakingBlock(key, { photoState: 'loading', url, loading: false, loaded: false, failed: false })
+      this.updatePhotoMakingBlock(key, {
+        photoState: 'loading',
+        url,
+        previewUrl: '',
+        imageVariant: 'original',
+        loading: false,
+        loaded: false,
+        failed: false
+      })
       this.stopPhotoMaking(key)
     } catch (_) {
       const current = this.photoMakingTasks && this.photoMakingTasks[key]
@@ -815,6 +924,17 @@ Page({
     if (!block || block.failed) return
     if (dataset.key && dataset.key !== block.key) return
     if (dataset.url && dataset.url !== block.url) return
+    if (block.imageVariant === 'original' && block.previewUrl && block.previewUrl !== url) {
+      this.updateArticlePhotoBlock(this.photoLoadSeq, index, {
+        url: block.previewUrl,
+        imageVariant: 'thumbnail',
+        photoState: 'loaded',
+        loading: false,
+        loaded: true,
+        failed: false
+      }, block.key)
+      return
+    }
     const retryKey = `${block.key || ''}|${block.remoteUrl || ''}`
     this.articlePhotoTriedRemote = this.articlePhotoTriedRemote || {}
     const canTryRemote = block.remoteUrl && block.remoteUrl !== url && !this.articlePhotoTriedRemote[retryKey]
@@ -853,6 +973,13 @@ Page({
     if (!rec || !rec.stem) return
     const seq = (this._detailLoadSeq || 0) + 1
     this._detailLoadSeq = seq
+    let resolvedPhotoScope = ''
+    const scopeTask = library.ownerScope()
+      .then((scope) => {
+        resolvedPhotoScope = scope || ''
+        return resolvedPhotoScope
+      })
+      .catch(() => '')
     const cached = library.cachedDoc ? library.cachedDoc(rec.stem) : null
     if (cached) {
       this.applyDoc(cached, cached.owner || '', { deferPhotos: !cached.owner })
@@ -860,12 +987,18 @@ Page({
     } else {
       this.setData({ loading: true })
     }
-    const scopeTask = library.ownerScope().catch(() => '')
+    const earlyScopeRender = scopeTask.then((photoScope) => {
+      if (seq !== this._detailLoadSeq || !photoScope || !this.data.doc ||
+          !this.data.rec || this.data.rec.stem !== rec.stem) return photoScope
+      if (photoScope !== this.data.photoScope) this.applyDoc(this.data.doc, photoScope)
+      return photoScope
+    })
     try {
       const doc = await library.fetchDoc(rec.stem)
       if (seq !== this._detailLoadSeq || !this.data.rec || this.data.rec.stem !== rec.stem) return
       if (doc) {
-        this.applyDoc(doc, doc.owner || '', { deferPhotos: !doc.owner })
+        const knownScope = doc.owner || resolvedPhotoScope || this.data.photoScope || ''
+        this.applyDoc(doc, knownScope, { deferPhotos: !knownScope })
         this.setData({ loading: false })
       }
     } catch (error) {
@@ -875,7 +1008,7 @@ Page({
     }
     this.refreshVersionNav()
     this.refreshCommunityShareState()
-    const photoScope = await scopeTask
+    const photoScope = await earlyScopeRender
     if (seq !== this._detailLoadSeq || !photoScope || !this.data.doc ||
         !this.data.rec || this.data.rec.stem !== rec.stem) return
     if (photoScope !== this.data.photoScope) this.applyDoc(this.data.doc, photoScope)

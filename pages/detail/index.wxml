@@ -67,7 +67,7 @@
         <view wx:else class="photo-block" data-index="{{index}}" bindtouchstart="startImageLongpress" bindtouchmove="moveImageLongpress" bindtouchend="finishImageLongpress" bindtouchcancel="finishImageLongpress">
           <text class="photo-line-locator" wx:if="{{holdEditLocatorsVisible}}">{{item.lineNo}}</text>
           <text class="photo-image-locator" wx:if="{{holdEditLocatorsVisible && item.imageNo}}">图{{item.imageNo}}</text>
-          <image wx:if="{{item.url}}" id="article-photo-{{index}}" class="article-image {{item.photoState !== 'loaded' ? 'preloading' : ''}}" src="{{item.url}}" mode="widthFix" data-index="{{index}}" data-key="{{item.key}}" data-url="{{item.url}}" bindload="onArticleImageLoad" binderror="onArticleImageError" />
+          <image wx:if="{{item.url}}" id="article-photo-{{index}}" class="article-image {{item.photoState !== 'loaded' ? 'preloading' : ''}}" src="{{item.url}}" mode="widthFix" lazy-load data-index="{{index}}" data-key="{{item.key}}" data-url="{{item.url}}" bindload="onArticleImageLoad" binderror="onArticleImageError" />
           <view wx:if="{{item.photoState === 'loading' || item.photoState === 'grace'}}" class="photo-placeholder photo-loading {{item.photoState === 'grace' ? 'photo-making grace' : ''}}">
             <view class="photo-loading-spinner" aria-hidden="true"></view>
           </view>

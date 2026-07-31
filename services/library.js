@@ -391,9 +391,10 @@ function persistDownloadedAudio(key, tempFilePath, generation, identity) {
   })
 }
 
-function cachedPhotoPath(key, scope) {
-  const fullKey = scopedPhotoKey(key, scope)
-  if (!fullKey) return ''
+function cachedPhotoPath(key, scope, options) {
+  const scopedKey = scopedPhotoKey(key, scope)
+  if (!scopedKey) return ''
+  const fullKey = options && options.preferThumb ? `${scopedKey}#w512` : scopedKey
   const entries = photoCacheIndex()
   const hit = entries.find((item) => item.key === fullKey)
   if (!hit) return ''

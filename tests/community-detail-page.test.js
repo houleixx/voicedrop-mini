@@ -401,6 +401,133 @@ test('community article images keep a loading placeholder until the matching ima
   assert.equal(ctx.data.sections[0].blocks[blockIndex].loaded, true)
 })
 
+test('community article downloads photos through the persistent scoped cache', async () => {
+  const page = freshCommunityDetailPage([], null)
+  const library = require('../services/library')
+  const originalDownloadPhotoTemp = library.downloadPhotoTemp
+  const downloads = []
+  library.downloadPhotoTemp = async (key, scope) => {
+    downloads.push({ key, scope })
+    return 'wxfile://cached-community-photo.jpg'
+  }
+  try {
+    const sections = page.articleSections.call({ data: { sections: [] } }, {
+      title: '社区文章'
+    }, {
+      owner: 'users/anon-owner/',
+      articles: [{ title: '社区文章', body: '正文\n[[photo:photos/a.jpg]]' }],
+      photos: []
+    })
+    const ctx = Object.assign({}, page, {
+      data: { sections, blocks: sections[0].blocks },
+      setData(update) { Object.assign(this.data, update) },
+      communityPhotoLoadSeq: 0,
+      communityPhotoCache: {}
+    })
+
+    page.loadCommunityPhotos.call(ctx, sections, 'users/anon-owner/')
+    await new Promise((resolve) => setImmediate(resolve))
+
+    assert.deepEqual(downloads, [{
+      key: 'photos/a.jpg',
+      scope: 'users/anon-owner/'
+    }])
+    const photo = ctx.data.sections[0].blocks.find((block) => block.type === 'photo')
+    assert.equal(photo.url, 'wxfile://cached-community-photo.jpg')
+    assert.equal(photo.photoState, 'loading')
+    assert.equal(ctx.data.blocks, ctx.data.sections[0].blocks)
+  } finally {
+    library.downloadPhotoTemp = originalDownloadPhotoTemp
+  }
+})
+
+test('community detail starts scoped photo caching after rendering a fetched article', async () => {
+  const page = freshCommunityDetailPage([{
+    path: '/community/get/share-photo',
+    data: {
+      post: {
+        shareId: 'share-photo',
+        title: '带图文章',
+        owner: 'users/anon-owner/',
+        articles: [{
+          title: '带图文章',
+          body: '正文\n[[photo:photos/a.jpg]]'
+        }],
+        photos: []
+      }
+    }
+  }], {
+    shareId: 'share-photo',
+    title: '带图文章'
+  })
+  const loads = []
+  const ctx = {
+    data: {
+      shareId: 'share-photo',
+      post: { shareId: 'share-photo', title: '带图文章' },
+      sections: [],
+      replies: [],
+      loading: true
+    },
+    setData(update) { Object.assign(this.data, update) },
+    articleSections: page.articleSections,
+    loadCommunityPhotos(sections, scope) { loads.push({ sections, scope }) },
+    loadFullReplies: async () => []
+  }
+
+  await page.load.call(ctx)
+
+  assert.equal(loads.length, 1)
+  assert.equal(loads[0].scope, 'users/anon-owner/')
+  assert.equal(loads[0].sections[0].blocks[1].key, 'photos/a.jpg')
+})
+
+test('community article ignores cached photo results from a stale document', async () => {
+  const page = freshCommunityDetailPage([], null)
+  const library = require('../services/library')
+  const originalDownloadPhotoTemp = library.downloadPhotoTemp
+  const pending = {}
+  library.downloadPhotoTemp = (key) => new Promise((resolve) => {
+    pending[key] = resolve
+  })
+  try {
+    const firstSections = page.articleSections.call({ data: { sections: [] } }, {
+      title: '旧文章'
+    }, {
+      owner: 'users/anon-owner/',
+      articles: [{ title: '旧文章', body: '[[photo:photos/old.jpg]]' }],
+      photos: []
+    })
+    const ctx = Object.assign({}, page, {
+      data: { sections: firstSections, blocks: firstSections[0].blocks },
+      setData(update) { Object.assign(this.data, update) },
+      communityPhotoLoadSeq: 0,
+      communityPhotoCache: {}
+    })
+    page.loadCommunityPhotos.call(ctx, firstSections, 'users/anon-owner/')
+
+    const secondSections = page.articleSections.call({ data: { sections: [] } }, {
+      title: '新文章'
+    }, {
+      owner: 'users/anon-owner/',
+      articles: [{ title: '新文章', body: '[[photo:photos/new.jpg]]' }],
+      photos: []
+    })
+    ctx.data.sections = secondSections
+    ctx.data.blocks = secondSections[0].blocks
+    page.loadCommunityPhotos.call(ctx, secondSections, 'users/anon-owner/')
+
+    pending['photos/old.jpg']('wxfile://stale.jpg')
+    pending['photos/new.jpg']('wxfile://fresh.jpg')
+    await new Promise((resolve) => setImmediate(resolve))
+
+    assert.equal(ctx.data.sections[0].blocks[0].key, 'photos/new.jpg')
+    assert.equal(ctx.data.sections[0].blocks[0].url, 'wxfile://fresh.jpg')
+  } finally {
+    library.downloadPhotoTemp = originalDownloadPhotoTemp
+  }
+})
+
 test('community article ignores stale image events and exposes a terminal load failure', () => {
   const page = freshCommunityDetailPage([], null)
   const photo = {

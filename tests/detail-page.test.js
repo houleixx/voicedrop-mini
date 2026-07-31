@@ -24,6 +24,8 @@ function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, as
     uploadPhoto: async () => true,
     photoUrl: (key, scope) => `${scope || ''}${key}`,
     scopedPhotoKey: (key, scope) => `${scope || ''}${key}`,
+    cachedPhotoPath: () => '',
+    removeCachedPhotos: () => {},
     downloadPhotoTemp: async (key, scope) => `wxfile://${scope || ''}${key}`
   }, libraryOverrides || {})
   const articleEdit = articleEditOverrides || {
@@ -470,6 +472,7 @@ test('detail keeps a visible image loading placeholder until the matching image 
   assert.match(wxml, /photoState !== 'loaded' \? 'preloading' : ''/)
   assert.match(wxml, /data-key="\{\{item\.key\}\}"/)
   assert.match(wxml, /data-url="\{\{item\.url\}\}"/)
+  assert.match(wxml, /<image[^>]*lazy-load/)
   assert.match(wxml, /photoState === 'loading'[^>]*photo-placeholder photo-loading/)
   assert.match(wxml, /photoState === 'grace' \? 'photo-making grace' : ''/)
   assert.match(wxml, /photo-loading-spinner/)
@@ -846,6 +849,8 @@ test('detail invalidates persistent and in-memory photo cache before processing 
         type: 'photo',
         key: 'photos/a.jpg',
         url: 'wxfile://stale-a.jpg',
+        previewUrl: 'wxfile://stale-thumb-a.jpg',
+        imageVariant: 'thumbnail',
         loaded: true,
         photoState: 'loaded'
       }]
@@ -861,6 +866,8 @@ test('detail invalidates persistent and in-memory photo cache before processing 
     page.startPhotoMaking.call(ctx, 'photos/a.jpg', { poll: false })
     assert.deepEqual(removed, ['users/anon/photos/a.jpg'])
     assert.equal(ctx.articlePhotoCache['users/anon/photos/a.jpg'], undefined)
+    assert.equal(ctx.data.blocks[0].previewUrl, '')
+    assert.equal(ctx.data.blocks[0].imageVariant, '')
   } finally {
     page.stopPhotoMaking.call(ctx)
     library.removeCachedPhotos = originalRemoveCachedPhotos
@@ -932,6 +939,8 @@ test('detail page downloads own uploaded photo markers with owner scope like And
     },
     applyDoc: page.applyDoc,
     loadArticlePhotos: page.loadArticlePhotos,
+    loadArticlePhoto: page.loadArticlePhoto,
+    loadArticleOriginalPhoto: page.loadArticleOriginalPhoto,
     updateArticlePhotoBlock: page.updateArticlePhotoBlock,
     photoLoadSeq: 0,
     articlePhotoCache: {}
@@ -960,6 +969,8 @@ test('detail page downloads own uploaded photo markers with owner scope like And
       lineNo: 2,
       imageNo: 1,
       url: '',
+      previewUrl: '',
+      imageVariant: '',
       remoteUrl: 'users/anon-owner/photos/2026-06-28-103217/0-lc1.jpg',
       loading: true,
       loaded: false,
@@ -1617,6 +1628,171 @@ test('detail page renders a cached article before background revalidation finish
   assert.match(load, /library\.cachedDoc\(/)
   assert.match(load, /this\.setData\(\{ loading: false \}\)/)
   assert.doesNotMatch(load, /await this\.refreshVersionNav\(\)[\s\S]*this\.setData\(\{ loading: false \}\)/)
+})
+
+test('detail starts cached photo lookup as soon as owner scope resolves', async () => {
+  let finishFetch
+  const fetchDoc = new Promise((resolve) => { finishFetch = resolve })
+  const doc = {
+    articles: [{
+      title: '缓存文章',
+      body: '正文\n[[photo:photos/a.jpg]]'
+    }],
+    photos: []
+  }
+  const page = freshDetailPage({
+    cachedDoc: () => doc,
+    fetchDoc: () => fetchDoc,
+    ownerScope: async () => 'users/anon-owner/'
+  })
+  const photoLoads = []
+  const ctx = Object.assign({}, page, {
+    data: Object.assign({}, page.data, {
+      rec: { stem: 'VoiceDrop-cache-scope' },
+      articleIndex: 0,
+      photoScope: '',
+      blocks: []
+    }),
+    setData(update) { Object.assign(this.data, update) },
+    loadArticlePhotos(blocks, scope) { photoLoads.push({ blocks, scope }) },
+    refreshVersionNav: async () => {},
+    refreshCommunityShareState: () => {}
+  })
+
+  const loading = page.load.call(ctx)
+  await new Promise((resolve) => setImmediate(resolve))
+
+  assert.equal(photoLoads.length, 1)
+  assert.equal(photoLoads[0].scope, 'users/anon-owner/')
+
+  finishFetch(doc)
+  await loading
+})
+
+test('detail reuses a cached list thumbnail before upgrading to the original photo', async () => {
+  const downloads = []
+  const updates = []
+  const page = freshDetailPage({
+    cachedPhotoPath: (key, scope, options) => options && options.preferThumb
+      ? 'wxfile://cached-thumb-a.jpg'
+      : '',
+    downloadPhotoTemp: async (key, scope, options) => {
+      downloads.push({ key, scope, options })
+      return 'wxfile://cached-original-a.jpg'
+    }
+  }, {
+    getImageInfo: ({ src, success }) => success({
+      path: src,
+      width: 1200,
+      height: 800
+    })
+  })
+  const blocks = [{
+    type: 'photo',
+    key: 'photos/a.jpg',
+    url: '',
+    remoteUrl: 'users/anon/photos/a.jpg',
+    photoState: 'loading',
+    loading: true,
+    loaded: false
+  }]
+  const ctx = Object.assign({}, page, {
+    data: { blocks },
+    photoLoadSeq: 0,
+    articlePhotoCache: {},
+    setData(update) {
+      Object.assign(this.data, update)
+      if (update.blocks) updates.push(update.blocks.map((block) => Object.assign({}, block)))
+    }
+  })
+
+  page.loadArticlePhotos.call(ctx, blocks, 'users/anon/')
+  await new Promise((resolve) => setImmediate(resolve))
+
+  assert.equal(updates[0][0].url, 'wxfile://cached-thumb-a.jpg')
+  assert.equal(updates[0][0].key, 'photos/a.jpg')
+  assert.equal(updates[0][0].imageVariant, 'thumbnail')
+  assert.equal(ctx.data.blocks[0].url, 'wxfile://cached-original-a.jpg')
+  assert.equal(ctx.data.blocks[0].key, 'photos/a.jpg')
+  assert.equal(ctx.data.blocks[0].imageVariant, 'original')
+  assert.deepEqual(downloads, [{
+    key: 'photos/a.jpg',
+    scope: 'users/anon/',
+    options: undefined
+  }])
+})
+
+test('detail limits uncached article photo downloads to three at a time', async () => {
+  const pending = []
+  const page = freshDetailPage({
+    downloadPhotoTemp: (key) => new Promise((resolve) => {
+      pending.push({ key, resolve })
+    })
+  })
+  const blocks = Array.from({ length: 5 }, (_, index) => ({
+    type: 'photo',
+    key: `photos/${index}.jpg`,
+    url: '',
+    photoState: 'loading',
+    loading: true,
+    loaded: false
+  }))
+  const ctx = Object.assign({}, page, {
+    data: { blocks },
+    photoLoadSeq: 0,
+    articlePhotoCache: {},
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  page.loadArticlePhotos.call(ctx, blocks, 'users/anon/')
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(pending.length, 3)
+
+  pending[0].resolve('wxfile://0.jpg')
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(pending.length, 4)
+
+  pending[1].resolve('wxfile://1.jpg')
+  pending[2].resolve('wxfile://2.jpg')
+  pending[3].resolve('wxfile://3.jpg')
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(pending.length, 5)
+  pending[4].resolve('wxfile://4.jpg')
+  await new Promise((resolve) => setImmediate(resolve))
+})
+
+test('detail falls back to the visible thumbnail if an upgraded original cannot render', () => {
+  const page = freshDetailPage()
+  const ctx = Object.assign({}, page, {
+    photoLoadSeq: 4,
+    data: {
+      blocks: [{
+        type: 'photo',
+        key: 'photos/a.jpg',
+        url: 'wxfile://original-a.jpg',
+        previewUrl: 'wxfile://thumb-a.jpg',
+        imageVariant: 'original',
+        photoState: 'loaded',
+        loaded: true,
+        failed: false
+      }]
+    },
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  page.onArticleImageError.call(ctx, {
+    currentTarget: {
+      dataset: {
+        index: 0,
+        key: 'photos/a.jpg',
+        url: 'wxfile://original-a.jpg'
+      }
+    }
+  })
+
+  assert.equal(ctx.data.blocks[0].url, 'wxfile://thumb-a.jpg')
+  assert.equal(ctx.data.blocks[0].imageVariant, 'thumbnail')
+  assert.equal(ctx.data.blocks[0].photoState, 'loaded')
 })
 
 test('detail page numbers paragraphs and photos while holding to talk like iOS', async () => {

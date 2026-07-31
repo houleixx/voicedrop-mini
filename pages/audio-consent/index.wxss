@@ -1,9 +1,15 @@
+.agreement-page {
+  --settings-content-top: 198rpx;
+}
+
 .agreement-body {
   padding-bottom: calc(64rpx + env(safe-area-inset-bottom));
 }
 
 .agreement-card {
-  padding: 36rpx 32rpx;
+  padding: 32rpx;
+  border: 2rpx solid #ece3d5;
+  background: #ffffff;
 }
 
 .agreement-summary,
@@ -21,7 +27,7 @@
 }
 
 .agreement-section {
-  margin-top: 36rpx;
+  margin-top: 32rpx;
 }
 
 .section-title {
@@ -38,8 +44,9 @@
 }
 
 .agreement-meta {
-  margin-top: 48rpx;
-  color: #9b9185;
+  margin-top: 40rpx;
+  color: #756f66;
   font-size: 24rpx;
+  line-height: 1.4;
   text-align: center;
 }

@@ -1,8 +1,12 @@
 @import '../../styles/remixicon.wxss';
 
+.settings-page {
+  --settings-content-top: 198rpx;
+}
+
 /* 分组卡片 */
 .menu-card {
-  margin-top: 28rpx;
+  margin-top: 12rpx;
   overflow: hidden;
   background: #ffffff;
   border: 2rpx solid #ece3d5;
@@ -18,9 +22,10 @@
   margin-top: 36rpx;
   margin-bottom: 12rpx;
   padding-left: 12rpx;
-  color: #b8ae9e;
-  font-size: 24rpx;
+  color: #756f66;
+  font-size: 26rpx;
   font-weight: 700;
+  line-height: 36rpx;
 }
 
 /* 单个菜单项 */
@@ -179,7 +184,7 @@
 }
 
 .menu-subtitle {
-  color: #b8ae9e;
+  color: #756f66;
   font-size: 24rpx;
   line-height: 1.2;
   overflow: hidden;
@@ -203,14 +208,14 @@
 }
 
 .menu-id {
-  color: #b8ae9e;
+  color: #756f66;
   font-size: 28rpx;
   font-weight: 700;
   font-family: monospace;
 }
 
 .menu-status {
-  color: #b8ae9e;
+  color: #756f66;
   font-size: 26rpx;
 }
 
@@ -222,7 +227,7 @@
   display: block;
   width: 36rpx;
   height: 36rpx;
-  color: #d0c5b4;
+  color: #9b8f7f;
   font-size: 36rpx;
   line-height: 36rpx;
   text-align: center;

@@ -54,3 +54,41 @@ test('settings card dividers start at the menu text column', () => {
   assert.match(styles, /\.menu-item::after\s*\{[^}]*left:\s*124rpx;[^}]*right:\s*0;[^}]*height:\s*1rpx;[^}]*background:\s*#f0e8da;/s)
   assert.match(styles, /\.menu-item:last-child::after,\s*\.menu-item\.no-bottom-border::after\s*\{[^}]*display:\s*none;/s)
 })
+
+test('settings landing page keeps compact groups and readable secondary text', () => {
+  const styles = read('pages/settings/index.wxss')
+
+  assert.match(styles, /\.settings-page\s*\{[^}]*--settings-content-top:\s*198rpx;/s)
+  assert.match(styles, /\.menu-card\s*\{[^}]*margin-top:\s*12rpx;/s)
+  assert.match(styles, /\.section-header\s*\{[^}]*margin-top:\s*36rpx;[^}]*margin-bottom:\s*12rpx;[^}]*color:\s*#756f66;[^}]*font-size:\s*26rpx;[^}]*line-height:\s*36rpx;/s)
+  assert.match(styles, /\.menu-item\s*\{[^}]*min-height:\s*120rpx;[^}]*padding:\s*20rpx 28rpx;/s)
+  assert.match(styles, /\.menu-title\s*\{[^}]*font-size:\s*32rpx;/s)
+  assert.match(styles, /\.menu-subtitle\s*\{[^}]*color:\s*#756f66;[^}]*font-size:\s*24rpx;/s)
+  assert.match(styles, /\.menu-id\s*\{[^}]*color:\s*#756f66;/s)
+  assert.match(styles, /\.menu-status\s*\{[^}]*color:\s*#756f66;/s)
+  assert.match(styles, /\.menu-arrow\s*\{[^}]*color:\s*#9b8f7f;/s)
+})
+
+test('about pages inherit the compact settings rhythm and readable secondary text', () => {
+  const aboutMarkup = read('pages/about/index.wxml')
+  const aboutStyles = read('pages/about/index.wxss')
+  const agreementMarkup = read('pages/audio-consent/index.wxml')
+  const agreementStyles = read('pages/audio-consent/index.wxss')
+
+  assert.match(aboutMarkup, /class="screen settings-screen about-page"/)
+  assert.match(aboutStyles, /\.about-page\s*\{[^}]*--settings-content-top:\s*198rpx;/s)
+  assert.match(aboutStyles, /\.about-card\s*\{[^}]*margin-top:\s*0;[^}]*padding:\s*32rpx;/s)
+  assert.match(aboutStyles, /\.desc\s*\{[^}]*color:\s*#756f66;[^}]*font-size:\s*26rpx;/s)
+  assert.match(aboutStyles, /\.version\s*\{[^}]*color:\s*#756f66;[^}]*font-size:\s*24rpx;/s)
+  assert.match(aboutStyles, /\.menu\s*\{[^}]*margin-top:\s*16rpx;/s)
+  assert.match(aboutStyles, /\.blocked\s*\{[^}]*margin-top:\s*16rpx;/s)
+  assert.match(aboutStyles, /\.menu \.row,[\s\S]*\.blocked\s*>\s*\.row\s*\{[^}]*min-height:\s*104rpx;[^}]*padding:\s*20rpx 28rpx;/s)
+  assert.match(aboutStyles, /\.about-page \.muted\s*\{[^}]*color:\s*#756f66;[^}]*font-size:\s*24rpx;/s)
+  assert.match(aboutStyles, /\.empty-line\s*\{[^}]*color:\s*#756f66;[^}]*font-size:\s*26rpx;/s)
+
+  assert.match(agreementMarkup, /class="screen settings-screen agreement-page"/)
+  assert.match(agreementStyles, /\.agreement-page\s*\{[^}]*--settings-content-top:\s*198rpx;/s)
+  assert.match(agreementStyles, /\.agreement-card\s*\{[^}]*padding:\s*32rpx;/s)
+  assert.match(agreementStyles, /\.agreement-section\s*\{[^}]*margin-top:\s*32rpx;/s)
+  assert.match(agreementStyles, /\.agreement-meta\s*\{[^}]*margin-top:\s*40rpx;[^}]*color:\s*#756f66;/s)
+})

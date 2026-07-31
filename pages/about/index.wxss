@@ -1,3 +1,7 @@
+.about-page {
+  --settings-content-top: 198rpx;
+}
+
 .about-card,
 .menu,
 .blocked {
@@ -7,7 +11,7 @@
 
 .about-card {
   margin-top: 0;
-  padding: 36rpx;
+  padding: 32rpx;
 }
 
 .logo {
@@ -15,48 +19,77 @@
   color: #2a2521;
   font-size: 38rpx;
   font-weight: 900;
+  line-height: 1.25;
 }
 
 .desc {
   display: block;
-  margin-top: 12rpx;
-  color: #8a8175;
-  font-size: 28rpx;
+  margin-top: 10rpx;
+  color: #756f66;
+  font-size: 26rpx;
   line-height: 1.5;
 }
 
 .version {
   display: block;
-  margin-top: 16rpx;
-  color: #b8ae9e;
+  margin-top: 12rpx;
+  color: #756f66;
   font-size: 24rpx;
+  line-height: 1.4;
 }
 
 .menu {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
   overflow: hidden;
 }
 
 .blocked {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
   overflow: hidden;
 }
 
+.menu .row,
+.blocked > .row {
+  min-height: 104rpx;
+  padding: 20rpx 28rpx;
+}
+
+.menu .row > text:first-child,
+.blocked > .row > text:first-child {
+  color: #2a2521;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.about-page .muted {
+  max-width: 54%;
+  margin-left: 20rpx;
+  color: #756f66;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: right;
+  word-break: break-all;
+}
+
 .empty-line {
-  padding: 28rpx;
-  color: #b8ae9e;
+  padding: 24rpx 28rpx;
+  color: #756f66;
   font-size: 26rpx;
+  line-height: 1.4;
 }
 
 .blocked-row {
   display: flex;
-  min-height: 92rpx;
-  padding: 0 28rpx;
+  min-height: 104rpx;
+  padding: 20rpx 28rpx;
   align-items: center;
   justify-content: space-between;
   border-top: 1rpx solid #f0e5d7;
   color: #2a2521;
   font-size: 28rpx;
+  line-height: 1.3;
 }
 
 .unblock {

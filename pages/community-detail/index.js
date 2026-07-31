@@ -75,6 +75,7 @@ Page({
 
   onUnload() {
     audioConsentFlow.dispose(this)
+    this.communityPhotoLoadSeq = (this.communityPhotoLoadSeq || 0) + 1
     this.clearReplyTimer()
     const active = app.globalData.activeRecorderSession || {}
     if (active.type === 'community-reply' && active.id === this._replySessionId) {
@@ -152,6 +153,9 @@ Page({
         sections: cachedSections,
         loading: false
       })
+      if (this.loadCommunityPhotos) {
+        this.loadCommunityPhotos(cachedSections, visiblePost.doc && visiblePost.doc.owner)
+      }
     } else {
       this.setData({ loading: true })
     }
@@ -184,6 +188,9 @@ Page({
         sections
       })
       this.setData(articleUpdate)
+      if (!sameDocument && this.loadCommunityPhotos) {
+        this.loadCommunityPhotos(sections, doc && doc.owner)
+      }
       community.engage(shareId, 'view')
 
       const repliesPromise = post.isPrompt
@@ -234,12 +241,16 @@ Page({
 
   articleSections(post, doc) {
     if (!doc || !doc.articles || !doc.articles.length) return []
+    const scope = doc.owner || ''
     const previousPhotos = {}
     const previousSections = this && this.data && this.data.sections || []
     previousSections.forEach((section) => {
       ;(section.blocks || []).forEach((block) => {
         if (block && block.type === 'photo' && block.key && block.url) {
-          previousPhotos[`${block.key}|${block.url}`] = block
+          const cacheKey = library.scopedPhotoKey
+            ? library.scopedPhotoKey(block.key, block.photoScope || '')
+            : `${block.photoScope || ''}${block.key}`
+          previousPhotos[cacheKey] = block
         }
       })
     })
@@ -248,11 +259,15 @@ Page({
       blocks: articleUtil.bodyBlocks(article.body).map((block) => {
         if (block.type !== 'photo') return block
         const key = articleUtil.resolvePhotoKey(block.key, doc.photos || []) || block.key
-        const url = library.photoUrl(key, doc.owner)
-        const previous = previousPhotos[`${key}|${url}`]
+        const cacheKey = library.scopedPhotoKey
+          ? library.scopedPhotoKey(key, scope)
+          : `${scope}${key}`
+        const previous = previousPhotos[cacheKey]
         const next = Object.assign({}, block, {
           key,
-          url,
+          photoScope: scope,
+          url: '',
+          remoteUrl: library.photoUrl(key, scope),
           photoState: 'loading',
           loading: true,
           loaded: false,
@@ -260,6 +275,7 @@ Page({
         })
         if (previous && previous.loaded && previous.photoState === 'loaded') {
           Object.assign(next, {
+            url: previous.url,
             photoState: 'loaded',
             loading: false,
             loaded: true,
@@ -270,6 +286,58 @@ Page({
         return next
       })
     }))
+  },
+
+  loadCommunityPhotos(sections, scope) {
+    const photoBlocks = []
+    ;(sections || []).forEach((section, sectionIndex) => {
+      ;(section.blocks || []).forEach((block, blockIndex) => {
+        if (block && block.type === 'photo' && block.key && block.photoState === 'loading') {
+          photoBlocks.push({ sectionIndex, blockIndex, block })
+        }
+      })
+    })
+    if (!photoBlocks.length || !library.downloadPhotoTemp) return
+    this.communityPhotoLoadSeq = (this.communityPhotoLoadSeq || 0) + 1
+    const seq = this.communityPhotoLoadSeq
+    this.communityPhotoCache = this.communityPhotoCache || {}
+    photoBlocks.forEach(({ sectionIndex, blockIndex, block }) => {
+      const cacheKey = library.scopedPhotoKey
+        ? library.scopedPhotoKey(block.key, scope)
+        : `${scope || ''}${block.key}`
+      const cached = this.communityPhotoCache[cacheKey]
+      if (cached) {
+        this.updateCommunityPhotoBlock(sectionIndex, blockIndex, {
+          url: cached,
+          loading: false,
+          loaded: false,
+          failed: false,
+          photoState: 'loading'
+        })
+        return
+      }
+      library.downloadPhotoTemp(block.key, scope)
+        .then((localPath) => {
+          if (seq !== this.communityPhotoLoadSeq) return
+          this.communityPhotoCache[cacheKey] = localPath
+          this.updateCommunityPhotoBlock(sectionIndex, blockIndex, {
+            url: localPath,
+            loading: false,
+            loaded: false,
+            failed: false,
+            photoState: 'loading'
+          })
+        })
+        .catch(() => {
+          if (seq !== this.communityPhotoLoadSeq) return
+          this.updateCommunityPhotoBlock(sectionIndex, blockIndex, {
+            loading: false,
+            loaded: false,
+            failed: true,
+            photoState: 'loadFailed'
+          })
+        })
+    })
   },
 
   updateCommunityPhotoBlock(sectionIndex, blockIndex, patch) {

@@ -782,6 +782,79 @@ test('library prefers a 512px edge thumbnail for card-sized photos and falls bac
   assert.equal(library.__downloads[1].url, 'https://voicedrop.cn/files/api/photo/users/anon-1/photos/a.jpg')
 })
 
+test('library exposes a separately persisted thumbnail cache hit', async () => {
+  const storage = {}
+  const savedFiles = new Set()
+  const library = freshLibraryWithWx([
+    {
+      path: '/cdn-cgi/image/width=512,quality=60/files/api/photo/users/anon-1/photos/a.jpg',
+      tempFilePath: 'wxfile://temporary-thumb-a.jpg'
+    }
+  ], {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    getFileSystemManager: () => ({
+      accessSync: (path) => {
+        if (!savedFiles.has(path)) throw new Error('missing')
+      },
+      saveFile: ({ success }) => {
+        const path = 'wxfile://saved-thumb-a.jpg'
+        savedFiles.add(path)
+        success({ savedFilePath: path })
+      },
+      unlinkSync: (path) => savedFiles.delete(path)
+    })
+  })
+
+  await library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/', { preferThumb: true })
+
+  assert.equal(
+    library.cachedPhotoPath('photos/a.jpg', 'users/anon-1/', { preferThumb: true }),
+    'wxfile://saved-thumb-a.jpg'
+  )
+  assert.equal(library.cachedPhotoPath('photos/a.jpg', 'users/anon-1/'), '')
+})
+
+test('library invalidates original and thumbnail variants together for image instructions', async () => {
+  const storage = {}
+  const savedFiles = new Set()
+  let saveCount = 0
+  const library = freshLibraryWithWx([
+    {
+      path: '/cdn-cgi/image/width=512,quality=60/files/api/photo/users/anon-1/photos/a.jpg',
+      tempFilePath: 'wxfile://temporary-thumb-a.jpg'
+    },
+    {
+      path: '/photo/users/anon-1/photos/a.jpg',
+      tempFilePath: 'wxfile://temporary-original-a.jpg'
+    }
+  ], {
+    getStorageSync: (key) => storage[key] || '',
+    setStorageSync: (key, value) => { storage[key] = value },
+    removeStorageSync: (key) => { delete storage[key] },
+    getFileSystemManager: () => ({
+      accessSync: (path) => {
+        if (!savedFiles.has(path)) throw new Error('missing')
+      },
+      saveFile: ({ success }) => {
+        const path = `wxfile://saved-variant-${++saveCount}.jpg`
+        savedFiles.add(path)
+        success({ savedFilePath: path })
+      },
+      unlinkSync: (path) => savedFiles.delete(path)
+    })
+  })
+
+  await library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/', { preferThumb: true })
+  await library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/')
+  library.removeCachedPhotos(['users/anon-1/photos/a.jpg'])
+
+  assert.equal(library.cachedPhotoPath('photos/a.jpg', 'users/anon-1/'), '')
+  assert.equal(library.cachedPhotoPath('photos/a.jpg', 'users/anon-1/', { preferThumb: true }), '')
+  assert.equal(savedFiles.size, 0)
+})
+
 test('library persists a downloaded article photo and reuses it after recreation', async () => {
   const storage = {}
   const savedFiles = new Set()
