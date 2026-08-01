@@ -107,6 +107,20 @@ test('community share card marks its route and returns to VD community', () => {
   assert.deepEqual(relaunches, ['/pages/recordings/index?tab=community'])
 })
 
+test('community detail root page returns to VD community when WeChat drops the share marker', () => {
+  const page = freshCommunityDetailPage([], null)
+  const relaunches = []
+  let navigatedBack = false
+  global.getCurrentPages = () => [{ route: 'pages/community-detail/index' }]
+  global.wx.reLaunch = ({ url }) => relaunches.push(url)
+  global.wx.navigateBack = () => { navigatedBack = true }
+
+  page.goBack.call({ data: { replyRecording: false }, openedFromShare: false })
+
+  assert.deepEqual(relaunches, ['/pages/recordings/index?tab=community'])
+  assert.equal(navigatedBack, false)
+})
+
 test('community detail shows loading state while article body is fetching', async () => {
   const page = freshCommunityDetailPage([
     {
@@ -263,6 +277,7 @@ test('community detail has custom actions and loading markup', () => {
   const toolButtonRule = wxss.match(/\.tool-button\s*\{([^}]*)\}/)[1]
   const iconButtonRule = wxss.match(/\.icon-only-button\s*\{([^}]*)\}/)[1]
   const actionIconRule = wxss.match(/\.action-icon\s*\{([^}]*)\}/)[1]
+  const moreButtonRule = wxss.match(/\.toolbar-actions \.tool-button\.more-button\s*\{([^}]*)\}/)[1]
   const moreIconRule = wxss.match(/\.more-icon\s*\{([^}]*)\}/)[1]
   const loadingRule = wxss.match(/\.loading-card\s*\{([^}]*)\}/)[1]
   const loadingSpinnerRule = wxss.match(/\.loading-spinner\s*\{([^}]*)\}/)?.[1] || ''
@@ -293,6 +308,7 @@ test('community detail has custom actions and loading markup', () => {
   assert.doesNotMatch(wxml, /ri-coin-line/)
   assert.match(wxml, /ri-heart-fill/)
   assert.match(wxml, /ri-heart-line/)
+  assert.match(wxml, /class="tool-button more-button/)
   assert.match(wxml, /ri-more-fill/)
   assert.doesNotMatch(wxml, />•••</)
   assert.match(wxml, /ri-mic-line/)
@@ -300,11 +316,12 @@ test('community detail has custom actions and loading markup', () => {
   assert.doesNotMatch(wxml, /ri-share-forward-line/)
   assert.match(wxml, /ri-flag-line/)
   assert.match(wxml, /ri-hand/)
-  assert.match(toolbarActionsRule, /gap:\s*14rpx;/)
+  assert.match(toolbarActionsRule, /gap:\s*0;/)
   assert.doesNotMatch(toolbarActionsRule, /column-gap|margin-(left|right):/)
   assert.match(toolButtonRule, /width:\s*72rpx;/)
   assert.match(toolButtonRule, /height:\s*72rpx;/)
   assert.doesNotMatch(iconButtonRule, /margin-(left|right):/)
+  assert.match(moreButtonRule, /margin-left:\s*11px;/)
   assert.match(actionIconRule, /width:\s*42rpx;/)
   assert.match(actionIconRule, /height:\s*42rpx;/)
   assert.match(actionIconRule, /font-size:\s*42rpx;/)
@@ -339,6 +356,13 @@ test('community article detail shares the list gutter and audio-detail reading r
   assert.match(wxss, /\.article-head\s*\{[^}]*padding:\s*0 0 44rpx;/s)
   assert.match(wxss, /\.article,\s*\.empty\s*\{[^}]*padding:\s*0;/s)
   assert.match(wxss, /\.article-title\s*\{[^}]*font-size:\s*48rpx;[^}]*font-weight:\s*800;[^}]*line-height:\s*1\.28;/s)
+  assert.match(wxml, /class="article-meta"/)
+  assert.match(wxml, /class="article-author">\{\{post\.author \|\| post\.authorName \|\| '匿名作者'\}\}<\/text>/)
+  assert.match(wxml, /class="article-date" wx:if="\{\{post\.dateLabel\}\}">\{\{post\.dateLabel\}\}<\/text>/)
+  assert.doesNotMatch(wxml, /社区分享/)
+  assert.match(wxss, /\.article-meta\s*\{[^}]*margin-top:\s*16rpx;[^}]*gap:\s*16rpx;[^}]*font-size:\s*26rpx;[^}]*line-height:\s*1\.4;/s)
+  assert.match(wxss, /\.article-author\s*\{[^}]*color:\s*#d8593b;[^}]*font-weight:\s*600;/s)
+  assert.match(wxss, /\.article-date\s*\{[^}]*color:\s*#9a9387;[^}]*font-weight:\s*400;/s)
   assert.match(wxss, /\.meta\s*\{[^}]*color:\s*#817b72;[^}]*font-size:\s*28rpx;[^}]*line-height:\s*1\.4;/s)
   assert.match(wxss, /\.paragraph\s*\{[^}]*font-size:\s*35rpx;[^}]*line-height:\s*1\.72;/s)
   assert.match(wxss, /\.article-image\s*\{[^}]*border-radius:\s*20rpx;/s)

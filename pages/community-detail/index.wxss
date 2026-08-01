@@ -20,7 +20,7 @@
 .toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 14rpx;
+  gap: 0;
 }
 
 .tool-button {
@@ -84,6 +84,10 @@
   transform: none;
 }
 
+.toolbar-actions .tool-button.more-button {
+  margin-left: 11px;
+}
+
 .more-icon {
   width: 42rpx;
   height: 42rpx;
@@ -115,6 +119,25 @@
   font-size: 48rpx;
   font-weight: 800;
   line-height: 1.28;
+}
+
+.article-meta {
+  display: flex;
+  margin-top: 16rpx;
+  align-items: center;
+  gap: 16rpx;
+  font-size: 26rpx;
+  line-height: 1.4;
+}
+
+.article-author {
+  color: #d8593b;
+  font-weight: 600;
+}
+
+.article-date {
+  color: #9a9387;
+  font-weight: 400;
 }
 
 .meta {
@@ -534,27 +557,6 @@
   font-size: 24rpx;
   font-weight: 700;
   text-align: center;
-}
-
-.prompt-meta {
-  display: flex;
-  margin-top: 24rpx;
-  align-items: center;
-  gap: 18rpx;
-}
-
-.prompt-author,
-.prompt-date {
-  font-size: 28rpx;
-  line-height: 1.4;
-}
-
-.prompt-author {
-  color: #d8593b;
-}
-
-.prompt-date {
-  color: #817b72;
 }
 
 .prompt-detail-content {

@@ -104,7 +104,11 @@ Page({
       this.cancelReplyRecording()
       return
     }
-    if (this.openedFromShare) {
+    const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : []
+    const hasPreviousPage = pages && pages.length > 1
+    // A share card opens this detail as the mini program root. Use the page
+    // stack as a fallback when an external entry does not expose its source.
+    if (this.openedFromShare || !hasPreviousPage) {
       wx.reLaunch({ url: '/pages/recordings/index?tab=community' })
       return
     }

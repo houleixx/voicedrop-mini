@@ -10,7 +10,7 @@
       <button class="tool-button icon-only-button {{liked ? 'liked' : ''}}" bindtap="toggleLike" aria-label="喜欢">
         <text class="action-icon {{liked ? 'ri-heart-fill' : 'ri-heart-line'}}"></text>
       </button>
-      <button class="tool-button {{post.isPrompt ? 'prompt-more-button' : ''}}" bindtap="showMoreActions" aria-label="更多">
+      <button class="tool-button more-button {{post.isPrompt ? 'prompt-more-button' : ''}}" bindtap="showMoreActions" aria-label="更多">
         <text class="more-icon ri-more-fill"></text>
       </button>
     </view>
@@ -19,11 +19,10 @@
   <view class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight}}px + 54rpx);">
     <view class="article-head">
       <text class="article-title">{{article.title || post.title || '社区文章'}}</text>
-      <view class="prompt-meta" wx:if="{{post.isPrompt}}">
-        <text class="prompt-author">{{post.author || post.authorName || '匿名作者'}}</text>
-        <text class="prompt-date">{{post.dateLabel}}</text>
+      <view class="article-meta">
+        <text class="article-author">{{post.author || post.authorName || '匿名作者'}}</text>
+        <text class="article-date" wx:if="{{post.dateLabel}}">{{post.dateLabel}}</text>
       </view>
-      <text class="meta" wx:else>{{post.author || post.authorName || '匿名作者'}} · 社区分享</text>
       <view class="reply-to" wx:if="{{replyToPost && !loading}}" bindtap="openReplyTo">
         <view class="reply-to-icon community-reply-icon-accent"></view>
         <text class="reply-to-prefix">回应</text>
