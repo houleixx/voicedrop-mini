@@ -546,7 +546,7 @@
 }
 
 .article-head {
-  padding: 0 0 44rpx;
+  padding: 0 0 20rpx;
 }
 
 .article-title {
@@ -559,7 +559,7 @@
 
 .article-meta {
   display: flex;
-  margin-top: 24rpx;
+  margin-top: 10rpx;
   align-items: center;
   color: #817b72;
   font-size: 28rpx;

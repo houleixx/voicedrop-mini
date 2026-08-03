@@ -110,7 +110,7 @@
 }
 
 .article-head {
-  padding: 0 0 44rpx;
+  padding: 0 0 20rpx;
 }
 
 .article-title {
@@ -123,7 +123,7 @@
 
 .article-meta {
   display: flex;
-  margin-top: 16rpx;
+  margin-top: 10px;
   align-items: center;
   gap: 16rpx;
   font-size: 26rpx;

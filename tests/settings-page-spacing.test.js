@@ -69,6 +69,21 @@ test('settings landing page keeps compact groups and readable secondary text', (
   assert.match(styles, /\.menu-arrow\s*\{[^}]*color:\s*#9b8f7f;/s)
 })
 
+test('settings icon tiles use the shared semantic palette', () => {
+  const styles = read('pages/settings/index.wxss')
+
+  assert.match(styles, /\.icon-dark\s*\{[^}]*background:\s*#2a2521;/s)
+  assert.match(styles, /\.icon-dark \.menu-icon-text\s*\{[^}]*color:\s*#ffffff;/s)
+  assert.match(styles, /\.icon-amber\s*\{[^}]*background:\s*#fbead2;/s)
+  assert.match(styles, /\.icon-amber \.menu-icon-text\s*\{[^}]*color:\s*#c98a2e;/s)
+  assert.match(styles, /\.icon-beige\s*\{[^}]*background:\s*#f1ece3;/s)
+  assert.match(styles, /\.icon-beige \.menu-icon-text\s*\{[^}]*color:\s*#8a8175;/s)
+  assert.match(styles, /\.icon-pink\s*\{[^}]*background:\s*#f6e4dc;/s)
+  assert.match(styles, /\.icon-pink \.menu-icon-text\s*\{[^}]*color:\s*#d8593b;/s)
+  assert.match(styles, /\.icon-green\s*\{[^}]*background:\s*#eaf1ec;/s)
+  assert.match(styles, /\.icon-green \.menu-icon-text\s*\{[^}]*color:\s*#5e8a6a;/s)
+})
+
 test('about pages inherit the compact settings rhythm and readable secondary text', () => {
   const aboutMarkup = read('pages/about/index.wxml')
   const aboutStyles = read('pages/about/index.wxss')

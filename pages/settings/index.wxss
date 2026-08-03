@@ -153,14 +153,14 @@
 }
 
 .icon-pink {
-  background: #fde8e2;
+  background: #f6e4dc;
 }
 .icon-pink .menu-icon-text {
   color: #d8593b;
 }
 
 .icon-green {
-  background: #e7f1e8;
+  background: #eaf1ec;
 }
 .icon-green .menu-icon-text {
   color: #5e8a6a;

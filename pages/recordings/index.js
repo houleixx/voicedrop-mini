@@ -476,10 +476,21 @@ Page({
     try {
       await library.enrichArticleMeta(records)
       if (loadId !== this.recordMetaLoadId) return
-      const selectedTag = this.selectedTagFor(records)
-      const homeTags = recordingUtil.tagsFromRecords(records)
+      const enrichedByStem = new Map((records || []).map((rec) => [rec.stem, rec]))
+      const currentRecords = (this.data.allRecords || []).map((current) => {
+        const enriched = enrichedByStem.get(current.stem)
+        if (!enriched) return current
+        return Object.assign({}, current, {
+          articleTitle: enriched.articleTitle || '',
+          tags: Array.isArray(enriched.tags) ? enriched.tags : [],
+          coverPhotoKey: enriched.coverPhotoKey || '',
+          rowTitle: enriched.rowTitle || current.rowTitle
+        })
+      })
+      const selectedTag = this.selectedTagFor(currentRecords)
+      const homeTags = recordingUtil.tagsFromRecords(currentRecords)
       const homeTabs = this.homeTabsFor(homeTags)
-      const recordsWithRefs = this.preserveRecordingCovers(this.assignCommandRefs(records))
+      const recordsWithRefs = this.preserveRecordingCovers(this.assignCommandRefs(currentRecords))
       const filteredRecords = this.commandRecordsFor(recordsWithRefs, selectedTag)
       const currentHomeTab = this.data.activeTab === 'community'
         ? 'community'

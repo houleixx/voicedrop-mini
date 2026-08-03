@@ -285,17 +285,66 @@ test('successful recording deletion removes local data without reloading the lis
   }
 })
 
+test('recording deleted during metadata enrichment is not restored by the stale result', async () => {
+  const library = require('../services/library')
+  const originalEnrich = library.enrichArticleMeta
+  const first = { stem: 'first', audioName: 'first.m4a', hasArticles: true, statusLabel: '旧状态' }
+  const second = { stem: 'second', audioName: 'second.m4a', hasArticles: true, statusLabel: '旧状态' }
+  let releaseEnrichment
+  library.enrichArticleMeta = async (records) => {
+    await new Promise((resolve) => { releaseEnrichment = resolve })
+    records[0].articleTitle = '已删除录音的标题'
+    records[0].rowTitle = '已删除录音的标题'
+    records[1].articleTitle = '补全后的标题'
+    records[1].rowTitle = '补全后的标题'
+    records[1].tags = ['补全标签']
+    records[1].coverPhotoKey = 'photos/second.jpg'
+  }
+
+  try {
+    const { page } = freshRecordingsPage()
+    const ctx = Object.assign({}, page, {
+      data: Object.assign({}, page.data, {
+        allRecords: [first, second],
+        records: [first, second],
+        selectedTag: '',
+        activeTab: 'recordings'
+      }),
+      recordMetaLoadId: 7,
+      setData(update) { Object.assign(this.data, update) },
+      loadRecordingCovers() {},
+      commandSession: { setRefs() {} }
+    })
+
+    const enriching = page.enrichRecordingMeta.call(ctx, [first, second], 7)
+    ctx.data.allRecords = [{ ...second, statusLabel: '最新状态' }]
+    ctx.data.records = ctx.data.allRecords.slice()
+    releaseEnrichment()
+    await enriching
+
+    assert.deepEqual(ctx.data.allRecords.map((rec) => rec.stem), ['second'])
+    assert.equal(ctx.data.allRecords[0].rowTitle, '补全后的标题')
+    assert.deepEqual(ctx.data.allRecords[0].tags, ['补全标签'])
+    assert.equal(ctx.data.allRecords[0].coverPhotoKey, 'photos/second.jpg')
+    assert.equal(ctx.data.allRecords[0].statusLabel, '最新状态')
+  } finally {
+    library.enrichArticleMeta = originalEnrich
+  }
+})
+
 test('recordings scroll view enables pull refresh for both home tabs', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/recordings/index.wxss'), 'utf8')
 
+  assert.match(wxml, /<scroll-view[^>]*enhanced="\{\{true\}\}"/)
+  assert.match(wxml, /<scroll-view[^>]*bounces="\{\{true\}\}"/)
   assert.match(wxml, /<scroll-view[^>]*refresher-enabled="\{\{true\}\}"/)
   assert.match(wxml, /<scroll-view[^>]*refresher-triggered="\{\{refreshing\}\}"/)
   assert.match(wxml, /<scroll-view[^>]*refresher-default-style="none"/)
-  assert.match(wxml, /<scroll-view[^>]*refresher-threshold="60"/)
+  assert.match(wxml, /<scroll-view[^>]*refresher-threshold="72"/)
   assert.match(wxml, /<scroll-view[^>]*bindrefresherrefresh="onRefresherRefresh"/)
   assert.match(wxml, /<view slot="refresher" class="pull-refresh-indicator">\s*<view class="loading-spinner pull-refresh-spinner" aria-hidden="true"><\/view>\s*<\/view>/)
-  assert.match(css, /\.pull-refresh-indicator\s*\{[^}]*display:\s*flex;[^}]*width:\s*100%;[^}]*height:\s*60px;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s)
+  assert.match(css, /\.pull-refresh-indicator\s*\{[^}]*display:\s*flex;[^}]*width:\s*100%;[^}]*height:\s*72px;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s)
   assert.match(css, /\.pull-refresh-spinner\s*\{[^}]*box-sizing:\s*border-box;[^}]*width:\s*30px;[^}]*height:\s*30px;[^}]*flex:\s*0 0 30px;[^}]*position:\s*relative;[^}]*top:\s*8px;/s)
 })
 
