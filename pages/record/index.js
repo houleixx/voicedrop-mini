@@ -275,27 +275,13 @@ Page({
         .then((item) => {
           app.globalData.pendingRecordTag = ''
           app.globalData.pendingReplyTo = null
-          return recordingUploads.upload(item.name)
-        })
-        .then(() => {
           if (!this._alive) return
           wx.hideLoading()
           this._loadingShown = false
           this.setData({ capturedPhotos: [] })
-          wx.showToast({ title: '已上传' })
-
-          // Navigate back to recordings
-          wx.navigateBack({
-            success: () => {
-              if (!this._alive) return
-              // Trigger refresh on recordings page
-              const pages = getCurrentPages()
-              const prevPage = pages[pages.length - 1]
-              if (prevPage && prevPage.load) {
-                prevPage.load()
-              }
-            }
-          })
+          // The upload plan is durable now. Return immediately; the recordings page
+          // displays this item as uploading and drains the queue in the foreground.
+          wx.navigateBack()
         })
         .catch((error) => {
           if (!this._alive) return

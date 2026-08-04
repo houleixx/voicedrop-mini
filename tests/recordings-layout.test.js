@@ -157,7 +157,7 @@ test('recordings load starts photo marker repair in the background before enrich
   const loadSource = source.slice(start, end)
 
   assert.ok(start >= 0 && end > start)
-  assert.match(loadSource, /const records = await library\.list\(\)\s+if \(!options\?\.skipPhotoRepair\) this\.repairPhotoMarkers\(records\)/)
+  assert.match(loadSource, /const records = this\.withPendingRecordingUploads\(await library\.list\(\)\)\s+if \(!options\?\.skipPhotoRepair\) this\.repairPhotoMarkers\(records\)/)
   assert.doesNotMatch(loadSource, /await (?:this\.)?repairPhotoMarkers/)
   assert.ok(
     loadSource.indexOf('this.repairPhotoMarkers(records)') <

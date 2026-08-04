@@ -97,8 +97,8 @@
               <view class="record-meta">
                 <text>{{item.timeLabel || item.uploaded || '上传中'}}</text>
                 <text class="duration">{{item.durationLabel || '音频'}}</text>
-                <text class="status-dot"></text>
-                <text class="status">{{item.statusLabel}}</text>
+                <text class="status-dot {{item.statusColor}}"></text>
+                <text class="status {{item.statusColor}}">{{item.statusLabel}}</text>
               </view>
             </view>
             <text class="chevron ri-arrow-right-s-line" aria-hidden="true"></text>

@@ -121,6 +121,7 @@ Page({
   },
 
   onShow() {
+    this.showPendingRecordingUploads()
     this.drainPendingRecordingUploads()
     this.resetAccountSessionsIfNeeded()
     if (this.statusSession) this.statusSession.connect()
@@ -153,13 +154,34 @@ Page({
     this._recordingUploadDrain = recordingUploads.drain()
       .then((count) => {
         if (count > 0) {
-          wx.showToast({ title: `已续传 ${count} 条录音` })
           return this.load({ silent: true, keepDataOnError: true })
         }
         return true
       })
       .finally(() => { this._recordingUploadDrain = null })
     return this._recordingUploadDrain
+  },
+
+  /** Renders locally persisted uploads before the next network list refresh returns. */
+  showPendingRecordingUploads() {
+    const current = (this.data.allRecords || []).filter((record) => !record.localUpload)
+    const records = this.withPendingRecordingUploads(current)
+    const hadLocalUploads = current.length !== (this.data.allRecords || []).length
+    if (!hadLocalUploads && records.length === current.length) return
+    const selectedTag = this.selectedTagFor(records)
+    const homeTags = recordingUtil.tagsFromRecords(records)
+    const recordsWithRefs = this.preserveRecordingCovers(this.assignCommandRefs(records))
+    this.setData({
+      allRecords: recordsWithRefs,
+      homeTags,
+      homeTabs: this.homeTabsFor(homeTags),
+      selectedTag,
+      selectedTagMissing: Boolean(selectedTag && !homeTags.includes(selectedTag)),
+      currentHomeTab: this.data.activeTab === 'community'
+        ? 'community'
+        : (selectedTag ? `tag:${selectedTag}` : 'recordings'),
+      records: this.commandRecordsFor(recordsWithRefs, selectedTag)
+    })
   },
 
   repairPhotoMarkers(records) {
@@ -366,10 +388,11 @@ Page({
   restoreCachedRecordings() {
     const records = library.cachedRecordings && library.cachedRecordings()
     if (!Array.isArray(records)) return false
-    const selectedTag = this.selectedTagFor(records)
-    const homeTags = recordingUtil.tagsFromRecords(records)
+    const visibleRecords = this.withPendingRecordingUploads(records)
+    const selectedTag = this.selectedTagFor(visibleRecords)
+    const homeTags = recordingUtil.tagsFromRecords(visibleRecords)
     const homeTabs = this.homeTabsFor(homeTags)
-    const recordsWithRefs = this.preserveRecordingCovers(this.assignCommandRefs(records))
+    const recordsWithRefs = this.preserveRecordingCovers(this.assignCommandRefs(visibleRecords))
     const filteredRecords = this.commandRecordsFor(recordsWithRefs, selectedTag)
     const currentHomeTab = this.data.activeTab === 'community'
       ? 'community'
@@ -429,7 +452,7 @@ Page({
     const keepDataOnError = Boolean(options && options.keepDataOnError)
     if (!silent) this.setData({ loading: true, error: '' })
     try {
-      const records = await library.list()
+      const records = this.withPendingRecordingUploads(await library.list())
       if (!options?.skipPhotoRepair) this.repairPhotoMarkers(records)
       const selectedTag = this.selectedTagFor(records)
       const homeTags = recordingUtil.tagsFromRecords(records)
@@ -469,6 +492,23 @@ Page({
       this.topLevelUiRendered = true
       if (!silent) this.setData({ loading: false })
     }
+  },
+
+  /** Adds durable, not-yet-indexed uploads so returning from recording is immediate. */
+  withPendingRecordingUploads(records) {
+    const knownNames = new Set((records || []).map((record) => record && record.audioName))
+    const pending = recordingUploads.pending()
+      .filter((item) => item && item.name && !knownNames.has(item.name))
+      .map((item) => {
+        const record = recordingUtil.fromRemoteFile({ name: item.name })
+        record.uploading = true
+        record.localUpload = true
+        record.tags = item.tag ? [item.tag] : []
+        record.statusLabel = recordingUtil.statusLabel(record)
+        record.statusColor = recordingUtil.statusColor(record)
+        return record
+      })
+    return pending.concat(records || [])
   },
 
   async enrichRecordingMeta(records, loadId) {
@@ -815,6 +855,7 @@ Page({
       else if (status === 'empty') next.isEmpty = true
       else next.phase = status
       next.statusLabel = recordingUtil.statusLabel(next)
+      next.statusColor = recordingUtil.statusColor(next)
       changed = next
       return next
     })

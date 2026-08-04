@@ -96,6 +96,16 @@ function statusLabel(rec) {
   return '待处理'
 }
 
+/**
+ * 返回状态对应的 CSS 类名（status-muted / status-done / status-active）。
+ * 与 Android 三色方案对齐：灰=无语音，绿=已成文，琥珀=其余。
+ */
+function statusColor(rec) {
+  if (rec.isEmpty) return 'status-muted'
+  if (rec.hasArticles) return 'status-done'
+  return 'status-active'
+}
+
 function fromRemoteFile(file, names) {
   const audioName = file.name || ''
   const stem = stemOf(audioName)
@@ -113,6 +123,7 @@ function fromRemoteFile(file, names) {
   rec.rowTitle = rowTitle(rec)
   rec.timeLabel = timeLabel(rec)
   rec.statusLabel = statusLabel(rec)
+  rec.statusColor = statusColor(rec)
   return rec
 }
 
@@ -124,6 +135,7 @@ function fromRecordingIndex(item) {
   rec.blocked = Boolean(source.blocked)
   rec.hasTags = Boolean(source.hasTags)
   rec.statusLabel = statusLabel(rec)
+  rec.statusColor = statusColor(rec)
   return rec
 }
 
@@ -188,6 +200,7 @@ module.exports = {
   rowTitle,
   timeLabel,
   statusLabel,
+  statusColor,
   fromRemoteFile,
   fromRecordingIndex,
   durationTag,

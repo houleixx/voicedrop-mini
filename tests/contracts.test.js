@@ -86,8 +86,12 @@ test('parses VoiceDrop recording names and labels status', () => {
   assert.equal(rec.durationLabel, '0m33s')
   assert.equal(rec.rowTitle, '周四·下午')
   assert.equal(rec.statusLabel, '已成文')
+  assert.equal(rec.statusColor, 'status-done')
   assert.equal(recording.statusLabel({ phase: 'mining' }), '挖文章')
+  assert.equal(recording.statusColor({ phase: 'mining' }), 'status-active')
   assert.equal(recording.statusLabel({ blockReason: 'no-credit' }), '余额不足')
+  assert.equal(recording.statusColor({ isEmpty: true }), 'status-muted')
+  assert.equal(recording.statusColor({ uploading: true }), 'status-active')
 })
 
 test('creates compatible recording names', () => {

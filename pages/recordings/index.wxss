@@ -344,14 +344,32 @@
   height: 10rpx;
   margin: 0 12rpx 0 16rpx;
   border-radius: 50%;
-  background: #47775f;
+  background: #c98a2e;
 }
 
 .status {
   overflow: hidden;
   max-width: 142rpx;
-  color: #47775f;
+  color: #c98a2e;
   text-overflow: ellipsis;
+}
+
+.status-dot.status-muted,
+.status.status-muted {
+  color: #b9b2a8;
+}
+
+.status-dot.status-muted {
+  background: #b9b2a8;
+}
+
+.status-dot.status-done,
+.status.status-done {
+  color: #5e8a6a;
+}
+
+.status-dot.status-done {
+  background: #5e8a6a;
 }
 
 .chevron {

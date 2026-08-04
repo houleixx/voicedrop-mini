@@ -9,15 +9,13 @@ const wxml = fs.readFileSync(path.join(root, 'pages/record/index.wxml'), 'utf8')
 const wxss = fs.readFileSync(path.join(root, 'pages/record/index.wxss'), 'utf8')
 const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/record/index.json'), 'utf8'))
 
-function deferred() {
-  let resolve
-  let reject
-  const promise = new Promise((yes, no) => { resolve = yes; reject = no })
-  return { promise, resolve, reject }
-}
-
 function flush() {
   return new Promise((resolve) => setImmediate(resolve))
+}
+
+function pendingItems(h) {
+  const value = h.storage['vd.pendingRecordingUploads.v1']
+  return typeof value === 'string' ? JSON.parse(value) : value
 }
 
 function createRecorder() {
@@ -159,7 +157,7 @@ function loadPage(overrides = {}) {
   global.setInterval = () => 101
   page.onLoad({})
   global.setInterval = originalSetInterval
-  return { page, app, recorder, interviewer, calls, fsManager }
+  return { page, app, recorder, interviewer, calls, fsManager, storage }
 }
 
 test('record page owns one guarded recording session', () => {
@@ -205,7 +203,8 @@ test('record page uses PCM frames for waveform and interview uplink', () => {
   assert.match(js, /wav\.mixPcm16/)
   assert.match(js, /recordingUploads\.stage\(\{/)
   assert.match(js, /contentType: 'audio\/wav'/)
-  assert.match(js, /recordingUploads\.upload\(item\.name\)/)
+  assert.doesNotMatch(js, /recordingUploads\.upload\(item\.name\)/)
+  assert.match(js, /wx\.navigateBack\(/)
 })
 
 test('record page mixes AI playback into the final microphone PCM timeline', async () => {
@@ -279,7 +278,7 @@ test('record page removes a captured photo before upload', () => {
   ])
 })
 
-test('record page stages photos and starts the durable upload plan', async () => {
+test('record page stages photos and immediately returns to the recordings list', async () => {
   const h = loadPage()
   h.page.setData({
     capturedPhotos: [
@@ -292,15 +291,12 @@ test('record page stages photos and starts the durable upload plan', async () =>
   await flush()
   await flush()
 
-  assert.deepEqual(h.calls.photoUploads, [
-    { filePath: '/user/voicedrop-pending-photo-photos-session-1-abc-jpg.jpg', key: 'photos/session/1-abc.jpg' },
-    { filePath: '/user/voicedrop-pending-photo-photos-session-2-def-jpg.jpg', key: 'photos/session/2-def.jpg' }
-  ])
-  assert.ok(h.calls.order.includes('photo.upload'))
-  assert.equal(h.calls.uploads.length, 1)
+  assert.equal(h.calls.photoUploads.length, 0)
+  assert.equal(h.calls.uploads.length, 0)
+  assert.equal(h.calls.navigations, 1)
 })
 
-test('a recording photo failure retains the plan while audio still uploads', async () => {
+test('a recording with photos returns once its durable upload plan is staged', async () => {
   const h = loadPage({ photoUpload: () => Promise.reject(new Error('photo offline')) })
   h.page.setData({
     capturedPhotos: [{ path: '/tmp/a.jpg', key: 'photos/session/1-abc.jpg' }]
@@ -310,9 +306,10 @@ test('a recording photo failure retains the plan while audio still uploads', asy
   await flush()
   await flush()
 
-  assert.equal(h.calls.uploads.length, 1)
-  assert.equal(h.calls.toasts.at(-1).title, '照片暂未保存，录音已保留')
+  assert.equal(h.calls.uploads.length, 0)
+  assert.equal(h.calls.photoUploads.length, 0)
   assert.equal(h.calls.navigations, 1)
+  assert.equal(pendingItems(h).length, 1)
 })
 
 test('record page resumes its elapsed timer after returning from the system picker', () => {
@@ -380,7 +377,8 @@ test('the recorder is paused before opening a system picker so its PCM remains u
   assert.equal(openedWhileRunning, false)
   assert.equal(h.recorder.pauseCount, 1)
   assert.equal(h.calls.modals.length, 0)
-  assert.equal(h.calls.uploads.length, 1)
+  assert.equal(h.calls.uploads.length, 0)
+  assert.equal(h.calls.navigations, 1)
 })
 
 test('returning before the picker complete callback still resumes recording exactly once', () => {
@@ -485,7 +483,7 @@ test('a current recorder error exposes errMsg and stays on the record page', () 
   assert.equal(h.recorder.listenerCount('error'), 0)
 })
 
-test('unload stops an owned recording and its onStop still uploads', async () => {
+test('unload stops an owned recording and its onStop still stages a durable upload', async () => {
   const h = loadPage()
 
   h.page.onUnload()
@@ -494,7 +492,8 @@ test('unload stops an owned recording and its onStop still uploads', async () =>
   h.recorder.emitStop({ tempFilePath: '/tmp/raw.pcm' })
   await flush()
 
-  assert.equal(h.calls.uploads.length, 1)
+  assert.equal(h.calls.uploads.length, 0)
+  assert.equal(pendingItems(h).length, 1)
 })
 
 test('a new page cannot replace an unloading recorder owner until the old stop arrives', async () => {
@@ -523,21 +522,17 @@ test('a new page cannot replace an unloading recorder owner until the old stop a
   next.page.onUnload()
 })
 
-test('an upload finishing after unload keeps data side effects but performs no UI side effects', async () => {
-  const pendingUpload = deferred()
+test('staging after unload keeps the durable plan but performs no UI side effects', async () => {
   const h = loadPage({
-    upload: () => pendingUpload.promise,
     globalData: { pendingRecordTag: 'work', pendingReplyTo: null }
   })
   h.recorder.emitStop({ tempFilePath: '/tmp/raw.pcm' })
   h.page.onUnload()
-  pendingUpload.resolve(true)
   await flush()
 
-  assert.deepEqual(h.calls.tags, [{ name: 'session.m4a', tags: ['work'] }])
+  assert.equal(pendingItems(h)[0].tag, 'work')
   assert.equal(h.calls.navigations, 0)
   assert.deepEqual(h.calls.toasts, [])
-  assert.equal(h.calls.refreshes, 0)
 })
 
 test('WAV finalization uses the captured session id even if the page id later changes', async () => {
@@ -558,29 +553,26 @@ test('WAV finalization uses the captured session id even if the page id later ch
   assert.equal(fsManager.writtenPath, `/user/voicedrop-${sessionId}.wav`)
 })
 
-test('the generated WAV is removed after success and retained for retry after failure', async () => {
-  const success = loadPage()
-  const successId = success.page._recordSessionId
-  success.recorder.emitStop({ tempFilePath: '/tmp/success.pcm' })
+test('the generated WAV remains available for the recordings-page upload queue', async () => {
+  const h = loadPage()
+  const sessionId = h.page._recordSessionId
+  h.recorder.emitStop({ tempFilePath: '/tmp/staged.pcm' })
   await flush()
-  assert.deepEqual(success.calls.unlinks, [`/user/voicedrop-${successId}.wav`])
 
-  const failure = loadPage({ upload: () => Promise.reject(new Error('upload failed')) })
-  const failureId = failure.page._recordSessionId
-  failure.recorder.emitStop({ tempFilePath: '/tmp/failure.pcm' })
-  await flush()
-  assert.equal(failure.calls.unlinks.includes(`/user/voicedrop-${failureId}.wav`), false)
-  assert.equal(failure.calls.toasts.at(-1).title, '上传失败')
+  assert.equal(h.calls.unlinks.includes(`/user/voicedrop-${sessionId}.wav`), false)
+  assert.equal(pendingItems(h)[0].audioPath,
+    `/user/voicedrop-${sessionId}.wav`)
 })
 
-test('an automatic recorder stop stops the interviewer before upload', async () => {
+test('an automatic recorder stop stops the interviewer before staging its upload', async () => {
   const h = loadPage()
   h.recorder.emitStop({ tempFilePath: '/tmp/raw.pcm' })
   await flush()
 
   assert.equal(h.calls.interviewerStops, 1)
-  assert.equal(h.calls.uploads.length, 1)
-  assert.deepEqual(h.calls.order.slice(0, 2), ['interviewer.stop', 'upload'])
+  assert.equal(h.calls.uploads.length, 0)
+  assert.equal(h.calls.navigations, 1)
+  assert.equal(h.calls.order[0], 'interviewer.stop')
 })
 
 test('double stop requests RecorderManager.stop only once', () => {
