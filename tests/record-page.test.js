@@ -279,7 +279,7 @@ test('record page removes a captured photo before upload', () => {
   ])
 })
 
-test('record page uploads every photo before uploading audio', async () => {
+test('record page stages photos and starts the durable upload plan', async () => {
   const h = loadPage()
   h.page.setData({
     capturedPhotos: [
@@ -296,11 +296,11 @@ test('record page uploads every photo before uploading audio', async () => {
     { filePath: '/user/voicedrop-pending-photo-photos-session-1-abc-jpg.jpg', key: 'photos/session/1-abc.jpg' },
     { filePath: '/user/voicedrop-pending-photo-photos-session-2-def-jpg.jpg', key: 'photos/session/2-def.jpg' }
   ])
-  assert.ok(h.calls.order.indexOf('photo.upload') < h.calls.order.indexOf('upload'))
+  assert.ok(h.calls.order.includes('photo.upload'))
   assert.equal(h.calls.uploads.length, 1)
 })
 
-test('a recording photo failure retains the audio plan and returns for retry', async () => {
+test('a recording photo failure retains the plan while audio still uploads', async () => {
   const h = loadPage({ photoUpload: () => Promise.reject(new Error('photo offline')) })
   h.page.setData({
     capturedPhotos: [{ path: '/tmp/a.jpg', key: 'photos/session/1-abc.jpg' }]
@@ -310,7 +310,7 @@ test('a recording photo failure retains the audio plan and returns for retry', a
   await flush()
   await flush()
 
-  assert.equal(h.calls.uploads.length, 0)
+  assert.equal(h.calls.uploads.length, 1)
   assert.equal(h.calls.toasts.at(-1).title, '照片暂未保存，录音已保留')
   assert.equal(h.calls.navigations, 1)
 })

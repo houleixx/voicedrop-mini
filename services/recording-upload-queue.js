@@ -114,31 +114,72 @@ async function upload(name) {
   const uploadGeneration = generation
   const item = pending().find((candidate) => candidate.name === name)
   if (!item) return false
-  for (const photo of item.photos) {
-    if (uploadGeneration !== generation) return false
-    try {
-      await library.uploadPhoto(photo.path, photo.key)
-      if (uploadGeneration !== generation) return false
-    } catch (error) {
-      error.photoUpload = true
-      throw error
-    }
-  }
   if (item.photos.length) {
     photoMarkerRepair.remember(item.name, item.photos.map((photo) => photo.key))
   }
   if (uploadGeneration !== generation) return false
-  await audio.uploadFile(item.audioPath, item.name, item.contentType)
-  if (uploadGeneration !== generation) return false
-  if (item.tag) {
-    const uploaded = await audio.uploadTags(item.name, [item.tag])
-    if (uploadGeneration !== generation) return false
-    if (!uploaded) throw new Error('tag upload failed')
-  }
+  // Every component is already persisted. Start them together: the server now
+  // backfills a photo marker when that photo reaches it after the audio/article.
+  // Keep this plan until every component is confirmed, so an interrupted mini
+  // program run can resume only the unfinished work later.
+  const photosTask = uploadPhotos(item, uploadGeneration)
+  const audioTask = uploadAudio(item, uploadGeneration)
+  const tagsTask = uploadTags(item, uploadGeneration)
+  await Promise.all([photosTask, audioTask, tagsTask])
   if (item.replyTo) pendingReplies.put(item.name, item.replyTo)
   persist(pending().filter((candidate) => candidate.name !== item.name))
   await cleanupItem(item)
   return true
+}
+
+async function uploadPhotos(item, uploadGeneration) {
+  const failed = []
+  const queue = item.photos.filter((photo) => !photo.uploaded).slice()
+  const workers = Array.from({ length: Math.min(3, queue.length) }, async () => {
+    while (queue.length) {
+      const photo = queue.shift()
+      if (uploadGeneration !== generation) return
+      try {
+        await library.uploadPhoto(photo.path, photo.key)
+        if (uploadGeneration !== generation) return
+        photo.uploaded = true
+        persistPendingItem(item)
+      } catch (_) {
+        failed.push(photo.key)
+      }
+    }
+  })
+  await Promise.all(workers)
+  if (failed.length) {
+    const error = new Error(`photo upload failed: ${failed.join(',')}`)
+    error.photoUpload = true
+    throw error
+  }
+}
+
+async function uploadAudio(item, uploadGeneration) {
+  if (item.audioUploaded) return
+  await audio.uploadFile(item.audioPath, item.name, item.contentType)
+  if (uploadGeneration !== generation) return
+  item.audioUploaded = true
+  persistPendingItem(item)
+}
+
+async function uploadTags(item, uploadGeneration) {
+  if (!item.tag || item.tagsUploaded) return
+  const uploaded = await audio.uploadTags(item.name, [item.tag])
+  if (uploadGeneration !== generation) return
+  if (!uploaded) throw new Error('tag upload failed')
+  item.tagsUploaded = true
+  persistPendingItem(item)
+}
+
+function persistPendingItem(item) {
+  const items = pending()
+  const index = items.findIndex((candidate) => candidate.name === item.name)
+  if (index < 0) return
+  items[index] = item
+  persist(items)
 }
 
 async function clearAll() {

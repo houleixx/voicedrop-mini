@@ -102,14 +102,15 @@ test('recording upload queue persists WeChat http temp photos when copyFile reje
   assert.equal(h.queue.pending().length, 0)
 })
 
-test('recording upload queue never lets audio overtake a failed photo', async () => {
+test('recording upload queue sends audio even when a photo must retry later', async () => {
   const h = loadQueue({ photoFails: true })
   await h.queue.stage(input)
 
-  await assert.rejects(h.queue.upload(input.name), /photo failed/)
+  await assert.rejects(h.queue.upload(input.name), /photo upload failed/)
 
-  assert.deepEqual(h.calls.order, ['photo'])
+  assert.deepEqual(h.calls.order, ['photo', 'audio'])
   assert.equal(h.queue.pending().length, 1)
+  assert.equal(h.queue.pending()[0].audioUploaded, true)
   assert.deepEqual(h.calls.unlinks, [])
 })
 
@@ -144,6 +145,23 @@ test('recording upload queue retains the plan when audio upload fails', async ()
 
   assert.deepEqual(h.calls.order, ['photo', 'audio'])
   assert.equal(h.queue.pending().length, 1)
+})
+
+test('recording upload queue resumes only the unfinished photo after audio succeeded', async () => {
+  const h = loadQueue({ photoFails: true })
+  await h.queue.stage(input)
+  await assert.rejects(h.queue.upload(input.name), /photo upload failed/)
+
+  // Simulate the next foreground drain with a healthy network.
+  const item = h.queue.pending()[0]
+  assert.equal(item.audioUploaded, true)
+  h.calls.order.length = 0
+  const library = require('../services/library')
+  library.uploadPhoto = async () => { h.calls.order.push('photo'); return true }
+  await h.queue.upload(input.name)
+
+  assert.deepEqual(h.calls.order, ['photo'])
+  assert.equal(h.queue.pending().length, 0)
 })
 
 test('account deletion removes every queued recording and staged photo before clearing storage', async () => {

@@ -693,8 +693,15 @@ Page({
     this.statusSession = statusSession.createSession({
       onPhase: ({ stem, status }) => this.updateRecordStatus(stem, status),
       onDone: ({ stem, status }) => {
-        this.updateRecordStatus(stem, status)
-        this.load()
+        const updated = this.updateRecordStatus(stem, status)
+        // Completion must not reload the whole home feed. Fetching the one
+        // finished article supplies its title/cover while all command refs stay
+        // derived from the locally updated allRecords snapshot.
+        if (updated && status === 'ready') {
+          const loadId = (this.recordMetaLoadId || 0) + 1
+          this.recordMetaLoadId = loadId
+          this.enrichRecordingMeta([updated], loadId)
+        }
       },
       onLinkRequest: (request) => {
         this.setData({ linkRequest: request })
@@ -800,16 +807,28 @@ Page({
   },
 
   updateRecordStatus(stem, status) {
-    const records = this.data.records.map((rec) => {
+    let changed = null
+    const apply = (records) => (records || []).map((rec) => {
       if (rec.stem !== stem) return rec
       const next = Object.assign({}, rec)
       if (status === 'ready') next.hasArticles = true
       else if (status === 'empty') next.isEmpty = true
       else next.phase = status
       next.statusLabel = recordingUtil.statusLabel(next)
+      changed = next
       return next
     })
-    this.setData({ records })
+    const allRecords = this.preserveRecordingCovers(this.assignCommandRefs(apply(this.data.allRecords)))
+    const selectedTag = this.selectedTagFor(allRecords)
+    const records = this.commandRecordsFor(allRecords, selectedTag)
+    this.setData({
+      allRecords,
+      selectedTag,
+      selectedTagMissing: Boolean(selectedTag && !recordingUtil.tagsFromRecords(allRecords).includes(selectedTag)),
+      records
+    })
+    if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
+    return changed
   },
 
   selectedTagFor(records) {
