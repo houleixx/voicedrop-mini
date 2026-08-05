@@ -67,6 +67,8 @@ test('config menu renders fixed actions outside custom and second-level scroll r
   const wxss = fs.readFileSync(path.join(root, 'components/config-menu/index.wxss'), 'utf8')
   assert.match(wxml, /config-menu-scrim/)
   assert.match(wxml, /config-menu-anchor/)
+  assert.match(wxml, /wx:if="\{\{anchorType !== 'image'\}\}" class="config-menu-anchor/)
+  assert.doesNotMatch(wxml, /<image[^>]*src="\{\{anchor\.url\}\}"/)
   assert.match(wxml, /bindtap="back"/)
   assert.match(wxml, /class="config-menu-back-icon"[^>]*>‹<\/text>/)
   assert.doesNotMatch(wxml, /config-menu-back[^>]*[\s\S]*ri-arrow-left-s-line/)

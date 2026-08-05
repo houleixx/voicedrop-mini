@@ -59,6 +59,15 @@ function longpressMenuHeight(menu, localRows) {
   return Math.max(48, rows * 48 + separator)
 }
 
+function coordinate(...values) {
+  for (const value of values) {
+    if (value == null || value === '') continue
+    const number = Number(value)
+    if (Number.isFinite(number)) return number
+  }
+  return null
+}
+
 function longpressAnchor(block, kind, rect, detail, systemInfo, menu, localRows) {
   const sys = systemInfo || {}
   const point = detail || {}
@@ -72,20 +81,57 @@ function longpressAnchor(block, kind, rect, detail, systemInfo, menu, localRows)
   const height = kind === 'image'
     ? measuredHeight || Number(block.height) || Math.min(width * .72, 280)
     : 76
+  const viewportInset = 16
   const rawLeft = rect && Number.isFinite(Number(rect.left)) ? Number(rect.left) : Number(point.x) || 24
   const rawTop = rect && Number.isFinite(Number(rect.top)) ? Number(rect.top) : Number(point.y) || 160
   const left = Math.max(16, Math.min(rawLeft, windowWidth - width - 16))
-  const top = Math.max(16, Math.min(rawTop, windowHeight - height - 16))
+  // A tall image cannot fit inside the viewport. Clamping it as if it could
+  // turns its maximum top into a negative value and snaps the menu target to
+  // the viewport top, even when the user held the image lower on the page.
+  const hasMeasuredImageHeight = kind !== 'image' || measuredHeight > 0 || Number(block.height) > 0
+  const anchorFitsViewport = hasMeasuredImageHeight && height <= windowHeight - 32 &&
+    rawTop >= viewportInset && rawTop + height <= windowHeight - viewportInset
+  const top = anchorFitsViewport
+    ? Math.max(16, Math.min(rawTop, windowHeight - height - 16))
+    : rawTop
   const menuCapacity = Math.min(520, Math.round(windowHeight * .68))
   const menuHeight = Math.min(longpressMenuHeight(menu, localRows), menuCapacity)
   const menuWidth = Math.min(340, windowWidth - 32)
-  const viewportInset = 16
   const menuGap = 12
   let menuTop
   let menuMaxHeight
-  if (kind === 'image') {
+  if (kind === 'image' && anchorFitsViewport) {
     menuTop = Math.max(viewportInset, Math.min(top + menuGap, windowHeight - menuHeight - viewportInset))
     menuMaxHeight = Math.min(menuCapacity, windowHeight - menuTop - viewportInset)
+  } else if (kind === 'image') {
+    // For a long image its document top may be above the viewport. Place the
+    // menu around the actual hold point instead of that invisible top edge.
+    const fallbackY = rawTop >= viewportInset && rawTop <= windowHeight - viewportInset
+      ? rawTop + Math.min(Math.max(height, 0), windowHeight) / 2
+      : windowHeight / 2
+    const measuredTouchY = coordinate(point.y)
+    // A few Mini Program runtimes expose clientY as 0 for this gesture even
+    // when the finger is visibly lower on the page. Treat that impossible
+    // value as missing so the menu cannot be placed at the viewport top.
+    const touchY = measuredTouchY == null || measuredTouchY <= 0 ? fallbackY : measuredTouchY
+    const holdTop = Math.max(viewportInset, Math.min(touchY, windowHeight - viewportInset))
+    const belowTop = holdTop + menuGap
+    const belowHeight = Math.max(0, windowHeight - belowTop - viewportInset)
+    const aboveHeight = Math.max(0, holdTop - menuGap - viewportInset)
+    const placeBelow = menuHeight <= belowHeight || belowHeight >= aboveHeight
+    const availableHeight = placeBelow ? belowHeight : aboveHeight
+    menuMaxHeight = Math.max(48, Math.min(menuCapacity, availableHeight))
+    menuTop = placeBelow
+      ? belowTop
+      : Math.max(viewportInset, holdTop - menuGap - Math.min(menuHeight, menuMaxHeight))
+    if (menuTop <= viewportInset) {
+      const centeredHeight = Math.min(menuHeight, menuCapacity)
+      menuTop = Math.max(viewportInset, Math.min(
+        (windowHeight - centeredHeight) / 2,
+        windowHeight - centeredHeight - viewportInset
+      ))
+      menuMaxHeight = Math.min(menuCapacity, windowHeight - menuTop - viewportInset)
+    }
   } else {
     const belowTop = top + height + menuGap
     const belowHeight = Math.max(0, windowHeight - belowTop - viewportInset)
@@ -1659,7 +1705,10 @@ Page({
     const index = Number(event && event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.index)
     const touch = event && event.touches && event.touches[0]
     if (!Number.isInteger(index) || !touch) return
-    const point = { x: Number(touch.clientX) || 0, y: Number(touch.clientY) || 0 }
+    const point = {
+      x: coordinate(touch.clientX, touch.pageX, touch.x),
+      y: coordinate(touch.clientY, touch.pageY, touch.y)
+    }
     this.imageLongpressStart = point
     this.imageLongpressRect = null
     if (wx.createSelectorQuery) {

@@ -1,8 +1,7 @@
 <view class="config-menu" wx:if="{{open && groups.length}}">
   <view class="config-menu-scrim" bindtap="close"></view>
-  <view class="config-menu-anchor {{anchorType}}" style="top:{{anchor.top}}px;left:{{anchor.left}}px;width:{{anchor.width}}px;">
-    <image wx:if="{{anchorType === 'image'}}" src="{{anchor.url}}" mode="widthFix" />
-    <text wx:else>{{anchor.text}}</text>
+  <view wx:if="{{anchorType !== 'image'}}" class="config-menu-anchor {{anchorType}}" style="top:{{anchor.top}}px;left:{{anchor.left}}px;width:{{anchor.width}}px;">
+    <text>{{anchor.text}}</text>
   </view>
   <view class="config-menu-card" style="top:{{anchor.menuTop}}px;left:{{anchor.menuLeft}}px;width:{{anchor.menuWidth}}px;max-height:{{anchor.menuMaxHeight}}px;" catchtap="stop">
     <block wx:if="{{openNode}}">

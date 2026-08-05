@@ -422,6 +422,104 @@ test('detail one-row image menu anchors at the image top-left', () => {
   assert.equal(ctx.data.longpressAnchor.menuLeft, 24)
 })
 
+test('detail tall image menu keeps the held image position instead of snapping its anchor to the viewport top', () => {
+  const page = freshDetailPage(null, { getSystemInfoSync: () => ({ windowWidth: 390, windowHeight: 667 }) })
+  const ctx = Object.assign({}, page, {
+    data: {
+      blocks: [{ type: 'photo', key: 'photos/a.jpg', url: 'wxfile://a.jpg', loaded: true, failed: false }],
+      menus: { image: { groups: [[{ id: 'style', label: '图片风格', type: 'submenu', children: [{ id: 'cartoon', label: '卡通', instruction: '画 {{KEY}}' }] }]] } }
+    },
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  page.longpressBlock.call(ctx, {
+    currentTarget: { dataset: { index: 0 } },
+    detail: { x: 30, y: 520, rect: { top: 492, left: 24, width: 342, height: 700 } }
+  })
+
+  assert.equal(ctx.data.longpressAnchor.top, 492)
+  assert.equal(ctx.data.longpressAnchor.menuTop, 532)
+})
+
+test('detail long image menu follows the visible hold point when the image top is above the viewport', () => {
+  const page = freshDetailPage(null, { getSystemInfoSync: () => ({ windowWidth: 390, windowHeight: 667 }) })
+  const ctx = Object.assign({}, page, {
+    data: {
+      blocks: [{ type: 'photo', key: 'photos/a.jpg', url: 'wxfile://a.jpg', loaded: true, failed: false }],
+      menus: { image: { groups: [[{ id: 'style', label: '图片风格', type: 'submenu', children: [
+        { id: 'cartoon', label: '卡通', instruction: '画 {{KEY}}' },
+        { id: 'watercolor', label: '水彩', instruction: '画 {{KEY}}' },
+        { id: 'sketch', label: '素描', instruction: '画 {{KEY}}' },
+        { id: 'film', label: '胶片', instruction: '画 {{KEY}}' }
+      ] }]] } }
+    },
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  page.longpressBlock.call(ctx, {
+    currentTarget: { dataset: { index: 0 } },
+    detail: { x: 30, y: 520, rect: { top: -320, left: 24, width: 342, height: 1100 } }
+  })
+
+  assert.equal(ctx.data.longpressAnchor.menuTop, 532)
+  assert.equal(ctx.data.longpressAnchor.menuMaxHeight, 119)
+})
+
+test('detail long image menu does not default to the viewport top when touch coordinates are absent', () => {
+  const page = freshDetailPage(null, { getSystemInfoSync: () => ({ windowWidth: 390, windowHeight: 667 }) })
+  const ctx = Object.assign({}, page, {
+    data: {
+      blocks: [{ type: 'photo', key: 'photos/a.jpg', url: 'wxfile://a.jpg', loaded: true, failed: false }],
+      menus: { image: { groups: [[{ id: 'style', label: '图片风格', type: 'submenu', children: [{ id: 'cartoon', label: '卡通', instruction: '画 {{KEY}}' }] }]] } }
+    },
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  page.longpressBlock.call(ctx, {
+    currentTarget: { dataset: { index: 0 } },
+    detail: { y: 0, rect: { top: -320, left: 24, width: 342, height: 1100 } }
+  })
+
+  assert.equal(ctx.data.longpressAnchor.menuTop, 345.5)
+})
+
+test('detail image with unknown dimensions uses the visible hold-point placement path', () => {
+  const page = freshDetailPage(null, { getSystemInfoSync: () => ({ windowWidth: 390, windowHeight: 667 }) })
+  const ctx = Object.assign({}, page, {
+    data: {
+      blocks: [{ type: 'photo', key: 'photos/a.jpg', url: 'wxfile://a.jpg', loaded: true, failed: false }],
+      menus: { image: { groups: [[{ id: 'style', label: '图片风格', type: 'submenu', children: [{ id: 'cartoon', label: '卡通', instruction: '画 {{KEY}}' }] }]] } }
+    },
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  page.longpressBlock.call(ctx, {
+    currentTarget: { dataset: { index: 0 } },
+    detail: { y: 0, rect: null }
+  })
+
+  assert.ok(ctx.data.longpressAnchor.menuTop > 200)
+})
+
+test('detail image that starts low and extends below the viewport uses hold-point placement', () => {
+  const page = freshDetailPage(null, { getSystemInfoSync: () => ({ windowWidth: 390, windowHeight: 844 }) })
+  const ctx = Object.assign({}, page, {
+    data: {
+      blocks: [{ type: 'photo', key: 'photos/a.jpg', url: 'wxfile://a.jpg', loaded: true, failed: false }],
+      menus: { image: { groups: [[{ id: 'style', label: '图片风格', type: 'submenu', children: [{ id: 'cartoon', label: '卡通', instruction: '画 {{KEY}}' }] }]] } }
+    },
+    setData(update) { Object.assign(this.data, update) }
+  })
+
+  page.longpressBlock.call(ctx, {
+    currentTarget: { dataset: { index: 0 } },
+    detail: { x: 108, y: 496, rect: { top: 393.15625, left: 16, width: 358, height: 773.9140625 } }
+  })
+
+  assert.equal(ctx.data.longpressAnchor.top, 393.15625)
+  assert.equal(ctx.data.longpressAnchor.menuTop, 508)
+})
+
 test('detail text longpress keeps the menu outside the paragraph', () => {
   const page = freshDetailPage(null, { getSystemInfoSync: () => ({ windowWidth: 390, windowHeight: 667 }) })
   const ctx = Object.assign({}, page, {
