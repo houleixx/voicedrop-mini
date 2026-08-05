@@ -452,6 +452,7 @@ Page({
         if (!res.confirm) return
         const ok = await community.report(this.data.shareId)
         if (ok) {
+          app.globalData.communityModeration = { type: 'report', shareId: this.data.shareId }
           wx.showToast({ title: '已举报，内容已下架待审核' })
           wx.navigateBack()
         } else {
@@ -616,6 +617,7 @@ Page({
       success: (res) => {
         if (!res.confirm) return
         blockStore.block(author)
+        app.globalData.communityModeration = { type: 'block', author }
         wx.showToast({ title: '已屏蔽，TA 的内容将不再显示' })
         wx.navigateBack()
       }

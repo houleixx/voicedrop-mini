@@ -141,6 +141,7 @@ Page({
       return
     }
     if (this.data.activeTab === 'community') {
+      this.consumeCommunityModeration()
       if (this.data.communityLoaded) this.loadCommunity({ silent: true, keepDataOnError: true })
       else this.loadCommunity()
     }
@@ -635,6 +636,23 @@ Page({
     return task.finally(() => {
       if (this._communityLoadPromise === task) this._communityLoadPromise = null
     })
+  },
+
+  // Detail is a separate page. Apply its successful block/report locally before
+  // the network refresh so returning to the community never briefly shows the
+  // just-moderated card. The refresh below remains the server reconciliation.
+  consumeCommunityModeration() {
+    const moderation = app.globalData.communityModeration
+    if (!moderation) return
+    delete app.globalData.communityModeration
+    if (!this._communityFeed) return
+    const keep = (post) => {
+      if (moderation.type === 'report') return post.shareId !== moderation.shareId
+      if (moderation.type === 'block') return (post.author || post.authorName || '') !== moderation.author
+      return true
+    }
+    this._communityFeed = community.filterFeed(this._communityFeed, keep)
+    this.setData(this.communityPostData(this._communityFeed, this.data.communityFeedTab))
   },
 
   async fetchCommunity(options, generation) {

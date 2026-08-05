@@ -79,6 +79,14 @@ function storeFeedSnapshot(data, identity) {
   }
 }
 
+function invalidateFeed() {
+  try {
+    if (typeof wx === 'undefined' || typeof wx.removeStorageSync !== 'function') return
+    wx.removeStorageSync(`${FEED_CACHE_PREFIX}${auth.anonId()}`)
+  } catch (_) {
+  }
+}
+
 function normalizeUnifiedFeed(data) {
   const body = data || {}
   const latest = Array.isArray(body.posts) ? body.posts.map(normalizePost) : []
@@ -428,7 +436,9 @@ async function unshare(shareId) {
 
 async function report(shareId) {
   const res = await http.postJson(`${api.filesBase()}/community/report/${api.path(shareId)}`, auth.bearer(), {})
-  return res.statusCode >= 200 && res.statusCode < 300
+  const ok = res.statusCode >= 200 && res.statusCode < 300
+  if (ok) invalidateFeed()
+  return ok
 }
 
 async function feed(shareId) {
@@ -472,6 +482,7 @@ module.exports = {
   loadFeed,
   cachedFeed,
   storeFeedSnapshot,
+  invalidateFeed,
   normalizeUnifiedFeed,
   legacyFeed,
   postsForTab,
