@@ -113,6 +113,66 @@ test('recordings first onShow does not duplicate the refresh already started by 
   assert.equal(ctx._awaitingInitialShow, false)
 })
 
+test('community resume refreshes only after a dirty detail result', () => {
+  const { page, app } = freshRecordingsPage()
+  let communityLoads = 0
+  const ctx = Object.assign({}, page, {
+    data: Object.assign({}, page.data, { activeTab: 'community', communityLoaded: true }),
+    initialLoadStarted: true,
+    topLevelUiRendered: true,
+    showPendingRecordingUploads() {},
+    drainPendingRecordingUploads() {},
+    resetAccountSessionsIfNeeded() {},
+    applyPendingHomeTab() {},
+    statusSession: null,
+    commandSession: null,
+    currentCommandRefs: () => [],
+    consumeCommunityModeration() {},
+    loadCommunity() { communityLoads += 1 },
+    load() {}
+  })
+
+  page.onShow.call(ctx)
+  assert.equal(communityLoads, 0)
+
+  app.globalData.communityFeedDirty = true
+  page.onShow.call(ctx)
+  assert.equal(communityLoads, 1)
+  assert.equal(app.globalData.communityFeedDirty, undefined)
+})
+
+test('community resume waits for a pending like before refreshing', async () => {
+  const { page, app } = freshRecordingsPage()
+  let releaseLike
+  const pendingLike = new Promise((resolve) => { releaseLike = resolve })
+  let communityLoads = 0
+  const ctx = Object.assign({}, page, {
+    data: Object.assign({}, page.data, { activeTab: 'community', communityLoaded: true }),
+    initialLoadStarted: true,
+    topLevelUiRendered: true,
+    showPendingRecordingUploads() {},
+    drainPendingRecordingUploads() {},
+    resetAccountSessionsIfNeeded() {},
+    applyPendingHomeTab() {},
+    statusSession: null,
+    commandSession: null,
+    currentCommandRefs: () => [],
+    consumeCommunityModeration() {},
+    loadCommunity() { communityLoads += 1 },
+    load() {}
+  })
+
+  app.globalData.communityFeedDirty = true
+  app.globalData.communityLikePending = pendingLike
+  page.onShow.call(ctx)
+  assert.equal(communityLoads, 0)
+
+  releaseLike()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(communityLoads, 1)
+  assert.equal(app.globalData.communityLikePending, undefined)
+})
+
 test('recordings serializes overlapping refresh triggers into one follow-up request', async () => {
   const library = require('../services/library')
   const originalList = library.list

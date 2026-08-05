@@ -141,9 +141,23 @@ Page({
       return
     }
     if (this.data.activeTab === 'community') {
-      this.consumeCommunityModeration()
-      if (this.data.communityLoaded) this.loadCommunity({ silent: true, keepDataOnError: true })
-      else this.loadCommunity()
+      const hasModeration = Boolean(app.globalData.communityModeration)
+      const communityDirty = Boolean(app.globalData.communityFeedDirty)
+      if (hasModeration || communityDirty) {
+        delete app.globalData.communityFeedDirty
+        const refreshAfterLike = () => {
+          this.consumeCommunityModeration()
+          if (this.data.communityLoaded) this.loadCommunity({ silent: true, keepDataOnError: true })
+          else this.loadCommunity()
+        }
+        const pendingLike = app.globalData.communityLikePending
+        if (pendingLike) {
+          delete app.globalData.communityLikePending
+          Promise.resolve(pendingLike).catch(() => false).then(refreshAfterLike)
+        } else {
+          refreshAfterLike()
+        }
+      }
     }
     const redraw = resumeRefresh.shouldRedrawOnResume(false, this.topLevelUiRendered)
     if (redraw) this.load()

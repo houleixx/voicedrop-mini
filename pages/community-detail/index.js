@@ -22,6 +22,14 @@ function suanliText(value) {
   return Number.isInteger(number) ? String(number) : number.toFixed(1)
 }
 
+function waitForPendingCommunityLike() {
+  const pending = app.globalData.communityLikePending
+  if (!pending) return Promise.resolve()
+  return Promise.resolve(pending).catch(() => false).then(() => {
+    if (app.globalData.communityLikePending === pending) delete app.globalData.communityLikePending
+  })
+}
+
 Page({
   data: {
     shareId: '',
@@ -104,15 +112,22 @@ Page({
       this.cancelReplyRecording()
       return
     }
-    const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : []
-    const hasPreviousPage = pages && pages.length > 1
-    // A share card opens this detail as the mini program root. Use the page
-    // stack as a fallback when an external entry does not expose its source.
-    if (this.openedFromShare || !hasPreviousPage) {
-      wx.reLaunch({ url: '/pages/recordings/index?tab=community' })
+    const navigate = () => {
+      const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : []
+      const hasPreviousPage = pages && pages.length > 1
+      // A share card opens this detail as the mini program root. Use the page
+      // stack as a fallback when an external entry does not expose its source.
+      if (this.openedFromShare || !hasPreviousPage) {
+        wx.reLaunch({ url: '/pages/recordings/index?tab=community' })
+        return
+      }
+      wx.navigateBack()
+    }
+    if (app.globalData.communityLikePending) {
+      waitForPendingCommunityLike().then(navigate)
       return
     }
-    wx.navigateBack()
+    navigate()
   },
 
   showMoreActions() {
@@ -407,7 +422,12 @@ Page({
     const liked = !this.data.liked
     this.setData({ liked })
     prefs.setLikedCommunityPost(this.data.shareId, liked)
-    community.engage(this.data.shareId, 'like', liked)
+    app.globalData.communityFeedDirty = true
+    const previous = app.globalData.communityLikePending || Promise.resolve()
+    const pending = Promise.resolve(previous)
+      .then(() => community.engage(this.data.shareId, 'like', liked))
+      .catch(() => false)
+    app.globalData.communityLikePending = pending
   },
 
   async tip() {
@@ -452,6 +472,8 @@ Page({
         if (!res.confirm) return
         const ok = await community.report(this.data.shareId)
         if (ok) {
+          await waitForPendingCommunityLike()
+          app.globalData.communityFeedDirty = true
           app.globalData.communityModeration = { type: 'report', shareId: this.data.shareId }
           wx.showToast({ title: '已举报，内容已下架待审核' })
           wx.navigateBack()
@@ -616,10 +638,15 @@ Page({
       confirmColor: '#c7432f',
       success: (res) => {
         if (!res.confirm) return
-        blockStore.block(author)
-        app.globalData.communityModeration = { type: 'block', author }
-        wx.showToast({ title: '已屏蔽，TA 的内容将不再显示' })
-        wx.navigateBack()
+        const applyBlock = () => {
+          blockStore.block(author)
+          app.globalData.communityFeedDirty = true
+          app.globalData.communityModeration = { type: 'block', author }
+          wx.showToast({ title: '已屏蔽，TA 的内容将不再显示' })
+          wx.navigateBack()
+        }
+        if (app.globalData.communityLikePending) waitForPendingCommunityLike().then(applyBlock)
+        else applyBlock()
       }
     })
   },
