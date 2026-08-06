@@ -39,14 +39,11 @@ Page({
     wx.navigateTo({ url: '/pages/audio-consent/index' })
   },
 
-  copyEmail() {
-    wx.setClipboardData({ data: this.data.supportEmail })
+  openBlockedUsers() {
+    wx.navigateTo({ url: '/pages/blocked-users/index' })
   },
 
-  unblock(event) {
-    const author = event.currentTarget.dataset.author
-    blockStore.unblock(author)
-    this.setData({ blockedAuthors: blockStore.blockedList() })
-    wx.showToast({ title: '已取消屏蔽' })
+  copyEmail() {
+    wx.setClipboardData({ data: this.data.supportEmail })
   }
 })

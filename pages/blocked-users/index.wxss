@@ -1,0 +1,79 @@
+.blocked-users-page {
+  --settings-content-top: 198rpx;
+}
+
+.blocked-list,
+.blocked-empty {
+  overflow: hidden;
+  border: 2rpx solid #ece3d5;
+  background: #ffffff;
+}
+
+.blocked-row {
+  display: flex;
+  min-height: 112rpx;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 28rpx;
+}
+
+.blocked-row + .blocked-row {
+  border-top: 1rpx solid #f0e5d7;
+}
+
+.blocked-author {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #2a2521;
+  font-size: 30rpx;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blocked-action {
+  display: flex;
+  width: 176rpx;
+  min-width: 176rpx;
+  max-width: 176rpx;
+  margin-left: auto;
+  align-items: center;
+  flex: 0 0 176rpx;
+}
+
+.unblock {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 64rpx;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-radius: 14rpx;
+  color: #d8593b;
+  background: #fbe8df;
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.unblock:active {
+  background: #f4d6ca;
+}
+
+.blocked-empty {
+  padding: 36rpx 28rpx;
+}
+
+.empty-title {
+  display: block;
+  color: #756f66;
+  font-size: 28rpx;
+  line-height: 1.5;
+  text-align: center;
+}

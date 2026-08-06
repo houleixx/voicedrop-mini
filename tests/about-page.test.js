@@ -83,6 +83,19 @@ test('about page identifies a trial build without claiming a version number', ()
   assert.equal(h.ctx.data.appVersion, '体验版')
 })
 
+test('about page opens blocked-user management from the merged menu card', () => {
+  const h = freshAbout()
+  const markup = fs.readFileSync(path.join(root, 'pages/about/index.wxml'), 'utf8')
+
+  h.page.openBlockedUsers.call(h.ctx)
+
+  assert.deepEqual(h.navigations, ['/pages/blocked-users/index'])
+  assert.match(markup, /class="card menu"[\s\S]*class="row blocked-entry" bindtap="openBlockedUsers"/)
+  assert.match(markup, /已屏蔽用户[\s\S]*\{\{blockedAuthors\.length\}\} 人/)
+  assert.doesNotMatch(markup, /class="card blocked"/)
+  assert.doesNotMatch(markup, /bindtap="unblock"/)
+})
+
 test('about page keeps the agreement row without a withdrawal action', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/about/index.wxml'), 'utf8')
   const js = fs.readFileSync(path.join(root, 'pages/about/index.js'), 'utf8')

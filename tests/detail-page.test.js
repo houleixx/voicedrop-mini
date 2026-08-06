@@ -14,7 +14,7 @@ test('audio detail loading state shows a spinner above the text', () => {
   assert.match(css, /\.loading-spinner\s*\{[^}]*border-top-color:\s*#c7432f;[^}]*animation:\s*loading-spin\s+0\.8s\s+linear\s+infinite;/s)
 })
 
-function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, asrOverrides, settingsOverrides, communityOverrides, audioSessionResetOverrides) {
+function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, asrOverrides, settingsOverrides, communityOverrides, audioSessionResetOverrides, authOverrides, wechatAuthOverrides) {
   let page
   const app = { globalData: {} }
   const library = Object.assign({
@@ -66,6 +66,7 @@ function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, as
     '../services/community',
     '../services/asr-dictation',
     '../services/auth',
+    '../services/wechat-auth',
     '../services/request',
     '../utils/audio-session-reset'
   ].forEach((id) => {
@@ -77,6 +78,8 @@ function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, as
   if (communityOverrides) require.cache[require.resolve('../services/community')] = { exports: communityOverrides }
   if (asrOverrides) require.cache[require.resolve('../services/asr-dictation')] = { exports: asrOverrides }
   if (audioSessionResetOverrides) require.cache[require.resolve('../utils/audio-session-reset')] = { exports: audioSessionResetOverrides }
+  if (authOverrides) require.cache[require.resolve('../services/auth')] = { exports: authOverrides }
+  if (wechatAuthOverrides) require.cache[require.resolve('../services/wechat-auth')] = { exports: wechatAuthOverrides }
   require('../pages/detail/index')
   page.__app = app
   return page
@@ -603,7 +606,7 @@ test('detail page keeps a compact readable rhythm and responsive safe-area toolb
   assert.match(css, /\.detail-toolbar\s*\{[^}]*padding-left:\s*32rpx;/s)
   assert.match(css, /\.toolbar-actions\s*\{[^}]*gap:\s*14rpx;/s)
   assert.match(css, /\.tool-button\s*\{[^}]*width:\s*72rpx;[^}]*height:\s*72rpx;/s)
-  assert.match(css, /\.article-head\s*\{[^}]*padding:\s*0 0 44rpx;/s)
+  assert.match(css, /\.article-head\s*\{[^}]*padding:\s*0 0 20rpx;/s)
   assert.match(css, /\.article\s*\{[^}]*padding:\s*0;/s)
   assert.match(css, /\.article-tabs\s*\{[^}]*padding:\s*0;/s)
   assert.match(css, /\.article-title\s*\{[^}]*font-size:\s*48rpx;[^}]*font-weight:\s*800;[^}]*line-height:\s*1\.28;/s)
@@ -1975,7 +1978,7 @@ test('detail page opens custom more menu and routes actions', async () => {
 })
 
 test('detail page opens community terms with a Mini Program compatible action label', async () => {
-  const storage = {}
+  const storage = { 'voicedrop.auth.session': 'aaaaaaaa.bbbbbbbb.cccccccc' }
   let modal
   let shares = 0
   const page = freshDetailPage({}, {
@@ -1985,6 +1988,7 @@ test('detail page opens community terms with a Mini Program compatible action la
   })
   const ctx = {
     data: { sharedToCommunity: false, communityShareId: '' },
+    continueCommunityShare: page.continueCommunityShare,
     doShareCommunity() { shares += 1 }
   }
 
@@ -1998,8 +2002,79 @@ test('detail page opens community terms with a Mini Program compatible action la
   assert.equal(shares, 1)
 })
 
+test('detail page explains the WeChat login requirement before community terms', () => {
+  let modal
+  const page = freshDetailPage({}, {
+    showModal(options) { modal = options }
+  })
+  const ctx = {
+    data: { sharedToCommunity: false, communityShareId: '' },
+    setData(update) { Object.assign(this.data, update) },
+    promptWechatLogin: page.promptWechatLogin
+  }
+
+  page.shareCommunity.call(ctx)
+
+  assert.equal(modal.title, '需要微信登录')
+  assert.equal(modal.confirmText, '微信登录')
+  assert.match(modal.content, /发布到 VD 社区需要先用微信登录/)
+})
+
+test('detail page logs in directly and continues publishing in the same account space', async () => {
+  const storage = { 'voicedrop.community.terms.agreed': '1' }
+  const calls = []
+  const auth = {
+    isWechatAuthenticated: () => false,
+    storeSession(session) { calls.push(['storeSession', session]); return true },
+    switchToWechatAccount() { return true }
+  }
+  const wechatAuth = {
+    exchangeCode: async (code) => {
+      calls.push(['exchangeCode', code])
+      return { ok: true, session: 'aaaaaaaa.bbbbbbbb.cccccccc', scope: 'users/anon-current/' }
+    }
+  }
+  const page = freshDetailPage(
+    { ownerScope: async () => 'users/anon-current/' },
+    {
+      getStorageSync: (key) => storage[key] || '',
+      setStorageSync: (key, value) => { storage[key] = value },
+      login({ success }) { success({ code: 'code-1' }) },
+      showModal(options) {
+        if (options.title === '需要微信登录') options.success({ confirm: true })
+      },
+      showToast() {}
+    },
+    null,
+    null,
+    null,
+    null,
+    null,
+    auth,
+    wechatAuth
+  )
+  const ctx = {
+    data: { rec: { stem: 'VoiceDrop-test' }, sharingCommunity: false, wechatLoggingIn: false },
+    setData(update) { Object.assign(this.data, update) },
+    promptWechatLogin: page.promptWechatLogin,
+    loginForCommunity: page.loginForCommunity,
+    continueCommunityShare: page.continueCommunityShare,
+    doShareCommunity() { calls.push(['share']) }
+  }
+
+  page.shareCommunity.call(ctx)
+  await new Promise((resolve) => setImmediate(resolve))
+
+  assert.deepEqual(calls, [
+    ['exchangeCode', 'code-1'],
+    ['storeSession', 'aaaaaaaa.bbbbbbbb.cccccccc'],
+    ['share']
+  ])
+  assert.equal(ctx.data.wechatLoggingIn, false)
+})
+
 test('detail page reports a community terms modal failure without publishing', async () => {
-  const storage = {}
+  const storage = { 'voicedrop.auth.session': 'aaaaaaaa.bbbbbbbb.cccccccc' }
   let shares = 0
   let toast = ''
   const page = freshDetailPage({}, {
@@ -2012,6 +2087,7 @@ test('detail page reports a community terms modal failure without publishing', a
   })
   const ctx = {
     data: { sharedToCommunity: false, communityShareId: '' },
+    continueCommunityShare: page.continueCommunityShare,
     doShareCommunity() { shares += 1 }
   }
 
@@ -2047,23 +2123,25 @@ test('detail page guards duplicate community share requests', async () => {
 })
 
 test('detail page sends expired community identity to WeChat login', async () => {
+  let modal
   const page = freshDetailPage({}, {
     showToast(options) { this.toastTitle = options.title },
     showLoading() {},
     hideLoading() {},
-    navigateTo(options) { this.navigatedTo = options.url }
+    showModal(options) { modal = options }
   }, null, null, null, {
     shareResult: async () => ({ ok: false, needsWechatSignin: true })
   })
   const ctx = {
     data: { rec: { stem: 'VoiceDrop-test' }, sharingCommunity: false },
-    setData(update) { Object.assign(this.data, update) }
+    setData(update) { Object.assign(this.data, update) },
+    promptWechatLogin: page.promptWechatLogin
   }
 
   await page.doShareCommunity.call(ctx)
 
-  assert.equal(global.wx.toastTitle, '请重新微信登录')
-  assert.equal(global.wx.navigatedTo, '/pages/account/index')
+  assert.equal(modal.title, '需要微信登录')
+  assert.equal(global.wx.navigatedTo, undefined)
   assert.equal(ctx.data.sharingCommunity, false)
 })
 

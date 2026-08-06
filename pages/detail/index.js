@@ -1,5 +1,7 @@
+const auth = require('../../services/auth')
 const library = require('../../services/library')
 const community = require('../../services/community')
+const wechatAuth = require('../../services/wechat-auth')
 const articleEdit = require('../../services/article-edit')
 const settings = require('../../services/settings')
 const articleUtil = require('../../utils/article')
@@ -358,6 +360,7 @@ Page({
     playbackMode: playbackState.MODE_IDLE,
     communityShareId: '',
     sharedToCommunity: false,
+    wechatLoggingIn: false,
     photoScope: '',
     photoSheetOpen: false,
     photoPickerPhotos: [],
@@ -2334,11 +2337,18 @@ Page({
     })
   },
 
-  async shareCommunity() {
+  shareCommunity() {
     if (this.data.sharedToCommunity && this.data.communityShareId) {
-      await this.hideCommunity()
+      return this.hideCommunity()
+    }
+    if (!auth.isWechatAuthenticated()) {
+      this.promptWechatLogin()
       return
     }
+    return this.continueCommunityShare()
+  },
+
+  continueCommunityShare() {
     if (!communityTerms.agreed()) {
       wx.showModal({
         title: '社区公约',
@@ -2353,7 +2363,92 @@ Page({
       })
       return
     }
-    await this.doShareCommunity()
+    return this.doShareCommunity()
+  },
+
+  promptWechatLogin() {
+    wx.showModal({
+      title: '需要微信登录',
+      content: '发布到 VD 社区需要先用微信登录，登录后才能发布。是否现在登录？',
+      confirmText: '微信登录',
+      cancelText: '取消',
+      showCancel: true,
+      success: (result) => {
+        if (result.confirm) this.loginForCommunity()
+      },
+      fail: () => wx.showToast({ title: '登录提示打开失败', icon: 'none' })
+    })
+  },
+
+  loginForCommunity() {
+    if (this.data.wechatLoggingIn) return
+    this.setData({ wechatLoggingIn: true })
+    const startLogin = (userInfo) => {
+      wx.login({
+        success: async (login) => {
+          try {
+            const result = await wechatAuth.exchangeCode(login.code, userInfo.nickName, userInfo.avatarUrl)
+            if (!result.ok) {
+              wx.showModal({
+                title: '微信登录失败',
+                content: result.detail || result.error || '请稍后重试',
+                showCancel: false
+              })
+              return
+            }
+            const currentScope = await library.ownerScope({ anonymous: true })
+            if (!currentScope) throw new Error('无法确认当前账号空间')
+            if (normalizeScope(currentScope) !== normalizeScope(result.scope)) {
+              this.promptWechatAccountSwitch(result)
+              return
+            }
+            if (!auth.storeSession(result.session)) throw new Error('无效微信会话')
+            wx.showToast({ title: '已登录' })
+            await this.continueCommunityShare()
+          } catch (error) {
+            wx.showModal({
+              title: '微信登录失败',
+              content: error && error.message || '请稍后重试',
+              showCancel: false
+            })
+          } finally {
+            this.setData({ wechatLoggingIn: false })
+          }
+        },
+        fail: () => {
+          this.setData({ wechatLoggingIn: false })
+          wx.showToast({ title: '登录失败', icon: 'error' })
+        }
+      })
+    }
+    if (!wx.getUserProfile) {
+      startLogin({})
+      return
+    }
+    wx.getUserProfile({
+      desc: '用于参与 VD 社区',
+      success: (profile) => startLogin(profile.userInfo || {}),
+      fail: () => startLogin({})
+    })
+  },
+
+  promptWechatAccountSwitch(result) {
+    wx.showModal({
+      title: '该微信已关联另一个云端空间',
+      content: '是否切换到微信已绑定的云端空间？当前空间会保存在本机，登录后将重新打开首页。',
+      confirmText: '切换',
+      cancelText: '保留当前',
+      showCancel: true,
+      success: (choice) => {
+        if (!choice.confirm) return
+        if (!auth.switchToWechatAccount(result.session)) {
+          wx.showToast({ title: '切换失败，请稍后重试', icon: 'error' })
+          return
+        }
+        wx.reLaunch({ url: '/pages/recordings/index' })
+      },
+      fail: () => wx.showToast({ title: '账号切换提示打开失败', icon: 'none' })
+    })
   },
 
   async doShareCommunity() {
@@ -2374,8 +2469,7 @@ Page({
       this.setData({ sharedToCommunity: true, communityShareId: result.shareId })
       wx.showToast({ title: '已在 VD 社区可见' })
     } else if (result.needsWechatSignin) {
-      wx.showToast({ title: '请重新微信登录', icon: 'error' })
-      wx.navigateTo({ url: '/pages/account/index' })
+      this.promptWechatLogin()
     } else if (result.articleNotFound) {
       wx.showToast({ title: '该文章不属于当前微信账号', icon: 'error' })
     } else {
@@ -2418,3 +2512,9 @@ Page({
     })
   }
 })
+
+function normalizeScope(scope) {
+  const value = String(scope || '').trim()
+  if (!value) return ''
+  return value.endsWith('/') ? value : `${value}/`
+}

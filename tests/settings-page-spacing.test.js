@@ -15,7 +15,7 @@ test('settings entry pages use the shared content start below the custom header'
   assert.match(shared, /--settings-content-top:\s*\d+rpx;/)
   assert.match(shared, /\.settings-screen\s*>\s*\.page-body,[\s\S]*\.settings-screen\s*>\s*\.settings-content\s*\{[^}]*padding-top:\s*var\(--settings-content-top\)\s*!important/s)
 
-  for (const page of ['settings', 'account', 'usage', 'wechat-settings', 'about', 'audio-consent']) {
+  for (const page of ['settings', 'account', 'usage', 'wechat-settings', 'about', 'blocked-users', 'audio-consent']) {
     assert.match(read(`pages/${page}/index.wxml`), /class="screen[^\"]*settings-screen/)
   }
 
@@ -96,10 +96,21 @@ test('about pages inherit the compact settings rhythm and readable secondary tex
   assert.match(aboutStyles, /\.desc\s*\{[^}]*color:\s*#756f66;[^}]*font-size:\s*26rpx;/s)
   assert.match(aboutStyles, /\.version\s*\{[^}]*color:\s*#756f66;[^}]*font-size:\s*24rpx;/s)
   assert.match(aboutStyles, /\.menu\s*\{[^}]*margin-top:\s*16rpx;/s)
-  assert.match(aboutStyles, /\.blocked\s*\{[^}]*margin-top:\s*16rpx;/s)
-  assert.match(aboutStyles, /\.menu \.row,[\s\S]*\.blocked\s*>\s*\.row\s*\{[^}]*min-height:\s*104rpx;[^}]*padding:\s*20rpx 28rpx;/s)
+  assert.match(aboutMarkup, /class="row blocked-entry" bindtap="openBlockedUsers"/)
+  assert.match(aboutMarkup, /\{\{blockedAuthors\.length\}\} 人/)
+  assert.doesNotMatch(aboutMarkup, /class="card blocked"/)
+  assert.match(aboutStyles, /\.menu \.row\s*\{[^}]*min-height:\s*104rpx;[^}]*padding:\s*20rpx 28rpx;/s)
   assert.match(aboutStyles, /\.about-page \.muted\s*\{[^}]*color:\s*#756f66;[^}]*font-size:\s*24rpx;/s)
-  assert.match(aboutStyles, /\.empty-line\s*\{[^}]*color:\s*#756f66;[^}]*font-size:\s*26rpx;/s)
+  assert.match(aboutStyles, /\.about-arrow\s*\{[^}]*color:\s*#9b8f7f;/s)
+
+  const blockedMarkup = read('pages/blocked-users/index.wxml')
+  const blockedStyles = read('pages/blocked-users/index.wxss')
+  assert.match(blockedMarkup, /社区屏蔽管理/)
+  assert.match(blockedMarkup, /wx:for="\{\{blockedAuthors\}\}"/)
+  assert.match(blockedMarkup, /取消屏蔽/)
+  assert.match(blockedStyles, /\.blocked-row\s*\{[^}]*min-height:\s*112rpx;/s)
+  assert.match(blockedStyles, /\.blocked-action\s*\{[^}]*width:\s*176rpx;[^}]*margin-left:\s*auto;[^}]*flex:\s*0 0 176rpx;/s)
+  assert.match(blockedStyles, /\.unblock\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*margin:\s*0;[^}]*background:\s*#fbe8df;/s)
 
   assert.match(agreementMarkup, /class="screen settings-screen agreement-page"/)
   assert.match(agreementStyles, /\.agreement-page\s*\{[^}]*--settings-content-top:\s*198rpx;/s)
