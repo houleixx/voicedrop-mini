@@ -1449,7 +1449,8 @@ test('detail page updates style label after successful style rewrite request', a
   await page.requestStyleRewriteOrSwitch.call(ctx, 7, {})
 
   assert.equal(ctx.data.styleLabel, 'v7 风格')
-  assert.equal(toasts[0].title, '正在用 v7 重写')
+  assert.equal(toasts[0].title, '重写成功')
+  assert.equal(toasts[0].icon, 'success')
 })
 
 test('detail page refreshes its article after a successful style rewrite', async () => {

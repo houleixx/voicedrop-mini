@@ -1350,7 +1350,7 @@ Page({
       if (result.ok) {
         await this.refreshResolvedDoc()
         this.setData({ styleLabel: `v${styleVersion} 风格` })
-        wx.showToast({ title: `正在用 v${styleVersion} 重写`, icon: 'success' })
+        wx.showToast({ title: '重写成功', icon: 'success' })
       } else {
         wx.showModal({
           title: '提交失败',
