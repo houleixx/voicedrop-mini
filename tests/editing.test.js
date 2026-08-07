@@ -216,6 +216,38 @@ test('article edit terminal events refresh the authoritative doc and keep the so
   }
 })
 
+test('article edit forwards a successful restyle preview completion to the page', () => {
+  let messageHandler = null
+  let completed = null
+  const previousWx = global.wx
+  global.wx = {
+    getStorageSync: () => '',
+    setStorageSync: () => {},
+    removeStorageSync: () => {},
+    connectSocket: () => ({
+      onOpen: () => {},
+      onMessage: (handler) => { messageHandler = handler },
+      onError: () => {},
+      onClose: () => {},
+      send: () => {},
+      close: () => {}
+    })
+  }
+
+  try {
+    const session = edit.createSession('VoiceDrop-restyle', {
+      onPreviewDone: (ok) => { completed = ok }
+    })
+    session.connect()
+    messageHandler({ data: JSON.stringify({ type: 'preview-done', ok: true }) })
+
+    assert.equal(completed, true)
+  } finally {
+    if (previousWx === undefined) delete global.wx
+    else global.wx = previousWx
+  }
+})
+
 test('article edit ignores a terminal message from a stale socket after reconnect', () => {
   const storage = {}
   const sockets = []

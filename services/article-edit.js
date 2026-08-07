@@ -202,6 +202,9 @@ function createSession(stem, handlers) {
         logEdit('updated', { stem, id: obj.id, hasDoc: !!doc })
         if (doc && handlers && handlers.onUpdated) handlers.onUpdated(doc)
         resolve(obj.id)
+      } else if (obj.type === 'preview-done') {
+        logEdit('preview-done', { stem, ok: obj.ok !== false })
+        if (handlers && handlers.onPreviewDone) handlers.onPreviewDone(obj.ok !== false)
       } else if (obj.type === 'error') {
         logEdit('server-error', { stem, id: obj.id, message: obj.message })
         if (handlers && handlers.onError) handlers.onError(obj.message || '修改失败', obj.id || '')

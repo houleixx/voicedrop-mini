@@ -552,6 +552,9 @@ Page({
       onQueueChanged: (queue) => this.onEditQueueChanged(queue),
       onReply: (text, ok) => this.onEditReply(text, ok),
       onResolved: () => this.refreshResolvedDoc(),
+      onPreviewDone: (ok) => {
+        if (ok) this.refreshResolvedDoc()
+      },
       onState: (state) => this.setData({ editState: state }),
       onError: (message) => wx.showToast({ title: message || '修改失败', icon: 'error' })
     })
@@ -1345,6 +1348,7 @@ Page({
         ? await library.restyleResult(this.data.rec, styleVersion)
         : { ok: await library.restyle(this.data.rec, styleVersion) }
       if (result.ok) {
+        await this.refreshResolvedDoc()
         this.setData({ styleLabel: `v${styleVersion} 风格` })
         wx.showToast({ title: `正在用 v${styleVersion} 重写`, icon: 'success' })
       } else {

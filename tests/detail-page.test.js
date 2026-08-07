@@ -1442,6 +1442,7 @@ test('detail page updates style label after successful style rewrite request', a
     setData(update) {
       Object.assign(this.data, update)
     },
+    refreshResolvedDoc: async () => {},
     switchArticleHead: async () => {}
   }
 
@@ -1449,6 +1450,28 @@ test('detail page updates style label after successful style rewrite request', a
 
   assert.equal(ctx.data.styleLabel, 'v7 风格')
   assert.equal(toasts[0].title, '正在用 v7 重写')
+})
+
+test('detail page refreshes its article after a successful style rewrite', async () => {
+  const page = freshDetailPage({
+    restyleResult: async () => ({ ok: true, data: { head: 8 } })
+  })
+  let refreshes = 0
+  const ctx = {
+    data: {
+      rec: { stem: 'VoiceDrop-2026-06-24-131500-0m30s-Wed-Afternoon' },
+      styleLabel: '选风格'
+    },
+    setData(update) {
+      Object.assign(this.data, update)
+    },
+    refreshResolvedDoc: async () => { refreshes += 1 },
+    switchArticleHead: async () => {}
+  }
+
+  await page.requestStyleRewriteOrSwitch.call(ctx, 7, {})
+
+  assert.equal(refreshes, 1)
 })
 
 test('detail page shows restyle backend failure details', async () => {
