@@ -14,7 +14,26 @@ test('audio detail loading state shows a spinner above the text', () => {
   assert.match(css, /\.loading-spinner\s*\{[^}]*border-top-color:\s*#c7432f;[^}]*animation:\s*loading-spin\s+0\.8s\s+linear\s+infinite;/s)
 })
 
-function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, asrOverrides, settingsOverrides, communityOverrides, audioSessionResetOverrides, authOverrides, wechatAuthOverrides) {
+test('audio detail more-menu dividers are inset from both edges', () => {
+  const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
+
+  assert.doesNotMatch(css, /\.more-menu-row \+ \.more-menu-row\s*\{[^}]*border-top:/s)
+  assert.match(css, /\.more-menu-row \+ \.more-menu-row::before\s*\{[^}]*right:\s*32rpx;[^}]*left:\s*32rpx;[^}]*height:\s*1rpx;/s)
+  assert.match(css, /\.more-menu-separator\s*\{[^}]*height:\s*1rpx;[^}]*margin:\s*0 32rpx;[^}]*background:\s*rgba\(222, 214, 202, 0\.82\);/s)
+  assert.doesNotMatch(css, /\.more-menu-separator\s*\{[^}]*border-top:/s)
+})
+
+test('audio detail only reserves the community check indent while it is visible', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+  const menu = wxml.slice(wxml.indexOf('<view class="more-menu-layer"'), wxml.indexOf('<view class="style-sheet-layer"'))
+  const checks = menu.match(/class="more-menu-check"/g) || []
+
+  assert.equal(checks.length, 1)
+  assert.match(menu, /<text wx:if="\{\{sharedToCommunity\}\}" class="more-menu-check">✓<\/text>/)
+  assert.doesNotMatch(menu, /<text class="more-menu-check"><\/text>/)
+})
+
+function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, asrOverrides, settingsOverrides, communityOverrides, audioSessionResetOverrides, authOverrides, wechatAuthOverrides, publicShareOverrides) {
   let page
   const app = { globalData: {} }
   const library = Object.assign({
@@ -67,6 +86,7 @@ function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, as
     '../services/asr-dictation',
     '../services/auth',
     '../services/wechat-auth',
+    '../services/public-share',
     '../services/request',
     '../utils/audio-session-reset'
   ].forEach((id) => {
@@ -80,6 +100,7 @@ function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, as
   if (audioSessionResetOverrides) require.cache[require.resolve('../utils/audio-session-reset')] = { exports: audioSessionResetOverrides }
   if (authOverrides) require.cache[require.resolve('../services/auth')] = { exports: authOverrides }
   if (wechatAuthOverrides) require.cache[require.resolve('../services/wechat-auth')] = { exports: wechatAuthOverrides }
+  if (publicShareOverrides) require.cache[require.resolve('../services/public-share')] = { exports: publicShareOverrides }
   require('../pages/detail/index')
   page.__app = app
   return page
@@ -1246,13 +1267,92 @@ test('detail page opened from a WeChat share returns to the VD community feed wh
   assert.equal(app.navigatedBack, undefined)
 })
 
-test('article share card marks its route as a share entry', () => {
+test('article share card opens the public read-only article route', () => {
   const page = freshDetailPage()
   const payload = page.onShareAppMessage.call({
-    data: { current: { title: '分享文章' }, rec: { stem: 'VoiceDrop-shared' } }
+    data: {
+      current: { title: '分享文章' },
+      rec: { stem: 'VoiceDrop-shared' },
+      wechatSharePath: '/pages/shared-article/index?shareId=Ab3xK9_p2Q&section=1&fromShare=1'
+    }
   })
 
-  assert.equal(payload.path, '/pages/detail/index?stem=VoiceDrop-shared&fromShare=1')
+  assert.equal(payload.path, '/pages/shared-article/index?shareId=Ab3xK9_p2Q&section=1&fromShare=1')
+})
+
+test('article share closes the more menu and uses the first loaded photo as its cover', () => {
+  const page = freshDetailPage()
+  const ctx = {
+    data: {
+      current: { title: '分享文章' },
+      moreMenuOpen: true,
+      blocks: [
+        { type: 'photo', url: '', loaded: false },
+        { type: 'photo', url: 'wxfile://share-cover.jpg', loaded: true }
+      ],
+      wechatSharePath: '/pages/shared-article/index?shareId=Ab3xK9_p2Q&section=0&fromShare=1'
+    },
+    setData(update) { Object.assign(this.data, update) }
+  }
+
+  const payload = page.onShareAppMessage.call(ctx)
+
+  assert.equal(ctx.data.moreMenuOpen, false)
+  assert.equal(payload.imageUrl, 'wxfile://share-cover.jpg')
+  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+  assert.match(wxml, /<button[^>]*open-type="share"[^>]*bindtap="closeMoreMenu"[^>]*>/)
+})
+
+test('initial article share card is marked as an external share entry', async () => {
+  const stored = []
+  const page = freshDetailPage(
+    { shareUrl: async () => 'https://voicedrop.cn/Ab3xK9_p2Q' },
+    null, null, null, null, null, null, null, null,
+    {
+      cachedId: () => '',
+      shareIdFromUrl: () => 'Ab3xK9_p2Q',
+      storeId: (stem, id) => stored.push({ stem, id })
+    }
+  )
+  const ctx = {
+    data: { rec: { stem: 'VoiceDrop-shared' }, articleIndex: 1, wechatSharePreparing: false, wechatSharePath: '' },
+    setData(update) { Object.assign(this.data, update) }
+  }
+
+  await page.prepareWechatShareCard.call(ctx)
+
+  assert.equal(ctx.data.wechatSharePath, '/pages/shared-article/index?shareId=Ab3xK9_p2Q&section=1&fromShare=1')
+  assert.deepEqual(stored, [{ stem: 'VoiceDrop-shared', id: 'Ab3xK9_p2Q' }])
+})
+
+test('article share card reuses a cached public id without requesting the backend', async () => {
+  const calls = []
+  const page = freshDetailPage(
+    { shareUrl: async () => { calls.push(true); return '' } },
+    null, null, null, null, null, null, null, null,
+    {
+      cachedId: () => 'Ab3xK9_p2Q',
+      shareIdFromUrl: () => '',
+      storeId: () => false
+    }
+  )
+  const ctx = {
+    data: { rec: { stem: 'VoiceDrop-shared' }, articleIndex: 2, wechatSharePreparing: false, wechatSharePath: '' },
+    setData(update) { Object.assign(this.data, update) }
+  }
+
+  await page.prepareWechatShareCard.call(ctx)
+
+  assert.deepEqual(calls, [])
+  assert.equal(ctx.data.wechatSharePreparing, false)
+  assert.equal(ctx.data.wechatSharePath, '/pages/shared-article/index?shareId=Ab3xK9_p2Q&section=2&fromShare=1')
+})
+
+test('detail entry does not prepare a WeChat card before the user opens sharing actions', () => {
+  const source = fs.readFileSync(path.join(root, 'pages/detail/index.js'), 'utf8')
+  const onLoad = source.slice(source.indexOf('  onLoad(options)'), source.indexOf('  onShow()', source.indexOf('  onLoad(options)')))
+
+  assert.doesNotMatch(onLoad, /prepareWechatShareCard/)
 })
 
 test('shared article detail returns to VD community even when WeChat adds a previous page', () => {

@@ -395,8 +395,14 @@
   text-align: left;
 }
 
-.more-menu-row + .more-menu-row {
-  border-top: 1rpx solid rgba(222, 214, 202, 0.82);
+.more-menu-row + .more-menu-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 32rpx;
+  left: 32rpx;
+  height: 1rpx;
+  background: rgba(222, 214, 202, 0.82);
 }
 
 .more-menu-share-button {

@@ -2,6 +2,7 @@
   "pages": [
     "pages/recordings/index",
     "pages/detail/index",
+    "pages/shared-article/index",
     "pages/community/index",
     "pages/community-detail/index",
     "pages/settings/index",

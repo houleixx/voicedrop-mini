@@ -20,9 +20,18 @@ const audioConsentFlow = require('../../utils/audio-consent-flow')
 const recordPermission = require('../../utils/record-permission')
 const capsuleLayout = require('../../utils/capsule-layout')
 const audioSessionReset = require('../../utils/audio-session-reset')
+const xhsExport = require('../../services/xhs-export')
+const albumPermission = require('../../utils/album-permission')
+const xhsCards = require('../../utils/xhs-cards')
+const publicShare = require('../../services/public-share')
 
 const app = getApp()
 const ARTICLE_PHOTO_CONCURRENCY = 3
+
+function xhsCardDate(rec) {
+  const parsed = recording.parseStem(rec && rec.stem)
+  return parsed && parsed.sessionTs ? parsed.sessionTs.slice(0, 10) : ''
+}
 
 function logPhotoInsert(stage, details) {
   if (typeof console === 'undefined' || !console.log) return
@@ -329,6 +338,10 @@ Page({
     hasWechatDraft: false,
     publishingWechat: false,
     sharingCommunity: false,
+    xhsPreparing: false,
+    wechatSharePreparing: false,
+    wechatSharePath: '',
+    wechatShareFailed: false,
     menus: { text: promptStore.menu('text'), image: promptStore.menu('image') },
     longpressMenuOpen: false,
     longpressMenu: null,
@@ -529,16 +542,20 @@ Page({
   },
 
   onShareAppMessage() {
-    return {
+    if (this.data.moreMenuOpen && this.setData) this.setData({ moreMenuOpen: false })
+    const cover = (this.data.blocks || []).find((block) => block && block.type === 'photo' && block.url && !block.failed)
+    const payload = {
       title: this.data.current && this.data.current.title || 'VoiceDrop 文章',
-      path: `/pages/detail/index?stem=${encodeURIComponent(this.data.rec && this.data.rec.stem || '')}&fromShare=1`
+      path: this.data.wechatSharePath || '/pages/recordings/index'
     }
+    if (cover) payload.imageUrl = cover.url
+    return payload
   },
 
   onShareTimeline() {
     return {
       title: this.data.current && this.data.current.title || 'VoiceDrop 文章',
-      query: `stem=${encodeURIComponent(this.data.rec && this.data.rec.stem || '')}`
+      query: this.data.wechatSharePath ? this.data.wechatSharePath.split('?')[1] : ''
     }
   },
 
@@ -1018,6 +1035,10 @@ Page({
     if (index < 0 || index >= this.data.doc.articles.length || index === this.data.articleIndex) return
     this.setData({ articleIndex: index })
     this.applyDoc(this.data.doc)
+    this._wechatShareRequestId = (this._wechatShareRequestId || 0) + 1
+    this._wechatShareStem = ''
+    this._wechatShareSection = -1
+    this.setData({ wechatSharePreparing: false, wechatSharePath: '', wechatShareFailed: false })
   },
 
   async load() {
@@ -1103,6 +1124,216 @@ Page({
         if (wx.hideToast) wx.hideToast()
       }
     })
+  },
+
+  async prepareWechatShareCard(sectionOverride) {
+    const rec = this.data.rec
+    const section = Number.isInteger(sectionOverride) ? sectionOverride : (this.data.articleIndex || 0)
+    if (!rec || !rec.stem || this.data.wechatSharePreparing) return
+    if (this._wechatShareStem === rec.stem && this._wechatShareSection === section && this.data.wechatSharePath) return
+    const cachedShareId = publicShare.cachedId(rec.stem)
+    if (cachedShareId) {
+      this._wechatShareStem = rec.stem
+      this._wechatShareSection = section
+      this.setData({
+        wechatSharePreparing: false,
+        wechatShareFailed: false,
+        wechatSharePath: `/pages/shared-article/index?shareId=${encodeURIComponent(cachedShareId)}&section=${section}&fromShare=1`
+      })
+      return
+    }
+    const requestId = (this._wechatShareRequestId || 0) + 1
+    this._wechatShareRequestId = requestId
+    this.setData({ wechatSharePreparing: true, wechatSharePath: '', wechatShareFailed: false })
+    try {
+      const url = await library.shareUrl(rec, section)
+      const shareId = publicShare.shareIdFromUrl(url)
+      if (!shareId) {
+        if (requestId === this._wechatShareRequestId) this.setData({ wechatShareFailed: true })
+        return
+      }
+      if (requestId !== this._wechatShareRequestId) return
+      publicShare.storeId(rec.stem, shareId)
+      this._wechatShareStem = rec.stem
+      this._wechatShareSection = section
+      this.setData({ wechatSharePath: `/pages/shared-article/index?shareId=${encodeURIComponent(shareId)}&section=${section}&fromShare=1` })
+    } catch (_) {
+      if (requestId === this._wechatShareRequestId) this.setData({ wechatShareFailed: true })
+    } finally {
+      if (requestId === this._wechatShareRequestId) this.setData({ wechatSharePreparing: false })
+    }
+  },
+
+  async shareToXhs() {
+    if (this.data.xhsPreparing) {
+      wx.showToast({ title: '正在准备小红书素材…', icon: 'none' })
+      return
+    }
+    const rec = this.data.rec
+    if (!rec || !rec.stem) return
+    this.setData({ xhsPreparing: true })
+    if (wx.showLoading) wx.showLoading({ title: '正在准备素材…', mask: true })
+    try {
+      const prepared = await xhsExport.prepare(rec.stem)
+      if (!prepared.ok) {
+        wx.showToast({ title: '小红书文案生成失败', icon: 'none' })
+        return
+      }
+      if (wx.setClipboardData) wx.setClipboardData({ data: prepared.clipboardText })
+
+      const canSaveToAlbum = await albumPermission.ensure(wx)
+      if (!canSaveToAlbum) {
+        this.showXhsPrepared(0, false)
+        return
+      }
+
+      const originalPhotos = await this.downloadXhsPhotos(prepared.pack.photoKeys)
+      const cardSlots = xhsExport.generatedCardSlots(originalPhotos.length)
+      const textCards = await this.renderXhsCards(prepared.pack, cardSlots)
+      const saved = await this.saveXhsImages(originalPhotos.concat(textCards).slice(0, xhsExport.MAX_IMAGES))
+      this.showXhsPrepared(saved, true)
+    } catch (_) {
+      wx.showToast({ title: '小红书素材准备失败', icon: 'none' })
+    } finally {
+      if (wx.hideLoading) wx.hideLoading()
+      this.setData({ xhsPreparing: false })
+    }
+  },
+
+  async downloadXhsPhotos(photoKeys) {
+    const paths = []
+    const scope = this.data.photoScope || await library.ownerScope().catch(() => '')
+    for (const key of photoKeys || []) {
+      if (paths.length >= xhsExport.MAX_IMAGES) break
+      try {
+        const path = await library.downloadPhotoTemp(key, scope, { preferThumb: false })
+        if (path) paths.push(path)
+      } catch (_) {
+        // A missing original photo should not prevent the user from getting copy and text cards.
+      }
+    }
+    return paths
+  },
+
+  async renderXhsCards(pack, maxCards) {
+    if (!maxCards || !wx.createCanvasContext || !wx.canvasToTempFilePath) return []
+    const measureContext = wx.createCanvasContext('xhsExportCanvas', this)
+    xhsCards.applyCanvasFont(measureContext, xhsCards.BODY_FONT_SIZE, 400)
+    const measureBodyText = (value) => {
+      try {
+        const result = measureContext.measureText && measureContext.measureText(String(value || ''))
+        if (result && Number.isFinite(Number(result.width))) return Number(result.width)
+      } catch (_) {
+      }
+      return xhsCards.estimatedWidth(value, xhsCards.BODY_FONT_SIZE)
+    }
+    const cards = xhsCards.buildCards(
+      pack.title,
+      pack.body,
+      xhsCardDate(this.data.rec),
+      maxCards,
+      measureBodyText
+    )
+    const paths = []
+    for (let index = 0; index < cards.length; index += 1) {
+      try {
+        const path = await this.renderXhsCard(cards[index], index + 1, cards.length)
+        if (path) paths.push(path)
+      } catch (_) {
+        break
+      }
+    }
+    return paths
+  },
+
+  renderXhsCard(card, page, total) {
+    return new Promise((resolve, reject) => {
+      const ctx = wx.createCanvasContext('xhsExportCanvas', this)
+      if (!ctx) return reject(new Error('canvas unavailable'))
+      const width = xhsCards.CARD_WIDTH
+      const height = xhsCards.CARD_HEIGHT
+      if (ctx.setTextBaseline) ctx.setTextBaseline('top')
+      if (ctx.setTextAlign) ctx.setTextAlign('left')
+      ctx.setFillStyle('#f5f1e8')
+      ctx.fillRect(0, 0, width, height)
+      if (card.kind === 'title') {
+        ctx.setFillStyle('#8d8372')
+        xhsCards.applyCanvasFont(ctx, 30, 400)
+        if (card.date) ctx.fillText(card.date, 112, 200)
+        ctx.setFillStyle('#b9502e')
+        ctx.fillRect(112, 286, 76, 8)
+        ctx.setFillStyle('#3a352e')
+        xhsCards.applyCanvasFont(ctx, 78, 600)
+        const measureTitleText = (value) => {
+          try {
+            const result = ctx.measureText && ctx.measureText(String(value || ''))
+            if (result && Number.isFinite(Number(result.width))) return Number(result.width)
+          } catch (_) {
+          }
+          return xhsCards.estimatedWidth(value, 78)
+        }
+        const titleLines = xhsCards.titleLines(card.title, measureTitleText).slice(0, 8)
+        titleLines.forEach((line, index) => ctx.fillText(line, 110, 380 + index * 104))
+      } else {
+        ctx.setFillStyle('#3a352e')
+        xhsCards.applyCanvasFont(ctx, 42, 400)
+        ;(card.lines || []).forEach((line) => ctx.fillText(line.text, xhsCards.BODY_LEFT, line.y))
+      }
+      ctx.setFillStyle('#8d8372')
+      xhsCards.applyCanvasFont(ctx, 26, 500)
+      const pageLabel = `${page} / ${total}`
+      let pageWidth = xhsCards.estimatedWidth(pageLabel, 26)
+      try {
+        const measured = ctx.measureText && ctx.measureText(pageLabel)
+        if (measured && Number.isFinite(Number(measured.width))) pageWidth = Number(measured.width)
+      } catch (_) {
+      }
+      ctx.fillText(pageLabel, (width - pageWidth) / 2, height - 84)
+      ctx.draw(false, () => {
+        wx.canvasToTempFilePath({
+          canvasId: 'xhsExportCanvas',
+          x: 0,
+          y: 0,
+          width,
+          height,
+          destWidth: width,
+          destHeight: height,
+          fileType: 'jpg',
+          quality: 0.92,
+          success: (result) => resolve(result.tempFilePath),
+          fail: reject
+        }, this)
+      })
+    })
+  },
+
+  async saveXhsImages(paths) {
+    if (!wx.saveImageToPhotosAlbum) return 0
+    let saved = 0
+    for (const filePath of paths || []) {
+      try {
+        await new Promise((resolve, reject) => {
+          wx.saveImageToPhotosAlbum({ filePath, success: resolve, fail: reject })
+        })
+        saved += 1
+      } catch (_) {
+        // Preserve successful images when an individual image cannot be written.
+      }
+    }
+    return saved
+  },
+
+  showXhsPrepared(saved, galleryAllowed) {
+    const content = !galleryAllowed
+      ? '文案已复制。相册权限未开启，请手动打开小红书后粘贴文案。'
+      : saved > 0
+        ? `文案已复制，${saved} 张图片已保存到相册。请打开小红书，选中这些图片并粘贴文案发布。`
+        : '文案已复制，但图片未能保存。请稍后重试，或直接在小红书粘贴文案。'
+    if (wx.showModal) {
+      wx.showModal({ title: '小红书素材已准备', content, showCancel: false })
+    } else {
+      wx.showToast({ title: saved > 0 ? '文案和图片已准备' : '文案已复制', icon: 'none' })
+    }
   },
 
   async togglePlayback() {
@@ -1684,6 +1915,7 @@ Page({
 
   showMoreActions() {
     this.setData({ moreMenuOpen: true })
+    if (this.prepareWechatShareCard) this.prepareWechatShareCard()
   },
 
   closeMoreMenu() {
@@ -1700,6 +1932,8 @@ Page({
       await this.publishWechat()
     } else if (action === 'community') {
       await this.shareCommunity()
+    } else if (action === 'xhs') {
+      await this.shareToXhs()
     } else if (action === 'share') {
       await this.copyArticleWithLink()
     } else if (action === 'delete') {

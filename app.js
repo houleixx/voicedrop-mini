@@ -28,6 +28,11 @@ function isChatShareScene(scene) {
   return [1007, 1008, 1044].includes(Number(scene))
 }
 
+function isPublicSharedArticleLaunch(options) {
+  const path = String(options && options.path || '').replace(/^\/+/, '')
+  return path === 'pages/shared-article/index'
+}
+
 App({
   globalData: {
     appName: 'VoiceDrop Mini',
@@ -70,6 +75,8 @@ App({
   },
 
   handleRouteOptions(options) {
+    // This page owns its public shareId. Do not reinterpret it as a VD community shareId.
+    if (isPublicSharedArticleLaunch(options)) return
     const promptCode = promptTree.extractShareCode(options && options.query && options.query.promptCode)
     if (promptCode) {
       const url = `/pages/prompt-import/index?promptCode=${promptCode}`

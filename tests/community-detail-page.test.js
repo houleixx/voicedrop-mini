@@ -343,6 +343,15 @@ test('community detail has custom actions and loading markup', () => {
   assert.match(moreMenuShareButtonRule, /opacity:\s*0;/)
 })
 
+test('community detail more-menu dividers are inset from both edges', () => {
+  const fs = require('node:fs')
+  const path = require('node:path')
+  const wxss = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxss'), 'utf8')
+
+  assert.doesNotMatch(wxss, /\.more-menu-row \+ \.more-menu-row\s*\{[^}]*border-top:/s)
+  assert.match(wxss, /\.more-menu-row \+ \.more-menu-row::before\s*\{[^}]*right:\s*32rpx;[^}]*left:\s*32rpx;[^}]*height:\s*1rpx;/s)
+})
+
 test('community article detail shares the list gutter and audio-detail reading rhythm', () => {
   const fs = require('node:fs')
   const path = require('node:path')

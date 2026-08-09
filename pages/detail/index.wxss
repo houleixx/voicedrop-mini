@@ -275,6 +275,7 @@
 }
 
 .more-menu-row {
+  position: relative;
   display: flex;
   width: 100%;
   box-sizing: border-box;
@@ -289,8 +290,17 @@
   text-align: left;
 }
 
-.more-menu-row + .more-menu-row {
-  border-top: 1rpx solid rgba(222, 214, 202, 0.82);
+.more-menu-share-button { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; opacity: 0; }
+.more-menu-share-button::after { border: 0; }
+
+.more-menu-row + .more-menu-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 32rpx;
+  left: 32rpx;
+  height: 1rpx;
+  background: rgba(222, 214, 202, 0.82);
 }
 
 .more-menu-row.danger {
@@ -321,9 +331,9 @@
 }
 
 .more-menu-separator {
-  height: 16rpx;
-  border-top: 1rpx solid rgba(222, 214, 202, 0.82);
-  background: rgba(241, 231, 218, 0.78);
+  height: 1rpx;
+  margin: 0 32rpx;
+  background: rgba(222, 214, 202, 0.82);
 }
 
 .style-sheet-layer {
@@ -1205,6 +1215,11 @@
   width: 1080px;
   height: 1080px;
   pointer-events: none;
+}
+
+.xhs-export-canvas {
+  width: 1080px;
+  height: 1440px;
 }
 
 .hold-edit-button {

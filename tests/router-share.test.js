@@ -80,6 +80,21 @@ test('app handles the same launch route only once across onLaunch and onShow', a
   ])
 })
 
+test('app does not reinterpret a public shared article page as a community detail route', async () => {
+  const { app, calls } = freshApp()
+  const options = {
+    path: 'pages/shared-article/index',
+    scene: 1007,
+    query: { shareId: 'Ab3xK9_p2Q', section: '1', fromShare: '1' }
+  }
+
+  app.onLaunch(options)
+  app.onShow(options)
+  await flushRoutes()
+
+  assert.deepEqual(calls, [])
+})
+
 test('app routes one valid prompt code to import and ignores eight digit runs', async () => {
   let harness = freshApp()
   harness.app.onLaunch({ query: { promptCode: '1234567' } })

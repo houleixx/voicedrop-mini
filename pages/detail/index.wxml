@@ -116,23 +116,25 @@
   <view class="more-menu-layer" wx:if="{{moreMenuOpen}}" bindtap="closeMoreMenu">
     <view class="more-menu-card" style="top: {{toolbarTop + toolbarHeight + 20}}px;" catchtap="noop">
       <view class="more-menu-row" data-action="publishWechat" bindtap="runMoreMenuAction">
-        <text class="more-menu-check"></text>
         <text class="more-menu-label">{{hasWechatDraft ? '更新公众号草稿' : '发布公众号草稿'}}</text>
         <text class="more-menu-icon ri-send-plane-2-line"></text>
       </view>
       <view class="more-menu-row" data-action="community" bindtap="runMoreMenuAction">
-        <text class="more-menu-check">{{sharedToCommunity ? '✓' : ''}}</text>
+        <text wx:if="{{sharedToCommunity}}" class="more-menu-check">✓</text>
         <text class="more-menu-label">VD社区可见</text>
         <text class="more-menu-icon ri-team-line"></text>
       </view>
-      <view class="more-menu-row" data-action="share" bindtap="runMoreMenuAction">
-        <text class="more-menu-check"></text>
-        <text class="more-menu-label">分享</text>
+      <view class="more-menu-row" data-action="xhs" bindtap="runMoreMenuAction">
+        <text class="more-menu-label">分享到小红书</text>
+        <text class="more-menu-icon ri-image-2-line"></text>
+      </view>
+      <view class="more-menu-row more-menu-share-row" bindtap="prepareWechatShareCard">
+        <text class="more-menu-label">{{wechatSharePreparing ? '正在准备微信卡片…' : (wechatShareFailed ? '微信卡片准备失败，点此重试' : '分享给微信好友')}}</text>
         <text class="more-menu-icon ri-share-forward-line"></text>
+        <button wx:if="{{wechatSharePath}}" class="more-menu-share-button" open-type="share" bindtap="closeMoreMenu" aria-label="分享给微信好友"></button>
       </view>
       <view class="more-menu-separator"></view>
       <view class="more-menu-row danger" data-action="delete" bindtap="runMoreMenuAction">
-        <text class="more-menu-check"></text>
         <text class="more-menu-label">删除</text>
         <text class="more-menu-icon ri-delete-bin-6-line"></text>
       </view>
@@ -262,6 +264,7 @@
   </view>
 
   <canvas id="detailPhotoCanvas" canvas-id="detailPhotoCanvas" type="2d" class="photo-canvas"></canvas>
+  <canvas canvas-id="xhsExportCanvas" width="1080" height="1440" class="photo-canvas xhs-export-canvas"></canvas>
   <config-menu
     open="{{longpressMenuOpen}}"
     menu="{{longpressMenu}}"
