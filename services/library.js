@@ -685,7 +685,7 @@ async function restyle(rec, styleVersion) {
 
 async function restyleResult(rec, styleVersion) {
   const body = restyleRequestBody(rec.stem, styleVersion)
-  const res = await http.postJson(`${api.agentBase()}/restyle`, auth.bearer(), body)
+  const res = await http.postJson(`${api.agentBase()}/restyle`, auth.bearer(), body, { timeout: 300000 })
   const ok = res.statusCode >= 200 && res.statusCode < 300 && (!res.data || res.data.ok !== false)
   if (ok) invalidateArticleCaches([rec.stem])
   return {
@@ -957,7 +957,7 @@ function uploadPhotoRaw(filePath, key) {
         method: 'PUT',
         url,
         data,
-        header: http.authHeader(auth.bearer(), { 'content-type': 'image/jpeg' }),
+        header: http.authHeader(auth.bearer(), { 'content-type': imageContentType(data, key) }),
         success: (res) => {
           logPhotoUpload('response', { key, statusCode: res.statusCode, data: res.data })
           if (res.statusCode >= 200 && res.statusCode < 300) resolve(true)
@@ -992,6 +992,20 @@ function uploadPhotoRaw(filePath, key) {
   })
 }
 
+function imageContentType(data, fallbackPath = '') {
+  const b = data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(data && data.buffer || [])
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg'
+  if (b.length >= 4 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png'
+  if (b.length >= 4 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) return 'image/gif'
+  if (b.length >= 12 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+      b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return 'image/webp'
+  if (/\.jpe?g$/i.test(fallbackPath)) return 'image/jpeg'
+  if (/\.png$/i.test(fallbackPath)) return 'image/png'
+  if (/\.gif$/i.test(fallbackPath)) return 'image/gif'
+  if (/\.webp$/i.test(fallbackPath)) return 'image/webp'
+  return 'application/octet-stream'
+}
+
 module.exports = {
   list,
   cachedRecordings,
@@ -1021,6 +1035,7 @@ module.exports = {
   normalizePhotoScope,
   scopedPhotoKey,
   uploadPhoto,
+  imageContentType,
   downloadTempFile,
   downloadAudioFile,
   cachedAudioPath,

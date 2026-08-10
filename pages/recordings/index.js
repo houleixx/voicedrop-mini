@@ -20,20 +20,13 @@ const recordPermission = require('../../utils/record-permission')
 
 const app = getApp()
 
-function isDevtoolsRuntime(systemInfo, deviceInfo) {
-  return [systemInfo, deviceInfo].some((info) => Object.values(info || {}).some((value) => /devtools|wechatdevtools|微信开发者工具/i.test(String(value || ''))))
-}
-
-function isHarmonyRuntime(systemInfo, deviceInfo) {
-  return [systemInfo, deviceInfo].some((info) => Object.values(info || {}).some((value) => /harmony|ohos|openharmony/i.test(String(value || ''))))
-}
-
-function needsCommunityFeedBaselineFix(systemInfo, deviceInfo) {
-  if (isDevtoolsRuntime(systemInfo, deviceInfo)) return true
-  const platforms = [systemInfo, deviceInfo]
-    .map((info) => String(info?.platform || '').toLowerCase())
-    .filter(Boolean)
-  return !platforms.includes('ios')
+function layoutOffsets(headerBottom, windowWidth) {
+  const pxPerRpx = Math.max(1, Number(windowWidth) || 375) / 750
+  const scrollContentTop = Math.max(0, Number(headerBottom) || 0)
+  return {
+    scrollContentTop,
+    communityScrollContentTop: scrollContentTop + 88 * pxPerRpx
+  }
 }
 
 Page({
@@ -70,13 +63,13 @@ Page({
     communityPosts: [],
     communityLeftPosts: [],
     communityRightPosts: [],
-    communityFeedTab: 'recommended',
+    communityFeedTab: 'latest',
+    communitySearching: false,
+    communitySearchQuery: '',
     communityError: '',
     communityLoaded: false,
     refreshing: false,
     audioConsentVisible: false,
-    communityFeedBaselineFix: false,
-    communityFeedHarmony: false,
     scrollContentTop: 0,
     communityScrollContentTop: 0
   },
@@ -90,22 +83,12 @@ Page({
     this.setData({ activeTab, currentHomeTab: activeTab })
     try {
       const info = wx.getSystemInfoSync()
-      let deviceInfo = {}
-      try { deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : {} } catch (_) {}
-      const statusBarPx = info.statusBarHeight
-      const topRpx = 184
       const pxPerRpx = info.windowWidth / 750
-      const scrollContentTop = statusBarPx + topRpx * pxPerRpx
-      this.setData({
-        communityFeedBaselineFix: needsCommunityFeedBaselineFix(info, deviceInfo),
-        communityFeedHarmony: isHarmonyRuntime(info, deviceInfo),
-        scrollContentTop,
-        communityScrollContentTop: scrollContentTop + 88 * pxPerRpx
-      })
+      const fallbackHeaderBottom = Number(info.statusBarHeight || 0) + 200 * pxPerRpx
+      this.setData(layoutOffsets(fallbackHeaderBottom, info.windowWidth))
     } catch (_) {
       const pxPerRpx = (wx.getSystemInfoSync?.().windowWidth || 375) / 750
-      const scrollContentTop = 184 * pxPerRpx + 20
-      this.setData({ scrollContentTop, communityScrollContentTop: scrollContentTop + 88 * pxPerRpx })
+      this.setData(layoutOffsets(200 * pxPerRpx + 20, wx.getSystemInfoSync?.().windowWidth))
     }
     this.bindRecorder()
     this._socketBearer = auth.bearer()
@@ -118,6 +101,33 @@ Page({
       const restored = this.restoreCachedCommunityFeed()
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
+  },
+
+  onReady() {
+    this.measureHomeTabsBottom()
+  },
+
+  onResize() {
+    this.measureHomeTabsBottom()
+  },
+
+  measureHomeTabsBottom() {
+    if (typeof wx.createSelectorQuery !== 'function') return
+    const measure = () => {
+      if (this._pageUnloaded) return
+      wx.createSelectorQuery()
+        .select('#home-tabs')
+        .boundingClientRect((rect) => {
+          if (!rect || !Number.isFinite(rect.bottom) || rect.bottom <= 0) return
+          const width = wx.getWindowInfo?.().windowWidth || wx.getSystemInfoSync?.().windowWidth || 375
+          const offsets = layoutOffsets(rect.bottom, width)
+          if (Math.abs(offsets.scrollContentTop - this.data.scrollContentTop) < 0.5) return
+          this.setData(offsets)
+        })
+        .exec()
+    }
+    if (typeof wx.nextTick === 'function') wx.nextTick(measure)
+    else setTimeout(measure, 0)
   },
 
   onShow() {
@@ -709,8 +719,29 @@ Page({
     })
   },
 
-  communityPostData(feed, tab) {
-    const communityPosts = community.cardPosts(feed, tab)
+  openCommunitySearch() {
+    this.setData({ communitySearching: true })
+  },
+
+  onCommunitySearchInput(event) {
+    const query = event && event.detail ? event.detail.value : ''
+    this.setData({
+      communitySearchQuery: query,
+      ...this.communityPostData(this._communityFeed, this.data.communityFeedTab, query)
+    })
+  },
+
+  closeCommunitySearch() {
+    this.setData({
+      communitySearching: false,
+      communitySearchQuery: '',
+      ...this.communityPostData(this._communityFeed, this.data.communityFeedTab, '')
+    })
+  },
+
+  communityPostData(feed, tab, query) {
+    const communityPosts = community.searchPosts(
+      community.cardPosts(feed, tab), query == null ? this.data.communitySearchQuery : query)
     const columns = community.masonryColumns(communityPosts, this._communityCoverAspects)
     return {
       communityPosts,
@@ -1411,4 +1442,4 @@ Page({
   }
 })
 
-module.exports = { isDevtoolsRuntime, isHarmonyRuntime, needsCommunityFeedBaselineFix }
+module.exports = { layoutOffsets }

@@ -171,6 +171,14 @@ function cardPosts(feed, tab) {
   })
 }
 
+function searchPosts(posts, query) {
+  const source = Array.isArray(posts) ? posts : []
+  const needle = String(query || '').trim().toLocaleLowerCase()
+  if (!needle) return source.slice()
+  return source.filter((post) => [post && post.title, post && post.author, post && post.preview]
+    .some((value) => String(value || '').toLocaleLowerCase().includes(needle)))
+}
+
 // Mirrors iOS CommunityFeedView: consume the feed in order and always place the
 // next card in the currently shorter column. CSS multi-column layout cannot be
 // used here because it changes the visual reading order.
@@ -488,6 +496,7 @@ module.exports = {
   postsForTab,
   filterFeed,
   cardPosts,
+  searchPosts,
   masonryColumns,
   paletteIndex,
   rankPayload,

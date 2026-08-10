@@ -287,23 +287,17 @@ test('home recreates authenticated sockets after the account bearer changes', ()
   assert.equal(ctx._socketBearer, 'anon_new_account')
 })
 
-test('community tab baseline compensation defaults on except for real iOS runtimes', () => {
+test('community layout offsets follow the measured home tabs bottom', () => {
   const { helpers } = freshRecordingsPage()
 
-  assert.equal(helpers.isDevtoolsRuntime({ platform: 'devtools' }, {}), true)
-  assert.equal(helpers.isDevtoolsRuntime({ platform: 'ios' }, { brand: 'devtools' }), true)
-  assert.equal(helpers.isDevtoolsRuntime({ platform: 'ios', brand: 'Apple', model: 'iPhone' }, {}), false)
-  assert.equal(helpers.isDevtoolsRuntime({ platform: 'android', brand: 'Google', model: 'Pixel' }, {}), false)
-  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'devtools' }, {}), true)
-  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'android' }, {}), true)
-  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'ohos' }, {}), true)
-  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'harmonyos' }, {}), true)
-  assert.equal(helpers.needsCommunityFeedBaselineFix({}, {}), true)
-  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'ios' }, { brand: 'Apple', model: 'iPhone' }), false)
-  assert.equal(helpers.needsCommunityFeedBaselineFix({ platform: 'ios' }, { brand: 'devtools' }), true)
-  assert.equal(helpers.isHarmonyRuntime({ system: 'HarmonyOS 5.0' }, {}), true)
-  assert.equal(helpers.isHarmonyRuntime({ platform: 'ohos' }, {}), true)
-  assert.equal(helpers.isHarmonyRuntime({ platform: 'android', system: 'Android 15' }, {}), false)
+  assert.deepEqual(helpers.layoutOffsets(147, 375), {
+    scrollContentTop: 147,
+    communityScrollContentTop: 191
+  })
+  assert.deepEqual(helpers.layoutOffsets(-1, 750), {
+    scrollContentTop: 0,
+    communityScrollContentTop: 88
+  })
 })
 
 test('successful recording deletion removes local data without reloading the list', async () => {
@@ -468,11 +462,14 @@ test('recording rows use the compact readable home-list treatment', () => {
   assert.match(chevron, /font-size:\s*36rpx;/)
 })
 
-test('recordings content offset follows the tightened home header', () => {
+test('recordings content offset follows the rendered home header', () => {
   const source = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
+  const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
 
-  assert.match(source, /const topRpx = 184/)
-  assert.match(source, /const scrollContentTop = 184 \* pxPerRpx \+ 20/)
+  assert.match(wxml, /<home-tabs id="home-tabs"/)
+  assert.match(source, /\.select\('#home-tabs'\)[\s\S]*\.boundingClientRect/)
+  assert.match(source, /layoutOffsets\(rect\.bottom, width\)/)
+  assert.doesNotMatch(source, /topRpx\s*=\s*184/)
 })
 
 test('silent list refresh preserves unchanged recording covers without downloading them again', async () => {
@@ -514,7 +511,7 @@ test('community feed mirrors Android masonry tabs and keeps filters above pull r
   const detail = fs.readFileSync(path.join(root, 'pages/community-detail/index.wxml'), 'utf8')
   const appWxss = fs.readFileSync(path.join(root, 'app.wxss'), 'utf8')
 
-  const filters = wxml.indexOf('class="community-feed-tabs ')
+  const filters = wxml.indexOf('class="community-feed-tabs"')
   const scroller = wxml.indexOf('<scroll-view')
   assert.ok(filters >= 0 && filters < scroller)
   assert.match(wxml, /data-feed-tab="recommended"/)
@@ -523,7 +520,7 @@ test('community feed mirrors Android masonry tabs and keeps filters above pull r
   assert.doesNotMatch(wxml, /data-feed-tab="prompts"/)
   assert.doesNotMatch(wxml, /communityFeedTab === 'prompts'/)
   assert.match(css, /\.community-feed-tabs\s*\{[^}]*height:\s*88rpx;[^}]*padding:\s*0 32rpx;[^}]*align-items:\s*center;/s)
-  assert.match(wxml, /class="community-feed-tabs \{\{communityFeedBaselineFix \? 'baseline-fix' : ''\}\} \{\{communityFeedHarmony \? 'harmony-baseline' : ''\}\}"/)
+  assert.match(wxml, /class="community-feed-tabs" style="top: \{\{scrollContentTop\}\}px;"/)
   assert.match(wxml, /<text class="community-feed-tab-label">推荐<\/text>/)
   assert.match(css, /\.community-feed-tab\s*\{[^}]*display:\s*flex;[^}]*box-sizing:\s*border-box;[^}]*height:\s*88rpx;[^}]*align-items:\s*center;[^}]*font-size:\s*30rpx;/s)
   assert.doesNotMatch(css, /\.community-feed-tab\s*\{[^}]*padding-top:/s)
@@ -531,11 +528,18 @@ test('community feed mirrors Android masonry tabs and keeps filters above pull r
   assert.doesNotMatch(css, /\.community-feed-tab(?:-label)?\s*\{[^}]*height:\s*100%;/s)
   assert.doesNotMatch(ruleBody(css, '.community-feed-tab'), /transform:/)
   assert.doesNotMatch(ruleBody(css, '.community-feed-tab-label'), /transform:/)
-  assert.match(css, /\.community-feed-tabs\.baseline-fix \.community-feed-tab-label\s*\{[^}]*transform:\s*translateY\(9rpx\);/s)
-  assert.match(css, /\.community-feed-tabs\.harmony-baseline \.community-feed-tab-label\s*\{[^}]*transform:\s*translateY\(14rpx\);/s)
-  assert.match(js, /communityFeedBaselineFix:\s*needsCommunityFeedBaselineFix\(info, deviceInfo\)/)
-  assert.match(js, /communityFeedHarmony:\s*isHarmonyRuntime\(info, deviceInfo\)/)
-  assert.match(js, /typeof wx\.getDeviceInfo === 'function' \? wx\.getDeviceInfo\(\) : \{\}/)
+  assert.doesNotMatch(wxml, /baseline-fix|harmony-baseline/)
+  assert.doesNotMatch(css, /baseline-fix|harmony-baseline/)
+  assert.match(wxml, /class="community-search-slot"[\s\S]*class="community-search-box"[\s\S]*class="community-search-cancel-slot"/)
+  assert.match(wxml, /class="community-search-cancel-label"/)
+  assert.doesNotMatch(wxml, /class="community-feed-tab-label community-search-cancel-label"/)
+  assert.match(css, /\.community-search-slot\s*\{[^}]*display:\s*flex;[^}]*height:\s*88rpx;[^}]*align-items:\s*center;[^}]*flex:\s*1;/s)
+  assert.match(css, /\.community-search-box\s*\{[^}]*position:\s*relative;[^}]*width:\s*100%;[^}]*height:\s*64rpx;[^}]*align-items:\s*center;/s)
+  assert.doesNotMatch(ruleBody(css, '.community-search-box'), /(?:^|;)\s*top\s*:|transform:/)
+  assert.match(css, /\.community-search-input\s*\{[^}]*height:\s*60rpx;[^}]*min-height:\s*0;[^}]*padding:\s*0;[^}]*line-height:\s*60rpx;/s)
+  assert.match(css, /\.community-search-cancel-label\s*\{[^}]*display:\s*block;[^}]*height:\s*30rpx;[^}]*line-height:\s*30rpx;/s)
+  assert.match(js, /\.select\('#home-tabs'\)[\s\S]*boundingClientRect/)
+  assert.match(js, /communityScrollContentTop:\s*scrollContentTop \+ 88 \* pxPerRpx/)
   assert.match(wxml, /top: \{\{activeTab === 'community' \? communityScrollContentTop : scrollContentTop\}\}px/)
   assert.match(wxml, /class="community-card-image"/)
   assert.match(wxml, /class="community-like-icon ri-heart-fill"/)
@@ -895,7 +899,7 @@ test('recording tags are rendered in the top home tabs instead of a secondary ta
   const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
   const js = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
 
-  assert.match(wxml, /<home-tabs current="\{\{currentHomeTab\}\}" tabs="\{\{homeTabs\}\}"/)
+  assert.match(wxml, /<home-tabs id="home-tabs" current="\{\{currentHomeTab\}\}" tabs="\{\{homeTabs\}\}"/)
   assert.doesNotMatch(wxml, /class="tag-tabs"/)
   assert.doesNotMatch(wxml, /wx:for="\{\{homeTags\}\}"/)
   assert.match(js, /homeTabsFor\(homeTags\)/)

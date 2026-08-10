@@ -107,3 +107,29 @@ test('about page keeps the agreement row without a withdrawal action', () => {
   assert.doesNotMatch(js, /withdrawAudioConsent/)
   assert.doesNotMatch(js, /audioConsent\.revoke/)
 })
+
+test('about page groups help entries and gives every action a restrained unified icon tile', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/about/index.wxml'), 'utf8')
+
+  assert.match(wxml, /帮助与反馈[\s\S]*class="card menu help-menu"[\s\S]*使用手册[\s\S]*意见反馈/)
+  assert.equal((wxml.match(/class="about-menu-icon"/g) || []).length, 8)
+  ;[
+    'ri-book-read-line',
+    'ri-feedback-line',
+    'ri-shield-keyhole-line',
+    'ri-mic-line',
+    'ri-team-line',
+    'ri-forbid-line',
+    'ri-customer-service-2-line',
+    'ri-book-open-line'
+  ].forEach((icon) => assert.match(wxml, new RegExp(icon)))
+  assert.doesNotMatch(wxml, /class="about-menu-icon icon-/)
+})
+
+test('about page opens the native manual with quick navigation', () => {
+  const h = freshAbout()
+
+  h.page.openManual.call(h.ctx)
+
+  assert.deepEqual(h.navigations, ['/pages/manual/index'])
+})

@@ -5,6 +5,7 @@ function request(options) {
       url: options.url,
       data: options.data,
       header: options.header || {},
+      timeout: options.timeout,
       success: (res) => resolve(res),
       fail: (error) => reject(requestError(error, options))
     })
@@ -33,12 +34,13 @@ async function get(url, token) {
   return request({ url, header: authHeader(token) })
 }
 
-async function postJson(url, token, data) {
+async function postJson(url, token, data, options) {
   return request({
     method: 'POST',
     url,
     data: data || {},
-    header: authHeader(token, { 'content-type': 'application/json' })
+    header: authHeader(token, { 'content-type': 'application/json' }),
+    timeout: options && options.timeout
   })
 }
 

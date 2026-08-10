@@ -43,6 +43,18 @@ Page({
     wx.navigateTo({ url: '/pages/blocked-users/index' })
   },
 
+  openManual() {
+    wx.navigateTo({ url: '/pages/manual/index' })
+  },
+
+  openFeedback() {
+    wx.navigateTo({ url: '/pages/feedback/index' })
+  },
+
+  openBooks() {
+    wx.navigateTo({ url: '/pages/book-writing/index' })
+  },
+
   copyEmail() {
     wx.setClipboardData({ data: this.data.supportEmail })
   }

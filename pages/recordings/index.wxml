@@ -29,15 +29,31 @@
 </template>
 
 <view class="screen recording-screen">
-  <home-tabs current="{{currentHomeTab}}" tabs="{{homeTabs}}" bind:change="switchHomeTab" bind:settings="openSettings" />
+  <home-tabs id="home-tabs" current="{{currentHomeTab}}" tabs="{{homeTabs}}" bind:change="switchHomeTab" bind:settings="openSettings" />
 
-  <view wx:if="{{activeTab === 'community'}}" class="community-feed-tabs {{communityFeedBaselineFix ? 'baseline-fix' : ''}} {{communityFeedHarmony ? 'harmony-baseline' : ''}}" style="top: {{scrollContentTop}}px;">
+  <view wx:if="{{activeTab === 'community'}}" class="community-feed-tabs" style="top: {{scrollContentTop}}px;">
+    <block wx:if="{{!communitySearching}}">
     <view class="community-feed-tab {{communityFeedTab === 'recommended' ? 'active' : ''}}"
           data-feed-tab="recommended" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">推荐</text></view>
     <view class="community-feed-tab {{communityFeedTab === 'latest' ? 'active' : ''}}"
           data-feed-tab="latest" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">最新</text></view>
     <view class="community-feed-tab {{communityFeedTab === 'replies' ? 'active' : ''}}"
           data-feed-tab="replies" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">回应</text></view>
+    <view class="community-search-spacer"></view>
+    <view class="community-search-button ri-search-line" bindtap="openCommunitySearch" aria-label="搜索社区"></view>
+    </block>
+    <block wx:else>
+      <view class="community-search-slot">
+        <view class="community-search-box">
+          <text class="ri-search-line community-search-leading"></text>
+          <input class="community-search-input" value="{{communitySearchQuery}}" placeholder="搜索标题、作者或内容"
+                 focus bindinput="onCommunitySearchInput" confirm-type="search" />
+        </view>
+      </view>
+      <view class="community-search-cancel-slot" bindtap="closeCommunitySearch">
+        <text class="community-search-cancel-label">取消</text>
+      </view>
+    </block>
   </view>
 
   <scroll-view

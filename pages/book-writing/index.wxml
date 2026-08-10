@@ -1,0 +1,21 @@
+<view class="screen settings-screen book-writing-page">
+  <page-header title="写书" />
+  <view class="page-body book-writing-body">
+    <text class="book-intro">给一个词、一句话，或贴一整篇文章，AI 会把它长成一本书：先写大纲、再每章一个写手并行写正文（费曼式白话），独立评审过稿一章、发布一章。</text>
+    <text class="book-note">点「开写」提交后就可以关掉小程序——书在服务器上继续写，通常 10–30 分钟后出现在公开书架。</text>
+    <view class="shelf-link" bindtap="openShelf" aria-label="打开公开书架">
+      <view class="shelf-icon"><text class="ri-book-open-line"></text></view>
+      <view class="shelf-copy">
+        <text class="shelf-title">公开书架</text>
+        <text class="shelf-subtitle">voicedrop.cn/books · 已出版的书都在这</text>
+      </view>
+      <text class="shelf-chevron ri-arrow-right-s-line" aria-hidden="true"></text>
+    </view>
+    <textarea class="feature-editor" maxlength="20000" value="{{seed}}" bindinput="onInput" disabled="{{submitted}}" placeholder="书的种子：一个词、一句话，或一整篇文章……" placeholder-class="book-placeholder" />
+    <text wx:if="{{message}}" class="feature-hint {{error ? 'error' : 'success'}}">{{message}}</text>
+    <button class="feature-primary" bindtap="start" disabled="{{!seed || sending || submitted}}">
+      <view wx:if="{{sending}}" class="feature-loading"><view class="feature-spinner"></view><text>提交中…</text></view>
+      <text wx:else>{{submitted ? '已受理' : '开写'}}</text>
+    </button>
+  </view>
+</view>

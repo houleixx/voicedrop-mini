@@ -37,6 +37,21 @@ async function saveName(name) {
   return res.statusCode >= 200 && res.statusCode < 300
 }
 
+function feedbackBody(text, name, version) {
+  return {
+    text: String(text || '').trim().slice(0, 2000),
+    name: String(name || '').trim(),
+    version: String(version || '').trim()
+  }
+}
+
+async function sendFeedback(text, name, version) {
+  const body = feedbackBody(text, name, version)
+  if (!body.text) return false
+  const res = await http.postJson(`${api.agentBase()}/feedback`, auth.bearer(), body)
+  return res.statusCode >= 200 && res.statusCode < 300
+}
+
 function nameBody(name) {
   return { name: String(name || '').trim() }
 }
@@ -114,6 +129,8 @@ module.exports = {
   saveStyle,
   saveName,
   nameBody,
+  feedbackBody,
+  sendFeedback,
   loadWechat,
   saveWechat,
   validateWechatCreds,

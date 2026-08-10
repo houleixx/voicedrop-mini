@@ -40,38 +40,87 @@
 }
 
 .menu {
-  margin-top: 16rpx;
+  margin-top: 0;
   overflow: hidden;
 }
 
 .menu .row {
-  min-height: 104rpx;
+  position: relative;
+  min-height: 120rpx;
   padding: 20rpx 28rpx;
+  justify-content: flex-start;
+  border-bottom: 0;
 }
 
-.menu .row > text:first-child {
+.menu .row::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 124rpx;
+  height: 1rpx;
+  background: #f0e8da;
+  content: '';
+}
+
+.menu .row:last-child::after {
+  display: none;
+}
+
+.about-menu-icon {
+  display: flex;
+  width: 72rpx;
+  height: 72rpx;
+  min-width: 72rpx;
+  margin-right: 24rpx;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  background: #f6e4dc;
+}
+
+.about-menu-icon-glyph {
+  display: block;
+  width: 38rpx;
+  height: 38rpx;
+  color: #d8593b;
+  font-size: 38rpx;
+  line-height: 38rpx;
+  text-align: center;
+}
+
+.about-menu-content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6rpx;
+}
+
+.about-menu-title {
   color: #2a2521;
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 800;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
-.about-page .muted {
-  max-width: 54%;
-  margin-left: 20rpx;
+.about-menu-subtitle,
+.about-menu-status {
+  overflow: hidden;
   color: #756f66;
   font-size: 24rpx;
-  font-weight: 600;
-  line-height: 1.3;
-  text-align: right;
-  word-break: break-all;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row-action {
   display: flex;
+  margin-left: 16rpx;
+  flex-shrink: 0;
   align-items: center;
   gap: 6rpx;
-  margin-left: 20rpx;
 }
 
 .about-arrow {
@@ -88,3 +137,6 @@
 .blocked-entry:active {
   background: #fff8ef;
 }
+
+.section-label { display: block; margin: 28rpx 8rpx 10rpx; color: #756f66; font-size: 24rpx; font-weight: 700; }
+.experimental-menu { margin-top: 0; }
