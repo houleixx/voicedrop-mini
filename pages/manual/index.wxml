@@ -1,15 +1,14 @@
 <view class="manual-page">
   <page-header title="使用手册" />
   <view class="manual-shell">
-    <scroll-view class="manual-tabs" scroll-x enhanced show-scrollbar="{{false}}">
+    <scroll-view class="manual-tabs" scroll-x enhanced bounces="{{true}}" show-scrollbar="{{false}}">
       <view class="manual-tabs-inner">
-        <button wx:for="{{sections}}" wx:key="id" class="manual-tab {{activeSection === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="jumpToSection">{{item.label}}</button>
+        <view wx:for="{{sections}}" wx:key="id" class="manual-tab {{activeSection === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="jumpToSection">{{item.label}}</view>
       </view>
     </scroll-view>
 
-    <scroll-view class="manual-content" scroll-y scroll-into-view="{{scrollTarget}}" scroll-with-animation enhanced show-scrollbar="{{false}}">
-      <view wx:if="{{loading}}" class="manual-status"><view class="manual-spinner"></view><text>正在加载使用手册…</text></view>
-      <view wx:elif="{{error}}" class="manual-status manual-error"><text>{{error}}</text><text>请稍后重新打开</text></view>
+    <scroll-view class="manual-content" scroll-y scroll-into-view="{{scrollTarget}}" scroll-with-animation enhanced bounces="{{true}}" show-scrollbar="{{false}}">
+      <view wx:if="{{error}}" class="manual-status manual-error"><text>{{error}}</text><text>请重新打开小程序</text></view>
       <block wx:else>
         <view wx:for="{{chapters}}" wx:key="id" id="{{item.id}}" class="manual-section" data-id="{{item.id}}" bindappear="onSectionVisible">
           <rich-text class="manual-rich" nodes="{{item.html}}"></rich-text>

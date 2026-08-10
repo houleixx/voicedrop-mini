@@ -17,34 +17,38 @@ Page({
     activeSection: 'ch1',
     scrollTarget: '',
     chapters: [],
-    loading: true,
     error: ''
   },
 
   onLoad() {
-    const saved = manualService.cached()
-    if (saved.sections.length) this.setData({ chapters: saved.sections, loading: false })
-    this.syncManual()
-  },
-
-  async syncManual() {
-    const result = await manualService.sync()
-    if (result.sections.length) {
-      this.setData({ chapters: result.sections, loading: false, error: '' })
+    const chapters = manualService.loadBundled()
+    if (chapters.length) {
+      this.setData({ chapters, error: '' })
       return
     }
-    this.setData({ loading: false, error: result.error || '使用手册暂时无法加载' })
+    this.setData({ error: '使用手册暂时无法读取' })
   },
 
   jumpToSection(event) {
     const id = event.currentTarget.dataset.id
     if (!id) return
+    if (id !== this.data.activeSection) this.pendingSection = id
     this.setData({ activeSection: id, scrollTarget: '' })
     wx.nextTick(() => this.setData({ scrollTarget: id }))
+    clearTimeout(this.sectionTimer)
+    this.sectionTimer = setTimeout(() => { this.pendingSection = '' }, 700)
   },
 
   onSectionVisible(event) {
     const id = event.currentTarget.dataset.id
+    if (this.pendingSection) {
+      if (id === this.pendingSection) this.pendingSection = ''
+      return
+    }
     if (id && id !== this.data.activeSection) this.setData({ activeSection: id })
+  },
+
+  onUnload() {
+    clearTimeout(this.sectionTimer)
   }
 })

@@ -66,6 +66,8 @@ test('native manual uses the shared title bar and Android-style quick section na
   assert.equal(config.navigationStyle, 'custom')
   assert.match(markup, /<page-header title="使用手册"/)
   assert.match(markup, /scroll-into-view="\{\{scrollTarget\}\}"/)
+  assert.match(source, /manualService\.loadBundled\(\)/)
+  assert.doesNotMatch(source, /syncManual|https:\/\/voicedrop\.cn\/help\/manual/)
   ;['1 上手', '2 录音', '3 改稿', '4 发布', '5 社区', '6 文风', '7 账号', '8 FAQ']
     .forEach((label) => assert.match(source, new RegExp(label)))
 })
