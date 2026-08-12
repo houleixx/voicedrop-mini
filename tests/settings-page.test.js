@@ -10,7 +10,7 @@ function freshSettingsPage(settingsOverrides, wxOverrides) {
   const settings = Object.assign({
     loadStyle: async () => ({ style: '', name: '', styles: [] }),
     loadConfig: async () => ({}),
-    loadWechat: async () => ({}),
+    wechatBindStatus: async () => ({ connected: false }),
     saveConfig: async () => true,
     saveName: async () => true
   }, settingsOverrides || {})

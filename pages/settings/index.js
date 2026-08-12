@@ -47,7 +47,7 @@ Page({
         settings.loadStyle(),
         settings.loadConfig(),
         usage.balance(),
-        settings.loadWechat()
+        settings.wechatBindStatus()
       ])
 
       const anonId = auth.anonId()
@@ -63,7 +63,7 @@ Page({
         shortAnonId: shortId,
         autoShareCommunity: Boolean(configResult.autoShareCommunity),
         followUpEnabled: prefs.followUpEnabled(),
-        wechatConfigured: !!(wechatResult && wechatResult.appid && wechatResult.secret)
+        wechatConfigured: Boolean(wechatResult && wechatResult.connected)
       })
     } catch (error) {
       wx.showToast({ title: '加载失败', icon: 'error' })

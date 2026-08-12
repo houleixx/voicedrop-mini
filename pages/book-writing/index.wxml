@@ -2,7 +2,7 @@
   <page-header title="写书" />
   <view class="page-body book-writing-body">
     <text class="book-intro">给一个词、一句话，或贴一整篇文章，AI 会把它长成一本书：先写大纲、再每章一个写手并行写正文（费曼式白话），独立评审过稿一章、发布一章。</text>
-    <text class="book-note">点「开写」提交后就可以关掉小程序——书在服务器上继续写，通常 10–30 分钟后出现在公开书架。</text>
+    <text class="book-note">每本书消耗 320 算力。点「开写」提交后就可以关掉小程序——书在服务器上继续写，通常 10–30 分钟后出现在公开书架。</text>
     <view class="shelf-link" bindtap="openShelf" aria-label="打开公开书架">
       <view class="shelf-icon"><text class="ri-book-open-line"></text></view>
       <view class="shelf-copy">

@@ -1429,15 +1429,22 @@ Page({
     this.setData({ publishingWechat: true })
     wx.showLoading({ title: this.data.hasWechatDraft ? '正在更新' : '正在发布' })
     try {
+      const binding = await settings.wechatBindStatus()
+      if (!binding.connected) {
+        wx.navigateTo({ url: '/pages/wechat-settings/index' })
+        return
+      }
       const result = await library.publishWechat(this.data.rec)
       if (result.ok) {
         this.setData({ hasWechatDraft: true })
         wx.showToast({ title: result.updated ? '草稿已更新' : '草稿已创建' })
-      } else if (library.wechatPublishIsConfigError(result)) {
+      } else if (result.notConfigured) {
         wx.navigateTo({ url: '/pages/wechat-settings/index' })
       } else {
         wx.showModal({ title: '发布失败', content: result.message || '发布失败', showCancel: false })
       }
+    } catch (_) {
+      wx.showModal({ title: '发布失败', content: '网络异常，请稍后再试', showCancel: false })
     } finally {
       this.setData({ publishingWechat: false })
       wx.hideLoading()

@@ -211,7 +211,6 @@ test('parses legacy and multi-article documents', () => {
 
 test('maps wechat publish errors to user-facing Chinese messages', () => {
   assert.equal(article.wechatMessage(45004), '摘要太短，正文写长一点再发')
-  assert.equal(article.wechatMessage(40164), '公众号配置有误，检查 AppID/Secret 或 IP 白名单')
   assert.equal(article.wechatMessage(null, 'bad credential'), '发布失败：bad credential')
 })
 
@@ -236,14 +235,6 @@ test('formats restyle backend failures with HTTP status and body detail', () => 
   }), 'HTTP 422: no-style')
 })
 
-test('identifies wechat publish config failures like Android', () => {
-  assert.equal(library.wechatPublishIsConfigError({ notConfigured: true }), true)
-  assert.equal(library.wechatPublishIsConfigError({ errcode: 40013 }), true)
-  assert.equal(library.wechatPublishIsConfigError({ errcode: 40125 }), true)
-  assert.equal(library.wechatPublishIsConfigError({ errcode: 40164 }), true)
-  assert.equal(library.wechatPublishIsConfigError({ errcode: 45009 }), false)
-})
-
 test('recording deletion succeeds when audio deletion succeeds', () => {
   assert.equal(library.recordingDeleteSucceeded(true, false, false, false), true)
   assert.equal(library.recordingDeleteSucceeded(false, true, true, true), false)
@@ -266,23 +257,23 @@ test('normalizes the current style response without retired multi-style state', 
   assert.deepEqual(settings.styleFromResponse(null), { style: '', name: '' })
 })
 
-test('exposes official WeChat credential help URL like Android', () => {
-  assert.equal(
-    settings.WECHAT_CREDENTIAL_HELP_URL,
-    'https://developers.weixin.qq.com/console/'
-  )
-})
-
-test('validates WeChat credential formats and relay errors like iOS', () => {
-  assert.equal(settings.validateWechatCreds(
-    'wx1234567890abcdef', '0123456789abcdef0123456789abcdef'), '')
-  assert.match(settings.validateWechatCreds(
-    'wx123', '0123456789abcdef0123456789abcdef'), /AppID/)
-  assert.match(settings.validateWechatCreds(
-    'wx1234567890abcdef', 'ABCDEF0123456789ABCDEF0123456789'), /AppSecret/)
-  assert.equal(settings.wechatValidationMessage({ ok: true }), '')
-  assert.match(settings.wechatValidationMessage({ ok: false, errcode: 40164 }), /IP 白名单/)
-  assert.equal(settings.wechatValidationMessage({ ok: false, errcode: 40125 }), 'AppSecret 无效')
+test('normalizes third-party WeChat bind status and only permits signed scan URLs', () => {
+  assert.deepEqual(settings.normalizeWechatBindStatus(200, {
+    connected: true,
+    account_name: '测试公众号',
+    authorizer_appid: 'wx-authorizer',
+    enabled: true
+  }), {
+    connected: true,
+    accountName: '测试公众号',
+    authorizerAppid: 'wx-authorizer',
+    enabled: true
+  })
+  assert.equal(settings.normalizeWechatBindStatus(503, { connected: true }).connected, false)
+  assert.equal(settings.isWechatAuthorizationUrl(
+    'https://voicedrop.cn/files/api/wechat/scan?state=payload.signature'), true)
+  assert.equal(settings.isWechatAuthorizationUrl(
+    'https://evil.example/files/api/wechat/scan?state=payload.signature'), false)
 })
 
 test('matches Android theme color tokens', () => {

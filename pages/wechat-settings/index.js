@@ -2,130 +2,73 @@ const settings = require('../../services/settings')
 
 Page({
   data: {
-    appid: '',
-    secret: '',
-    enabled: false,
-    secretHidden: true,
-    canSave: false,
-    saving: false,
-    savedWechat: false,
-    wechatConfigured: false,
-    validationError: ''
+    loading: true,
+    connecting: false,
+    disconnecting: false,
+    connected: false,
+    accountName: '',
+    authorizerAppid: ''
   },
 
-  onLoad() {
-    this.load()
+  onShow() {
+    this.refreshStatus()
   },
 
-  async load() {
-    const config = await settings.loadWechat()
-    const appid = config.appid || ''
-    const secret = config.secret || ''
-    this.setData({
-      appid,
-      secret,
-      enabled: Boolean(config.enabled),
-      secretHidden: true,
-      canSave: !settings.validateWechatCreds(appid, secret),
-      savedWechat: false,
-      wechatConfigured: this.hasWechatCredentials(appid, secret)
-    })
-  },
-
-  toggleSecret() {
-    this.setData({ secretHidden: !this.data.secretHidden })
-  },
-
-  onInput(event) {
-    const next = {
-      [event.currentTarget.dataset.key]: event.detail.value
-    }
-    this.setData(next)
-    this.refreshFormState({ savedWechat: false, validationError: '' })
-  },
-
-  onEnabled(event) {
-    this.setData({ enabled: event.detail.value, savedWechat: false })
-  },
-
-  refreshCanSave() {
-    this.refreshFormState()
-  },
-
-  refreshConfigured() {
-    this.setData({
-      wechatConfigured: this.hasWechatCredentials(this.data.appid, this.data.secret)
-    })
-  },
-
-  refreshFormState(extra) {
-    this.setData({
-      canSave: !settings.validateWechatCreds(this.data.appid, this.data.secret),
-      wechatConfigured: this.hasWechatCredentials(this.data.appid, this.data.secret),
-      ...(extra || {})
-    })
-  },
-
-  hasWechatCredentials(appid, secret) {
-    return !!String(appid || '').trim() && !!String(secret || '').trim()
-  },
-
-  async save() {
-    if (this.data.saving) return
-    const appid = String(this.data.appid || '').trim()
-    const secret = String(this.data.secret || '').trim()
-    const message = settings.validateWechatCreds(appid, secret)
-    if (message) {
-      this.setData({ canSave: false, savedWechat: false, validationError: message })
-      wx.showToast({ title: message, icon: 'error' })
-      return
-    }
-    this.setData({ saving: true, canSave: false, savedWechat: false, validationError: '' })
+  async refreshStatus() {
+    this.setData({ loading: true })
     try {
-      const validation = await settings.validateWechatRemote(appid, secret)
-      if (validation) {
-        this.setData({ validationError: validation })
-        wx.showToast({ title: validation, icon: 'none' })
+      const status = await settings.wechatBindStatus()
+      this.setData({
+        connected: status.connected,
+        accountName: status.accountName || '',
+        authorizerAppid: status.authorizerAppid || ''
+      })
+    } catch (_) {
+      this.setData({ connected: false, accountName: '', authorizerAppid: '' })
+      wx.showToast({ title: '连接状态加载失败', icon: 'none' })
+    } finally {
+      this.setData({ loading: false })
+    }
+  },
+
+  async connectWechat() {
+    if (this.data.connecting || this.data.disconnecting) return
+    this.setData({ connecting: true })
+    wx.showLoading({ title: '正在生成链接' })
+    try {
+      const scanUrl = await settings.createWechatAuthorization()
+      if (!scanUrl) {
+        wx.showToast({ title: '暂时无法生成授权链接', icon: 'none' })
         return
       }
-      const ok = await settings.saveWechat(appid, secret, this.data.enabled)
-      if (ok) {
-        this.setData({ appid, secret, savedWechat: true, wechatConfigured: true, validationError: '' })
-      }
-      wx.showToast({ title: ok ? '已保存' : '保存失败', icon: ok ? 'success' : 'error' })
+      wx.setClipboardData({
+        data: scanUrl,
+        success: () => wx.showToast({ title: '授权链接已复制', icon: 'success' }),
+        fail: () => wx.showToast({ title: '授权链接复制失败，请重试', icon: 'none' })
+      })
+    } catch (_) {
+      wx.showToast({ title: '暂时无法生成授权链接', icon: 'none' })
     } finally {
-      this.setData({ saving: false })
-      this.refreshCanSave()
+      wx.hideLoading()
+      this.setData({ connecting: false })
     }
   },
 
   async disconnectWechat() {
-    if (this.data.saving) return
-    this.setData({ saving: true, savedWechat: false })
+    if (this.data.connecting || this.data.disconnecting) return
+    this.setData({ disconnecting: true })
     try {
-      const ok = await settings.saveWechat('', '', false)
-      if (ok) {
-        this.setData({
-          appid: '',
-          secret: '',
-          enabled: false,
-          canSave: false,
-          wechatConfigured: false,
-          savedWechat: true,
-          validationError: ''
-        })
+      const ok = await settings.unbindWechat()
+      if (!ok) {
+        wx.showToast({ title: '取消连接失败', icon: 'none' })
+        return
       }
-      wx.showToast({ title: ok ? '已断开' : '保存失败', icon: ok ? 'success' : 'error' })
+      wx.showToast({ title: '已取消公众号连接', icon: 'success' })
+      await this.refreshStatus()
+    } catch (_) {
+      wx.showToast({ title: '取消连接失败', icon: 'none' })
     } finally {
-      this.setData({ saving: false })
+      this.setData({ disconnecting: false })
     }
-  },
-
-  copyHelpLink() {
-    wx.setClipboardData({ data: settings.WECHAT_CREDENTIAL_HELP_URL })
-  },
-
-  copyIp() {
-    wx.setClipboardData({ data: '66.42.45.128' })
   }
 })

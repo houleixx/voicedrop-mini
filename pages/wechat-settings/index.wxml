@@ -1,56 +1,43 @@
 <view class="screen settings-screen">
   <page-header title="微信公众号" />
   <view class="page-body">
-    <!-- Top info card -->
-    <view wx:if="{{wechatConfigured}}" class="info-card info-card-connected">
-      <text class="status-dot"></text>
-      <view class="info-copy">
-        <text class="connected-title">公众号已连接</text>
-        <text class="connected-subtitle">凭据已保存</text>
+    <view wx:if="{{loading}}" class="status-loading">
+      <view class="loading-spinner" aria-hidden="true"></view>
+      <text>正在检查连接状态...</text>
+    </view>
+
+    <block wx:else>
+      <view class="hero-icon {{connected ? 'hero-icon-connected' : ''}}">
+        <text class="{{connected ? 'ri-check-line' : 'ri-send-plane-line'}}"></text>
       </view>
-    </view>
-    <view wx:else class="info-card">
-      <text class="info-icon">◇</text>
-      <text class="info-text">填入公众号 AppID / AppSecret 即可连接。</text>
-    </view>
+      <text class="status-title">{{connected ? '已连接微信公众号' : '未连接微信公众号'}}</text>
+      <text class="status-detail">{{connected ? '授权成功，现在可以将文章保存或更新到公众号草稿箱。' : '连接后，VoiceDrop 可以将文章保存到你的公众号草稿箱。不会自动群发。'}}</text>
 
-    <!-- Auto-push toggle -->
-    <view class="toggle-card">
-      <view class="toggle-left">
-        <text class="toggle-title">自动推草稿</text>
-        <text class="toggle-desc">挖出新文章后自动发到公众号草稿箱</text>
+      <view wx:if="{{connected}}" class="account-card">
+        <text class="account-label">已授权账号</text>
+        <text class="account-name">{{accountName || '微信公众号'}}</text>
+        <text class="account-meta">草稿箱已就绪 · VoiceDrop 不会自动群发</text>
       </view>
-      <switch checked="{{enabled}}" bindchange="onEnabled" color="#c7432f" />
-    </view>
 
-    <!-- Credentials section -->
-    <text class="section-title">凭据</text>
-    <view class="input-card">
-      <input class="input-field" value="{{appid}}" data-key="appid" bindinput="onInput" placeholder="AppID (wx...)" />
-    </view>
-    <view class="input-card input-with-icon">
-      <input class="input-field" value="{{secret}}" data-key="secret" bindinput="onInput" placeholder="AppSecret" password="{{secretHidden}}" />
-      <text class="input-icon" bindtap="toggleSecret">◉</text>
-    </view>
-    <text class="input-note">凭据只保存在你的设备与服务器的加密配置里，不会出现在文章中。</text>
-    <view class="help-row" bindtap="copyHelpLink">
-      <text>去哪里找 AppID / AppSecret？</text>
-      <text class="help-arrow">↗</text>
-    </view>
-    <text class="input-note credential-help-steps">点上方入口复制公众平台后台地址，粘贴到浏览器打开；出现登录二维码时先截屏，再打开微信「扫一扫 → 右上角相册」选中截图，选择要绑定的公众号完成登录。进入「设置与开发 → 基本配置」：AppID 直接复制；AppSecret 需点「生成」（或「重置」）并由管理员扫码确认；同时把下方 IP 加入「IP 白名单」。</text>
-    <text wx:if="{{validationError}}" class="validation-error">{{validationError}}</text>
+      <button wx:if="{{!connected}}" class="primary-button" disabled="{{connecting}}" loading="{{connecting}}" bindtap="connectWechat">生成并复制授权链接</button>
+      <button wx:else class="disconnect-button" disabled="{{disconnecting}}" loading="{{disconnecting}}" bindtap="disconnectWechat">取消连接</button>
 
-    <!-- IP Whitelist section -->
-    <view class="divider" />
-    <text class="section-title">IP 白名单</text>
-    <text class="section-desc">在公众号后台 → 开发 → 基本配置 → IP 白名单中加入以下地址，服务器才能正常调用接口推草稿。</text>
-    <view class="ip-card">
-      <text class="ip-address">66.42.45.128</text>
-      <text class="copy-icon icon-only" bindtap="copyIp">⧉</text>
-    </view>
-
-    <!-- Save button -->
-    <button class="save-button {{canSave ? 'save-button-active' : ''}}" disabled="{{!canSave || saving}}" loading="{{saving}}" bindtap="save">{{savedWechat ? '已保存' : '保存'}}</button>
-    <button wx:if="{{wechatConfigured}}" class="disconnect-button" disabled="{{saving}}" bindtap="disconnectWechat">断开连接</button>
+      <view wx:if="{{!connected}}" class="steps-card">
+        <text class="steps-title">连接方法</text>
+        <text class="steps-text">1. 点击“生成并复制授权链接”，链接会自动复制</text>
+        <text class="steps-text">2. 任选一种方式打开链接</text>
+        <view class="method-options">
+          <view class="method-option">
+            <text class="method-option-title">电脑打开</text>
+            <text class="method-option-detail">粘贴到电脑浏览器，再用手机微信扫码</text>
+          </view>
+          <view class="method-option">
+            <text class="method-option-title">手机浏览器</text>
+            <text class="method-option-detail">粘贴并打开后截图二维码，再到微信“扫一扫”中从相册选择截图</text>
+          </view>
+        </view>
+        <text class="steps-text">3. 选择要绑定的公众号并确认授权，然后返回 VoiceDrop</text>
+      </view>
+    </block>
   </view>
 </view>

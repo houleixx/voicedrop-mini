@@ -2,7 +2,38 @@ const api = require('./api')
 const auth = require('./auth')
 const http = require('./request')
 
-const WECHAT_CREDENTIAL_HELP_URL = 'https://developers.weixin.qq.com/console/'
+function normalizeWechatBindStatus(statusCode, data) {
+  const body = data && typeof data === 'object' ? data : {}
+  const connected = statusCode >= 200 && statusCode < 300 && body.connected === true
+  return {
+    connected,
+    accountName: connected ? String(body.account_name || '') : '',
+    authorizerAppid: connected ? String(body.authorizer_appid || '') : '',
+    enabled: connected && body.enabled !== false
+  }
+}
+
+async function wechatBindStatus() {
+  const res = await http.get(`${api.filesBase()}/wechat/bind-status`, auth.bearer())
+  return normalizeWechatBindStatus(res && res.statusCode || 0, res && res.data)
+}
+
+function isWechatAuthorizationUrl(value) {
+  const escapedBase = api.filesBase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`^${escapedBase}/wechat/scan\\?state=[A-Za-z0-9._~-]+$`).test(String(value || ''))
+}
+
+async function createWechatAuthorization() {
+  const res = await http.postJson(`${api.filesBase()}/wechat/authorization`, auth.bearer(), {})
+  if (!res || res.statusCode < 200 || res.statusCode >= 300) return ''
+  const scanUrl = res.data && res.data.scan_url || ''
+  return isWechatAuthorizationUrl(scanUrl) ? scanUrl : ''
+}
+
+async function unbindWechat() {
+  const res = await http.postJson(`${api.filesBase()}/wechat/unbind`, auth.bearer(), {})
+  return Boolean(res && res.statusCode >= 200 && res.statusCode < 300)
+}
 
 async function loadStyle() {
   const res = await http.get(`${api.filesBase()}/style`, auth.bearer())
@@ -56,55 +87,6 @@ function nameBody(name) {
   return { name: String(name || '').trim() }
 }
 
-async function loadWechat() {
-  const res = await http.get(`${api.filesBase()}/download/WECHAT.json`, auth.bearer())
-  return res.statusCode >= 200 && res.statusCode < 300 ? res.data : {}
-}
-
-async function saveWechat(appid, secret, enabled) {
-  const res = await http.putJson(`${api.filesBase()}/upload/WECHAT.json`, auth.bearer(), { appid, secret, enabled })
-  return res.statusCode >= 200 && res.statusCode < 300
-}
-
-function validateWechatCreds(appid, secret) {
-  const cleanAppid = String(appid || '').trim()
-  const cleanSecret = String(secret || '').trim()
-  if (!/^wx[0-9A-Za-z]{16}$/.test(cleanAppid)) return 'AppID 格式不对（应以 wx 开头，共 18 位）'
-  if (!/^[0-9a-f]{32}$/.test(cleanSecret)) return 'AppSecret 格式不对（应为 32 位小写十六进制，别把 AppID 填进来）'
-  return ''
-}
-
-function wechatValidationMessage(data) {
-  const result = data || {}
-  if (result.ok === true) return ''
-  switch (Number(result.errcode)) {
-    case 40164:
-      return '服务器 IP 还没生效：把下方 IP 加入公众号后台的「IP 白名单」，保存白名单后等一两分钟再点保存'
-    case 40013: return 'AppID 无效，找不到这个公众号'
-    case 40125: return 'AppSecret 无效'
-    case 41002: return '缺少 AppID'
-    case 41004: return '缺少 AppSecret'
-    default: return `验证失败：${result.errmsg || '未知错误'}`
-  }
-}
-
-async function validateWechatRemote(appid, secret) {
-  const localError = validateWechatCreds(appid, secret)
-  if (localError) return localError
-  try {
-    const res = await http.postJson(`${api.filesBase()}/wechat-validate`, auth.bearer(), {
-      appid: String(appid || '').trim(),
-      secret: String(secret || '').trim()
-    })
-    if (!res || res.statusCode < 200 || res.statusCode >= 300) {
-      return '暂时连不上验证服务，请稍后再试（配置未保存）'
-    }
-    return wechatValidationMessage(res.data)
-  } catch (_) {
-    return '暂时连不上验证服务，请稍后再试（配置未保存）'
-  }
-}
-
 async function loadConfig() {
   const res = await http.get(`${api.filesBase()}/download/CONFIG.json`, auth.bearer())
   return res.statusCode >= 200 && res.statusCode < 300 ? res.data : {}
@@ -121,7 +103,11 @@ async function articlesPageUrl() {
 }
 
 module.exports = {
-  WECHAT_CREDENTIAL_HELP_URL,
+  normalizeWechatBindStatus,
+  wechatBindStatus,
+  isWechatAuthorizationUrl,
+  createWechatAuthorization,
+  unbindWechat,
   loadStyle,
   loadStyleHistory,
   saveStyleHead,
@@ -131,11 +117,6 @@ module.exports = {
   nameBody,
   feedbackBody,
   sendFeedback,
-  loadWechat,
-  saveWechat,
-  validateWechatCreds,
-  validateWechatRemote,
-  wechatValidationMessage,
   loadConfig,
   saveConfig,
   articlesPageUrl

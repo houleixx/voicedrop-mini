@@ -8,8 +8,9 @@ Page({
     const seed = this.data.seed.trim()
     if (!seed || this.data.sending || this.data.submitted) return
     this.setData({ sending: true, message: '', error: false })
-    let statusCode = 0
-    try { statusCode = (await books.start(seed)).statusCode || 0 } catch (_) {}
-    this.setData({ sending: false, submitted: statusCode === 202, message: books.message(statusCode), error: statusCode !== 202 })
+    let response
+    try { response = await books.start(seed) } catch (_) {}
+    const result = books.result(response)
+    this.setData({ sending: false, submitted: result.accepted, message: result.message, error: !result.accepted })
   }
 })

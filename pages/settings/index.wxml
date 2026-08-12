@@ -97,7 +97,7 @@
           <text class="menu-subtitle">成文一键推送到草稿箱</text>
         </view>
         <view class="menu-right">
-          <text class="menu-status {{wechatConfigured ? '' : 'menu-status-empty'}}">{{wechatConfigured ? '已配置' : '未配置'}}</text>
+          <text class="menu-status {{wechatConfigured ? '' : 'menu-status-empty'}}">{{wechatConfigured ? '已连接' : '未连接'}}</text>
           <text class="menu-arrow ri-arrow-right-s-line"></text>
         </view>
       </view>
@@ -114,6 +114,21 @@
         <view class="menu-right">
           <switch checked="{{autoShareCommunity}}" bindchange="toggleAutoShare" color="#c7432f" />
         </view>
+      </view>
+    </view>
+
+    <!-- 实验功能 -->
+    <view class="section-header">实验功能</view>
+    <view class="card menu-card">
+      <view class="menu-item no-bottom-border" data-url="/pages/book-writing/index" bindtap="openPage">
+        <view class="menu-icon icon-beige">
+          <text class="menu-icon-text ri-book-open-line"></text>
+        </view>
+        <view class="menu-content">
+          <text class="menu-title">写书</text>
+          <text class="menu-subtitle">每本 320 算力 · 一颗种子长成一本书</text>
+        </view>
+        <view class="menu-right"><text class="menu-arrow ri-arrow-right-s-line"></text></view>
       </view>
     </view>
 

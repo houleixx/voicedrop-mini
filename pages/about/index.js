@@ -51,10 +51,6 @@ Page({
     wx.navigateTo({ url: '/pages/feedback/index' })
   },
 
-  openBooks() {
-    wx.navigateTo({ url: '/pages/book-writing/index' })
-  },
-
   copyEmail() {
     wx.setClipboardData({ data: this.data.supportEmail })
   }

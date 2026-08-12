@@ -57,7 +57,7 @@ npm run validate:miniapp
 
 然后在微信开发者工具中导入仓库根目录。请在开发者工具或本机的 `project.private.config.json` 中设置自己的小程序 AppID；微信登录会通过 `wx.getAccountInfoSync()` 读取当前运行环境的 AppID，不应在源码中硬编码。
 
-HTTP API、上传、下载和照片统一使用 `https://voicedrop.cn` 的国内 EdgeOne 入口；WebSocket 仍使用后端已验证的 `wss://jianshuo.dev`。真机调试和发布前，请在微信公众平台把 `https://voicedrop.cn` 配置为 request、uploadFile、downloadFile 合法域名，并把 `wss://jianshuo.dev` 配置为 socket 合法域名。
+HTTP API、上传、下载和照片统一使用 `https://voicedrop.cn` 的国内 EdgeOne 入口；WebSocket 仍使用后端已验证的 `wss://jianshuo.dev`。真机调试和发布前，请在微信公众平台把 `https://voicedrop.cn` 配置为 request、uploadFile、downloadFile 合法域名；把 `wss://jianshuo.dev` 配置为 socket 合法域名。公众号授权链接由小程序生成并复制到手机或电脑浏览器打开，不在小程序 WebView 中加载。
 
 ## 敏感配置
 

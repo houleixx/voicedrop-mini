@@ -55,7 +55,8 @@ function freshDetailPage(libraryOverrides, wxOverrides, articleEditOverrides, as
     })
   }
   const settings = Object.assign({
-    loadStyleHistory: async () => ({ versions: [], head: 0 })
+    loadStyleHistory: async () => ({ versions: [], head: 0 }),
+    wechatBindStatus: async () => ({ connected: true })
   }, settingsOverrides || {})
   global.getApp = () => app
   global.Page = (definition) => {
@@ -2367,11 +2368,31 @@ test('detail page shows publishing hint while sending wechat draft', async () =>
   assert.equal(global.wx.loadingTitle, '正在发布')
   assert.equal(ctx.data.publishingWechat, true)
 
+  await Promise.resolve()
   resolvePublish()
   await pending
 
   assert.equal(global.wx.loadingHidden, true)
   assert.equal(global.wx.toastTitle, '草稿已更新')
+  assert.equal(ctx.data.publishingWechat, false)
+})
+
+test('detail page checks bind-status before calling the wechat draft endpoint', async () => {
+  let published = false
+  const page = freshDetailPage({
+    publishWechat: async () => { published = true; return { ok: true } }
+  }, {}, {}, {}, {
+    wechatBindStatus: async () => ({ connected: false })
+  })
+  const ctx = {
+    data: { rec: { stem: 'VoiceDrop-test' }, hasWechatDraft: false },
+    setData(update) { Object.assign(this.data, update) }
+  }
+
+  await page.publishWechat.call(ctx)
+
+  assert.equal(published, false)
+  assert.equal(page.__app.navigatedTo, '/pages/wechat-settings/index')
   assert.equal(ctx.data.publishingWechat, false)
 })
 
@@ -2399,6 +2420,7 @@ test('detail page shows updating hint when wechat draft already exists', async (
   const pending = page.publishWechat.call(ctx)
   assert.equal(global.wx.loadingTitle, '正在更新')
 
+  await Promise.resolve()
   resolvePublish()
   await pending
 })

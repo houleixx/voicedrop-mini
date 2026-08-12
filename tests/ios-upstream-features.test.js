@@ -38,19 +38,24 @@ test('feedback input is trimmed and capped at the backend contract limit', () =>
   assert.equal(settings.feedbackBody('长'.repeat(2100), '', '').text.length, 2000)
 })
 
-test('book endpoint messages cover accepted, auth, busy and quota states', () => {
+test('book endpoint uses accepted, insufficient-credit and invalid-token states', () => {
   assert.match(books.message(202), /可以关闭小程序/)
-  assert.match(books.message(401), /至少一篇文章/)
-  assert.match(books.message(409), /另一本书/)
-  assert.match(books.message(429), /额度/)
+  assert.match(books.message(401), /身份校验/)
+  const insufficient = books.result({ statusCode: 402, data: { need_suanli: 320, suanli: 12.5 } })
+  assert.equal(insufficient.accepted, false)
+  assert.match(insufficient.message, /要 320 算力/)
+  assert.match(insufficient.message, /现在有 12\.5/)
+  assert.doesNotMatch(books.message(401), /文章/)
 })
 
-test('about page exposes manual feedback and book entry and app registers their pages', () => {
+test('about exposes help while settings owns the experimental book entry', () => {
   const about = fs.readFileSync(path.join(root, 'pages/about/index.wxml'), 'utf8')
+  const settingsPage = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
   const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
   assert.match(about, /使用手册/)
   assert.match(about, /意见反馈/)
-  assert.match(about, /实验功能[\s\S]*写书/)
+  assert.doesNotMatch(about, /写书/)
+  assert.match(settingsPage, /实验功能[\s\S]*写书[\s\S]*每本 320 算力/)
   ;['pages/manual/index', 'pages/feedback/index', 'pages/book-writing/index', 'pages/web/index']
     .forEach((page) => assert.ok(app.pages.includes(page)))
 })

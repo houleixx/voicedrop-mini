@@ -214,7 +214,6 @@ function wechatMessage(errcode, errmsg) {
   if (errcode === 45004) return '摘要太短，正文写长一点再发'
   if (errcode === 40007) return '草稿已失效，已重建一份'
   if (errcode === 45009 || errcode === 45011 || errcode === 45110) return '今天发布次数到上限了，明天再试'
-  if (errcode === 40164 || errcode === 40125 || errcode === 40013) return '公众号配置有误，检查 AppID/Secret 或 IP 白名单'
   if (!errcode && !errmsg) return null
   return errmsg ? `发布失败：${errmsg}` : '发布失败'
 }

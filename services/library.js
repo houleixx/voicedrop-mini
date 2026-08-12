@@ -673,11 +673,6 @@ function recordingDeleteSucceeded(audioDeleted) {
   return Boolean(audioDeleted)
 }
 
-function wechatPublishIsConfigError(result) {
-  const errcode = result && result.errcode
-  return Boolean(result && result.notConfigured) || errcode === 40164 || errcode === 40125 || errcode === 40013
-}
-
 async function restyle(rec, styleVersion) {
   const result = await restyleResult(rec, styleVersion)
   return result.ok
@@ -1022,7 +1017,6 @@ module.exports = {
   recordingDeleteSucceeded,
   shareUrl,
   publishWechat,
-  wechatPublishIsConfigError,
   restyle,
   restyleResult,
   restyleErrorMessage,

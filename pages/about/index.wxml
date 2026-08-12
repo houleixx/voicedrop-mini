@@ -64,16 +64,5 @@
         <text class="about-arrow ri-arrow-right-s-line" aria-hidden="true"></text>
       </view>
     </view>
-    <text class="section-label">实验功能</text>
-    <view class="card menu experimental-menu">
-      <view class="row" bindtap="openBooks">
-        <view class="about-menu-icon"><text class="about-menu-icon-glyph ri-book-open-line"></text></view>
-        <view class="about-menu-content">
-          <text class="about-menu-title">写书</text>
-          <text class="about-menu-subtitle">一颗种子长成一本书，发到公开书架</text>
-        </view>
-        <text class="about-arrow ri-arrow-right-s-line" aria-hidden="true"></text>
-      </view>
-    </view>
   </view>
 </view>
