@@ -24,16 +24,27 @@ Page({
     if (!this.data.invite || !this.data.invite.url) return
     wx.setClipboardData({ data: this.data.invite.url, success: () => wx.showToast({ title: '邀请链接已复制' }) })
   },
+  showSubmitLoading() {
+    this.submitLoading = true
+    wx.showLoading({ title: '提交中…', mask: true })
+  },
+  hideSubmitLoading() {
+    if (!this.submitLoading) return
+    this.submitLoading = false
+    wx.hideLoading()
+  },
   async start() {
     const seed = this.data.seed.trim()
     if (!seed || this.data.sending || this.data.submitted) return
     this.setData({ sending: true, message: '', error: false }); this.updateSubmit()
+    this.showSubmitLoading()
     let response
-    try { response = await books.start(seed) } catch (_) {}
+    try { response = await books.start(seed) } catch (_) {} finally { this.hideSubmitLoading() }
     const result = books.result(response)
     const balance = response && response.statusCode === 402 && Number(response.data && response.data.suanli)
     const next = { sending: false, submitted: result.accepted, message: result.message, error: !result.accepted }
     if (Number.isFinite(balance)) { next.balance = balance; next.balanceDisplay = books.formatBalance(balance); next.shortfall = books.shortfall(balance) }
     this.setData(next); this.updateSubmit()
-  }
+  },
+  onUnload() { this.hideSubmitLoading() }
 })

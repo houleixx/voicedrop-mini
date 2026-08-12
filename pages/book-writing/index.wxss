@@ -427,7 +427,7 @@
 }
 
 .done {
-  width: 220rpx;
-  height: 80rpx;
-  border-radius: 999rpx;
+  margin: 0;
+  padding: 0 20rpx;
+  border-radius: 24rpx;
 }
