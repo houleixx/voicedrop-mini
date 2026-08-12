@@ -13,7 +13,10 @@
     <view class="empty" wx:elif="{{error}}">{{error}}</view>
     <view class="article" wx:else>
       <block wx:for="{{blocks}}" wx:key="index">
-        <text wx:if="{{item.type === 'paragraph'}}" class="paragraph">{{item.text}}</text>
+        <view wx:if="{{item.type === 'paragraph'}}" class="markdown-row markdown-{{item.markdownKind || 'plain'}}">
+          <view wx:if="{{item.markdownKind === 'divider'}}" class="markdown-divider"></view>
+          <text wx:else class="paragraph"><text wx:if="{{item.marker}}" class="markdown-marker">{{item.marker}} </text><text>{{item.markdownKind ? item.displayText : item.text}}</text></text>
+        </view>
         <view wx:else class="photo-block community-photo"><image class="article-image community-photo-image" src="{{item.url}}" mode="widthFix" /></view>
       </block>
     </view>

@@ -45,10 +45,50 @@ function bodyBlocks(body) {
     }
     String(segment.value || '').split(/\n+/).forEach((part) => {
       const text = part.trim()
-      if (text) blocks.push({ type: 'paragraph', text })
+      if (text) blocks.push(classifyMarkdownLine(text))
     })
   })
   return blocks
+}
+
+function classifyMarkdownLine(value) {
+  const source = String(value || '').trim()
+  const heading = /^(#{1,6})[ \t]+(.*)$/.exec(source)
+  if (heading) {
+    return {
+      type: 'paragraph', text: source, displayText: heading[2].trim(),
+      markdownKind: `h${Math.min(3, heading[1].length)}`
+    }
+  }
+  if (source.startsWith('#')) return { type: 'paragraph', text: source }
+
+  const solid = source.replace(/ /g, '')
+  if (solid.length >= 3 && /^(-+|\*+|_+)$/.test(solid)) {
+    return { type: 'paragraph', text: source, displayText: '', markdownKind: 'divider' }
+  }
+
+  const bullet = /^[-*+][ \t]+(.*)$/.exec(source)
+  if (bullet) {
+    return {
+      type: 'paragraph', text: source, displayText: bullet[1].trim(),
+      markdownKind: 'bullet', marker: '•'
+    }
+  }
+
+  const ordered = /^(\d{1,3})([.)、])([ \t]*)(.*)$/.exec(source)
+  if (ordered && (ordered[3] || (ordered[2] === '、' && ordered[4]))) {
+    return {
+      type: 'paragraph', text: source, displayText: ordered[4].trim(),
+      markdownKind: 'ordered', marker: `${ordered[1]}.`
+    }
+  }
+
+  if (source.startsWith('>')) {
+    let content = source
+    while (content.startsWith('>')) content = content.slice(1).replace(/^ +/, '')
+    return { type: 'paragraph', text: source, displayText: content.trim(), markdownKind: 'quote' }
+  }
+  return { type: 'paragraph', text: source }
 }
 
 function bodyWithoutDuplicateTitle(article) {
@@ -226,6 +266,7 @@ module.exports = {
   parseDoc,
   shouldRebuild,
   bodyBlocks,
+  classifyMarkdownLine,
   bodyWithoutDuplicateTitle,
   replaceRenderedBodyLine,
   legacyBodyBlocks,

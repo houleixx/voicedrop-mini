@@ -59,10 +59,11 @@
 
     <view class="article">
       <block wx:for="{{blocks}}" wx:key="index">
-        <view wx:if="{{item.type === 'paragraph'}}" id="article-paragraph-{{index}}" class="paragraph-row" data-index="{{index}}" bindlongpress="longpressBlock">
+        <view wx:if="{{item.type === 'paragraph'}}" id="article-paragraph-{{index}}" class="paragraph-row markdown-{{item.markdownKind || 'plain'}}" data-index="{{index}}" bindlongpress="longpressBlock">
           <text class="paragraph-locator" wx:if="{{holdEditLocatorsVisible}}">{{item.lineNo}}</text>
           <textarea wx:if="{{inlineEditing && inlineEditLineNo === item.lineNo}}" class="inline-paragraph-editor" style="height: {{inlineEditHeightPx}}px;" value="{{inlineEditText}}" auto-focus maxlength="-1" bindinput="onInlineEditInput" />
-          <text wx:else class="paragraph">{{item.text}}</text>
+          <view wx:elif="{{item.markdownKind === 'divider'}}" class="markdown-divider"></view>
+          <text wx:else class="paragraph"><text wx:if="{{item.marker}}" class="markdown-marker">{{item.marker}} </text><text>{{item.markdownKind ? item.displayText : item.text}}</text></text>
         </view>
         <view wx:else class="photo-block" data-index="{{index}}" bindtouchstart="startImageLongpress" bindtouchmove="moveImageLongpress" bindtouchend="finishImageLongpress" bindtouchcancel="finishImageLongpress">
           <text class="photo-line-locator" wx:if="{{holdEditLocatorsVisible}}">{{item.lineNo}}</text>

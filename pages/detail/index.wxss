@@ -650,6 +650,15 @@
   line-height: 1.72;
 }
 
+.markdown-h1 .paragraph { color: #2a2521; font-size: 44rpx; font-weight: 800; line-height: 1.45; }
+.markdown-h2 .paragraph { color: #2a2521; font-size: 38rpx; font-weight: 700; line-height: 1.5; }
+.markdown-h3 .paragraph { color: #2a2521; font-size: 34rpx; font-weight: 700; line-height: 1.55; }
+.markdown-bullet .paragraph, .markdown-ordered .paragraph { padding-left: 2rpx; }
+.markdown-marker { color: #d8593b; font-weight: 700; }
+.markdown-quote { padding-left: 24rpx; border-left: 6rpx solid rgba(216, 89, 59, 0.45); }
+.markdown-quote .paragraph { color: #8a8175; }
+.markdown-divider { height: 2rpx; margin: 16rpx 0; background: #ece3d5; }
+
 .inline-paragraph-editor {
   display: block;
   width: 100%;

@@ -42,7 +42,10 @@
         <view class="prompt-body-panel">
           <block wx:for="{{sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="sectionIndex">
             <block wx:for="{{section.blocks}}" wx:for-item="item" wx:key="index">
-              <text wx:if="{{item.type === 'paragraph'}}" class="prompt-body-text">{{item.text}}</text>
+              <view wx:if="{{item.type === 'paragraph'}}" class="markdown-row markdown-{{item.markdownKind || 'plain'}}">
+                <view wx:if="{{item.markdownKind === 'divider'}}" class="markdown-divider"></view>
+                <text wx:else class="prompt-body-text"><text wx:if="{{item.marker}}" class="markdown-marker">{{item.marker}} </text><text>{{item.markdownKind ? item.displayText : item.text}}</text></text>
+              </view>
               <view wx:else class="community-photo prompt-photo-block">
                 <image wx:if="{{item.url}}" class="prompt-body-image community-photo-image {{item.photoState !== 'loaded' ? 'preloading' : ''}}" src="{{item.url}}" mode="widthFix" data-section-index="{{sectionIndex}}" data-block-index="{{index}}" data-key="{{item.key}}" data-url="{{item.url}}" bindload="onCommunityImageLoad" binderror="onCommunityImageError" />
                 <view wx:if="{{item.photoState === 'loading'}}" class="community-photo-placeholder community-photo-loading">
@@ -77,7 +80,10 @@
           <block wx:for="{{sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="sectionIndex">
             <text wx:if="{{section.title}}" class="section-title">{{section.title}}</text>
             <block wx:for="{{section.blocks}}" wx:for-item="item" wx:key="index">
-              <text wx:if="{{item.type === 'paragraph'}}" class="paragraph">{{item.text}}</text>
+              <view wx:if="{{item.type === 'paragraph'}}" class="markdown-row markdown-{{item.markdownKind || 'plain'}}">
+                <view wx:if="{{item.markdownKind === 'divider'}}" class="markdown-divider"></view>
+                <text wx:else class="paragraph"><text wx:if="{{item.marker}}" class="markdown-marker">{{item.marker}} </text><text>{{item.markdownKind ? item.displayText : item.text}}</text></text>
+              </view>
               <view wx:else class="photo-block community-photo">
                 <image wx:if="{{item.url}}" class="article-image community-photo-image {{item.photoState !== 'loaded' ? 'preloading' : ''}}" src="{{item.url}}" mode="widthFix" data-section-index="{{sectionIndex}}" data-block-index="{{index}}" data-key="{{item.key}}" data-url="{{item.url}}" bindload="onCommunityImageLoad" binderror="onCommunityImageError" />
                 <view wx:if="{{item.photoState === 'loading'}}" class="community-photo-placeholder community-photo-loading">

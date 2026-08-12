@@ -209,6 +209,32 @@ test('parses legacy and multi-article documents', () => {
   }), '正文')
 })
 
+test('classifies block markdown without exposing syntax markers', () => {
+  assert.deepEqual(article.bodyBlocks([
+    '# 一级',
+    '## 二级',
+    '###### 六级',
+    '- 条目',
+    '12) 条目',
+    '>> 引用',
+    '- - -'
+  ].join('\n')), [
+    { type: 'paragraph', text: '# 一级', displayText: '一级', markdownKind: 'h1' },
+    { type: 'paragraph', text: '## 二级', displayText: '二级', markdownKind: 'h2' },
+    { type: 'paragraph', text: '###### 六级', displayText: '六级', markdownKind: 'h3' },
+    { type: 'paragraph', text: '- 条目', displayText: '条目', markdownKind: 'bullet', marker: '•' },
+    { type: 'paragraph', text: '12) 条目', displayText: '条目', markdownKind: 'ordered', marker: '12.' },
+    { type: 'paragraph', text: '>> 引用', displayText: '引用', markdownKind: 'quote' },
+    { type: 'paragraph', text: '- - -', displayText: '', markdownKind: 'divider' }
+  ])
+})
+
+test('block markdown classifier avoids common false positives', () => {
+  for (const text of ['#话题', '####### 太深', '-负号', '2026. 年份', '1.5 倍速', '-*-']) {
+    assert.deepEqual(article.classifyMarkdownLine(text), { type: 'paragraph', text })
+  }
+})
+
 test('maps wechat publish errors to user-facing Chinese messages', () => {
   assert.equal(article.wechatMessage(45004), '摘要太短，正文写长一点再发')
   assert.equal(article.wechatMessage(null, 'bad credential'), '发布失败：bad credential')

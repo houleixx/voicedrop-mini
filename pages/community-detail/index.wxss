@@ -227,6 +227,14 @@
   line-height: 1.72;
 }
 
+.markdown-h1 .paragraph, .markdown-h1 .prompt-body-text { color: #2a2521; font-size: 44rpx; font-weight: 800; line-height: 1.45; }
+.markdown-h2 .paragraph, .markdown-h2 .prompt-body-text { color: #2a2521; font-size: 38rpx; font-weight: 700; line-height: 1.5; }
+.markdown-h3 .paragraph, .markdown-h3 .prompt-body-text { color: #2a2521; font-size: 34rpx; font-weight: 700; line-height: 1.55; }
+.markdown-marker { color: #d8593b; font-weight: 700; }
+.markdown-quote { padding-left: 24rpx; border-left: 6rpx solid rgba(216, 89, 59, 0.45); }
+.markdown-quote .paragraph, .markdown-quote .prompt-body-text { color: #8a8175; }
+.markdown-divider { height: 2rpx; margin: 16rpx 0 30rpx; background: #ece3d5; }
+
 .section-title {
   display: block;
   margin: 20rpx 0 24rpx;
@@ -613,6 +621,12 @@
 .prompt-body-text + .prompt-body-text,
 .prompt-photo-block + .prompt-body-text,
 .prompt-body-text + .prompt-photo-block {
+  margin-top: 24rpx;
+}
+
+.prompt-body-panel .markdown-row + .markdown-row,
+.prompt-photo-block + .markdown-row,
+.markdown-row + .prompt-photo-block {
   margin-top: 24rpx;
 }
 
