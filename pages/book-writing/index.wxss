@@ -427,7 +427,10 @@
 }
 
 .done {
-  margin: 0;
+  width: 260rpx;
+  height: 88rpx;
+  margin: 0 auto;
   padding: 0 20rpx;
   border-radius: 24rpx;
+  font-size: 30rpx;
 }

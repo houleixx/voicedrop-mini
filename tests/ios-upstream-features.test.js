@@ -124,7 +124,7 @@ test('book writing page matches the current iOS price, seed and pipeline composi
   assert.match(css, /\.step \+ \.step::before\s*\{[^}]*left:\s*116rpx;/s)
   assert.match(css, /\.num\s*\{[^}]*border-radius:\s*16rpx;[^}]*background:\s*#fae4dd;/s)
   assert.match(css, /\.feature-primary,[\s\S]*\.done\s*\{[^}]*height:\s*108rpx;/)
-  assert.match(css, /\.done\s*\{[^}]*border-radius:\s*24rpx;/s)
+  assert.match(css, /\.done\s*\{[^}]*width:\s*260rpx;[^}]*height:\s*88rpx;[^}]*border-radius:\s*24rpx;/s)
   assert.doesNotMatch(css, /\.done\s*\{[^}]*border-radius:\s*999rpx;/s)
 })
 
