@@ -1,21 +1,28 @@
-<view class="screen settings-screen book-writing-page">
+<view class="screen book-writing-page">
   <page-header title="写书" />
-  <view class="page-body book-writing-body">
-    <text class="book-intro">给一个词、一句话，或贴一整篇文章，AI 会把它长成一本书：先写大纲、再每章一个写手并行写正文（费曼式白话），独立评审过稿一章、发布一章。</text>
-    <text class="book-note">每本书消耗 320 算力。点「开写」提交后就可以关掉小程序——书在服务器上继续写，通常 10–30 分钟后出现在公开书架。</text>
-    <view class="shelf-link" bindtap="openShelf" aria-label="打开公开书架">
-      <view class="shelf-icon"><text class="ri-book-open-line"></text></view>
-      <view class="shelf-copy">
-        <text class="shelf-title">公开书架</text>
-        <text class="shelf-subtitle">voicedrop.cn/books · 已出版的书都在这</text>
+  <block wx:if="{{submitted}}">
+    <view class="submitted"><view class="submitted-check">✓</view><text class="submitted-title">开始写了！</text><text class="submitted-copy">现在可以关掉小程序。书通常 10–30 分钟写完，过稿一章、上架一章——写好就出现在「写书」书架上，下拉刷新就能看到。</text><button class="done" bindtap="done">好</button></view>
+  </block>
+  <block wx:else>
+  <scroll-view class="writing-scroll" scroll-y enhanced bounces>
+    <view class="writing-body">
+      <view class="price-card">
+        <view class="price-main"><view class="price"><text class="bolt ri-flashlight-line"></text><view class="price-copy"><text class="amount">320</text><text class="price-unit">算力</text></view></view><text class="price-note">写一本书的价钱，提交时一次扣清</text></view>
+        <view class="balance"><text wx:if="{{balance === null}}" class="balance-loading">加载中…</text><block wx:else><text class="balance-value {{balance < 320 ? 'short' : ''}}">{{balanceDisplay}}</text><text class="balance-label">你现在的算力</text></block></view>
       </view>
-      <text class="shelf-chevron ri-arrow-right-s-line" aria-hidden="true"></text>
+      <view wx:if="{{balance !== null && balance < 320}}" class="earn-section">
+        <text class="section-title">算力不够？</text>
+        <view class="earn-card"><view class="earn-summary"><text class="gap">还差 {{shortfall}} 算力，两条来路：</text></view>
+          <view class="earn-row"><text class="earn-icon earn-icon-feed ri-flashlight-line"></text><view class="earn-content"><view class="earn-headline"><text class="earn-title">请朋友给你的文章「加油」——</text><text class="earn-reward">一次约得 {{invite.suanliFeedAuthor || 0}} 算力</text></view><text class="earn-sub">把文章分享到 VD社区或发给朋友，读的人点「加油」你就进账</text></view></view>
+          <view class="earn-row"><text class="earn-icon earn-icon-invite ri-group-line"></text><view class="earn-content"><view class="earn-headline"><text class="earn-title">邀请朋友装 VoiceDrop——</text><text class="earn-reward">装一个约得 {{invite.suanliInviter || 0}} 算力</text></view><text class="earn-sub">朋友通过你的链接安装，双方都到账</text></view></view>
+          <button wx:if="{{invite.url}}" class="invite" bindtap="shareInvite">把邀请链接发给朋友</button>
+        </view>
+      </view>
+      <view class="seed-section"><text class="section-title">中心思想</text><text class="section-copy">一句话说清这本书要讲明白的那一个问题或主张。想法越聚焦，书越好看；也可以贴一整篇文章当种子。</text><textarea class="feature-editor" maxlength="20000" value="{{seed}}" bindinput="onInput" placeholder="比如：为什么一切都在变乱？\n或：钱不脏，是我一直躲着它。" placeholder-class="book-placeholder" /></view>
+      <view class="pipeline-section"><text class="section-title pipeline-title">怎么写成</text><view class="pipeline"><view class="step"><text class="num">1</text><view class="step-content"><text class="step-title">拆大纲</text><text class="step-copy">AI 建筑师把中心思想拆成一环扣一环的章节</text></view></view><view class="step"><text class="num">2</text><view class="step-content"><text class="step-title">并行写</text><text class="step-copy">每章一个写手，费曼式大白话，名词当场讲人话</text></view></view><view class="step"><text class="num">3</text><view class="step-content"><text class="step-title">独立评审</text><text class="step-copy">另一个 AI 只看成稿挑错，不过就打回重写</text></view></view><view class="step"><text class="num">4</text><view class="step-content"><text class="step-title">上你的架</text><text class="step-copy">过一章发一章到「写书」书架，署你的名字（设置里的「名字」）</text></view></view></view></view>
+      <text wx:if="{{message}}" class="feature-hint error">{{message}}</text>
     </view>
-    <textarea class="feature-editor" maxlength="20000" value="{{seed}}" bindinput="onInput" disabled="{{submitted}}" placeholder="书的种子：一个词、一句话，或一整篇文章……" placeholder-class="book-placeholder" />
-    <text wx:if="{{message}}" class="feature-hint {{error ? 'error' : 'success'}}">{{message}}</text>
-    <button class="feature-primary" bindtap="start" disabled="{{!seed || sending || submitted}}">
-      <view wx:if="{{sending}}" class="feature-loading"><view class="feature-spinner"></view><text>提交中…</text></view>
-      <text wx:else>{{submitted ? '已受理' : '开写'}}</text>
-    </button>
-  </view>
+  </scroll-view>
+  <view class="writing-bottom"><button class="feature-primary" bindtap="start" disabled="{{!canSubmit}}">{{sending ? '提交中…' : (shortfall > 0 ? '算力不够 · 还差 ' + shortfall : '开始写书 · 320 算力')}}</button><text class="bottom-hint">提交后就可以关小程序 · 10–30 分钟写完，出现在「写书」书架</text></view>
+  </block>
 </view>

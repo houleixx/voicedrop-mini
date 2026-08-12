@@ -117,21 +117,6 @@
       </view>
     </view>
 
-    <!-- 实验功能 -->
-    <view class="section-header">实验功能</view>
-    <view class="card menu-card">
-      <view class="menu-item no-bottom-border" data-url="/pages/book-writing/index" bindtap="openPage">
-        <view class="menu-icon icon-beige">
-          <text class="menu-icon-text ri-book-open-line"></text>
-        </view>
-        <view class="menu-content">
-          <text class="menu-title">写书</text>
-          <text class="menu-subtitle">每本 320 算力 · 一颗种子长成一本书</text>
-        </view>
-        <view class="menu-right"><text class="menu-arrow ri-arrow-right-s-line"></text></view>
-      </view>
-    </view>
-
     <!-- 其他 -->
     <view class="section-header">其他</view>
     <view class="card menu-card">

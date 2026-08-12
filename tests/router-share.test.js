@@ -56,6 +56,11 @@ test('parses Android voicedrop deep links into mini program routes', () => {
     url: '/pages/recordings/index?tab=community',
     tab: 'community'
   })
+  assert.deepEqual(appRouter.routeFor({ kind: 'books' }), {
+    type: 'reLaunch',
+    url: '/pages/recordings/index?tab=books',
+    tab: 'books'
+  })
   assert.deepEqual(appRouter.routeFor({ kind: 'settings' }), {
     type: 'navigateTo',
     url: '/pages/settings/index'

@@ -46,16 +46,39 @@ test('book endpoint uses accepted, insufficient-credit and invalid-token states'
   assert.match(insufficient.message, /要 320 算力/)
   assert.match(insufficient.message, /现在有 12\.5/)
   assert.doesNotMatch(books.message(401), /文章/)
+  assert.equal(books.formatBalance(1060.6), '1,061')
+  assert.equal(books.shortfall(197.2), 123)
+  assert.equal(books.shortfall(320), 0)
 })
 
-test('about exposes help while settings owns the experimental book entry', () => {
+test('book writing requests an invite link only after confirming insufficient balance', async () => {
+  const enoughCalls = []
+  const enough = await books.writingContext({
+    usage: { async balance() { enoughCalls.push('balance'); return { suanli: 320 } } },
+    referral: { async link() { enoughCalls.push('invite'); return { url: 'unexpected' } } }
+  })
+  assert.deepEqual(enoughCalls, ['balance'])
+  assert.deepEqual(enough, { balance: 320, invite: null })
+
+  const shortCalls = []
+  const invite = { url: 'https://example.test/invite' }
+  const insufficient = await books.writingContext({
+    usage: { async balance() { shortCalls.push('balance'); return { suanli: 100 } } },
+    referral: { async link() { shortCalls.push('invite'); return invite } }
+  })
+  assert.deepEqual(shortCalls, ['balance', 'invite'])
+  assert.deepEqual(insufficient, { balance: 100, invite })
+})
+
+test('about exposes help while settings does not duplicate the home book shelf', () => {
   const about = fs.readFileSync(path.join(root, 'pages/about/index.wxml'), 'utf8')
   const settingsPage = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
   const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
   assert.match(about, /使用手册/)
   assert.match(about, /意见反馈/)
   assert.doesNotMatch(about, /写书/)
-  assert.match(settingsPage, /实验功能[\s\S]*写书[\s\S]*每本 320 算力/)
+  assert.doesNotMatch(settingsPage, /实验功能/)
+  assert.doesNotMatch(settingsPage, /写书/)
   ;['pages/manual/index', 'pages/feedback/index', 'pages/book-writing/index', 'pages/web/index']
     .forEach((page) => assert.ok(app.pages.includes(page)))
 })
@@ -77,32 +100,57 @@ test('native manual uses the shared title bar and Android-style quick section na
     .forEach((label) => assert.match(source, new RegExp(label)))
 })
 
-test('book writing page matches the supplied shelf composition and uses a real book icon', () => {
+test('book writing page matches the current iOS price, seed and pipeline composition', () => {
   const markup = fs.readFileSync(path.join(root, 'pages/book-writing/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/book-writing/index.wxss'), 'utf8')
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/book-writing/index.json'), 'utf8'))
 
-  assert.match(markup, /先写大纲、再每章一个写手并行写正文/)
-  assert.match(markup, /voicedrop\.cn\/books · 已出版的书都在这/)
-  assert.match(markup, /ri-book-open-line/)
-  assert.doesNotMatch(markup, /📚/)
-  assert.match(markup, /书的种子：一个词、一句话，或一整篇文章……/)
-  assert.match(css, /\.feature-editor\s*\{[^}]*height:\s*356rpx;[^}]*padding:\s*15rpx;[^}]*border:\s*2rpx solid #d8593b;/s)
+  assert.match(markup, /写一本书的价钱，提交时一次扣清/)
+  assert.match(markup, /<page-header title="写书"/)
+  assert.equal(config.usingComponents['page-header'], '/components/page-header/index')
+  assert.match(markup, /class="bolt ri-flashlight-line"/)
+  assert.match(markup, /class="earn-summary"/)
+  assert.match(markup, /还差 \{\{shortfall\}\} 算力，两条来路：/)
+  assert.match(markup, /earn-icon-feed ri-flashlight-line/)
+  assert.match(markup, /earn-icon-invite ri-group-line/)
+  assert.match(markup, /比如：为什么一切都在变乱？\\n或：钱不脏，是我一直躲着它。/)
+  assert.match(markup, /中心思想/)
+  assert.match(markup, /拆大纲[\s\S]*并行写[\s\S]*独立评审[\s\S]*上你的架/)
+  assert.match(markup, /开始写书 · 320 算力/)
+  assert.match(css, /\.price-card\s*\{[^}]*padding:\s*32rpx 36rpx;[^}]*border:\s*2rpx solid #ebd9b8;[^}]*border-radius:\s*24rpx;/s)
+  assert.match(css, /\.feature-editor\s*\{[^}]*height:\s*316rpx;[^}]*border:\s*3rpx solid #d8593b;/s)
+  assert.match(css, /\.book-placeholder\s*\{[^}]*font-size:\s*26rpx;/s)
+  assert.match(css, /\.price\s*\{[^}]*align-items:\s*center;/s)
+  assert.match(css, /\.step \+ \.step::before\s*\{[^}]*left:\s*116rpx;/s)
+  assert.match(css, /\.num\s*\{[^}]*border-radius:\s*16rpx;[^}]*background:\s*#fae4dd;/s)
+  assert.match(css, /\.feature-primary,[\s\S]*\.done\s*\{[^}]*height:\s*108rpx;/)
 })
 
-test('public shelf follows iOS by opening the website under WeChat system navigation', () => {
+test('public shelf follows current iOS with a native shelf and in-app reader', () => {
   const source = fs.readFileSync(path.join(root, 'pages/book-writing/index.js'), 'utf8')
+  const readerSource = fs.readFileSync(path.join(root, 'pages/book-reader/index.js'), 'utf8')
+  const readerMarkup = fs.readFileSync(path.join(root, 'pages/book-reader/index.wxml'), 'utf8')
+  const readerConfig = JSON.parse(fs.readFileSync(path.join(root, 'pages/book-reader/index.json'), 'utf8'))
   const webMarkup = fs.readFileSync(path.join(root, 'pages/web/index.wxml'), 'utf8')
   const webConfig = JSON.parse(fs.readFileSync(path.join(root, 'pages/web/index.json'), 'utf8'))
   const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
 
-  assert.match(source, /pages\/web\/index\?url=/)
-  assert.match(source, /encodeURIComponent\(books\.SHELF\)/)
-  assert.match(source, /encodeURIComponent\('公开书架'\)/)
+  assert.match(source, /books\.writingContext\(\)/)
   assert.match(webMarkup, /<web-view[^>]*src="\{\{url\}\}"/)
   assert.notEqual(webConfig.navigationStyle, 'custom')
   assert.ok(app.pages.includes('pages/web/index'))
-  assert.ok(!app.pages.includes('pages/book-shelf/index'))
-  assert.ok(!app.pages.includes('pages/book-reader/index'))
+  assert.ok(app.pages.includes('pages/book-shelf/index'))
+  assert.ok(app.pages.includes('pages/book-reader/index'))
+  assert.equal(readerConfig.navigationStyle, 'custom')
+  assert.match(readerMarkup, /bindload="onWebLoad"[^>]*binderror="onWebError"[\s\S]*class="reader-loading"/)
+  assert.match(readerSource, /onLoad\(options\)[\s\S]*this\.bookUrl = [`][^`]+[`][\s\S]*onReady\(\)/)
+  assert.doesNotMatch(readerSource, /wx\.(?:show|hide)Loading/)
+  assert.match(readerSource, /this\.setData\(\{ url: this\.bookUrl, loading: true \}\)/)
+  assert.match(readerSource, /onWebLoad\(\) \{ this\.finishLoading\(\) \}/)
+  assert.match(readerSource, /wx\.showToast\(\{ title: '书籍加载失败', icon: 'none' \}\)/)
+  const shelf = fs.readFileSync(path.join(root, 'pages/book-shelf/index.wxml'), 'utf8')
+  assert.match(shelf, /写一本新书/)
+  assert.match(shelf, /cover\.jpg/)
 })
 
 test('restyle requests use the five minute client timeout', () => {

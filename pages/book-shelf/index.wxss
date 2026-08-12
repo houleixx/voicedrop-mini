@@ -1,0 +1,16 @@
+.shelf-page { height: 100vh; background: #faf6ef; }
+.shelf-scroll { position: fixed; inset: 198rpx 0 0; box-sizing: border-box; }
+.shelf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 34rpx 28rpx; padding: 24rpx 38rpx 80rpx; }
+.shelf-cell { position: relative; min-width: 0; padding-bottom: 20rpx; border-bottom: 20rpx solid #8b5f3d; box-shadow: 0 8rpx 0 #5f3e29; }
+.book-cover { position: relative; overflow: hidden; aspect-ratio: 0.7; border-radius: 5rpx 13rpx 13rpx 5rpx; box-shadow: 7rpx 10rpx 18rpx rgba(58,39,27,.24); }
+.book-cover::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 13rpx; background: rgba(0,0,0,.16); }
+.write-cover { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18rpx; box-sizing:border-box; color:#b64632; background:#fffaf0; border:4rpx dashed #d7bca4; font-size:34rpx; font-weight:700; }
+.write-plus { display:flex; width:76rpx; height:76rpx; align-items:center; justify-content:center; border-radius:50%; color:white; background:#d64a36; font-size:54rpx; font-weight:400; }
+.cloth { display:flex; box-sizing:border-box; flex-direction:column; align-items:center; justify-content:center; padding:26rpx 22rpx; color:#fff8e9; text-align:center; }
+.cover-image { position:absolute; inset:0; width:100%; height:100%; }
+.cover-main { font-family: serif; font-size:37rpx; font-weight:700; line-height:1.25; }
+.cover-rule { width:48rpx; height:2rpx; margin:20rpx 0; background:rgba(255,255,255,.7); }
+.cover-sub { font-family: serif; font-size:23rpx; line-height:1.4; }
+.book-caption,.book-meta { display:block; overflow:hidden; margin-top:16rpx; color:#2a2521; font-size:27rpx; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+.book-meta { margin-top:4rpx; color:#9b8f81; font-size:22rpx; font-weight:400; }
+.shelf-state { padding:100rpx 40rpx; color:#8f877d; text-align:center; }

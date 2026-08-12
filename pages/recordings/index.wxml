@@ -148,6 +148,35 @@
         </view>
       </view>
     </block>
+
+    <block wx:elif="{{activeTab === 'books'}}">
+      <view wx:if="{{booksError && !bookItems.length}}" class="shelf-state">{{booksError}}</view>
+      <view wx:elif="{{booksLoading && !bookItems.length}}" class="shelf-state loading-notice">
+        <view class="loading-spinner" aria-hidden="true"></view>
+        <text>正在整理书架…</text>
+      </view>
+      <view class="shelf-rows books-shelf-inner">
+        <view class="shelf-row-group" wx:for="{{bookRows}}" wx:key="index" wx:for-item="row">
+          <view class="shelf-row">
+            <block wx:for="{{row}}" wx:key="key" wx:for-item="cell">
+              <view wx:if="{{cell.kind === 'write'}}" class="shelf-cell write-cell" bindtap="writeBook">
+                <view class="book-cover write-cover"><view class="write-plus">＋</view><text class="write-label">写书</text></view>
+                <view class="book-caption-stack"><text class="book-caption">写一本新书</text><text class="book-meta"> </text></view>
+              </view>
+              <view wx:else class="shelf-cell" data-slug="{{cell.slug}}" bindtap="openBook">
+                <view class="book-cover cloth" style="background: radial-gradient(circle at 25% 15%, rgba(255,255,255,.10), rgba(255,255,255,0) 64%), linear-gradient(145deg, {{cell.c}}, {{cell.c2}});">
+                  <image wx:if="{{cell.cover}}" class="cover-image" src="https://voicedrop.cn/books/{{cell.slug}}/cover.jpg" mode="aspectFill" />
+                  <block wx:else><text class="cover-main">{{cell.main}}</text><view class="cover-rule"></view><text wx:if="{{cell.sub}}" class="cover-sub">{{cell.sub}}</text></block>
+                </view>
+                <view class="book-caption-stack"><text class="book-caption">{{cell.main}}</text><text class="book-meta">{{cell.chapters ? cell.chapters + ' 章' : (cell.sub || ' ')}}</text></view>
+              </view>
+            </block>
+            <view wx:if="{{row.length === 1}}" class="shelf-cell shelf-cell-placeholder"></view>
+          </view>
+          <view class="shelf-bar"></view>
+        </view>
+      </view>
+    </block>
     </view>
   </scroll-view>
 

@@ -20,7 +20,8 @@ async function link() {
     url: String(data.url),
     name: String(data.name || ''),
     suanliInviter: Number(data.suanliInviter) || 0,
-    suanliFriend: Number(data.suanliFriend) || 0
+    suanliFriend: Number(data.suanliFriend) || 0,
+    suanliFeedAuthor: Number(data.suanliFeedAuthor) || 0
   }
 }
 

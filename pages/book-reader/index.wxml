@@ -1,0 +1,8 @@
+<web-view wx:if="{{url}}" src="{{url}}" bindload="onWebLoad" binderror="onWebError">
+  <cover-view wx:if="{{loading}}" class="reader-loading">
+    <cover-view class="reader-loading-card">
+      <cover-view class="reader-loading-spinner"></cover-view>
+      <cover-view class="reader-loading-copy">加载中…</cover-view>
+    </cover-view>
+  </cover-view>
+</web-view>

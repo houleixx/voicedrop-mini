@@ -16,7 +16,8 @@ Component({
       type: Array,
       value: [
         { key: 'recordings', label: '我的录音' },
-        { key: 'community', label: 'VD社区' }
+        { key: 'community', label: 'VD社区' },
+        { key: 'books', label: '写书' }
       ]
     }
   },

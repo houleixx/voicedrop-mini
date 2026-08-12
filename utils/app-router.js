@@ -12,6 +12,7 @@ function parse(raw) {
     const tag = (url.searchParams.get('tag') || '').trim()
     if (route === 'recordings' || route === '') return { kind: 'recordings', stem: '', tag: '' }
     if (route === 'community') return { kind: 'community', stem: '', tag: '' }
+    if (route === 'books' || route === 'library') return { kind: 'books', stem: '', tag: '' }
     if (route === 'settings') return { kind: 'settings', stem: '', tag: '' }
     if (route === 'record') return { kind: 'record', stem: '', tag }
     if (route === 'article' && first) return { kind: 'article', stem: first, tag: '' }
@@ -25,6 +26,7 @@ function parseQuery(query) {
   if (!query) return none()
   if (query.deeplink) return parse(decodeURIComponent(query.deeplink))
   if (query.tab === 'community') return { kind: 'community', stem: '', tag: '' }
+  if (query.tab === 'books') return { kind: 'books', stem: '', tag: '' }
   if (query.tab === 'recordings') return { kind: 'recordings', stem: '', tag: '' }
   if (query.route === 'community') return { kind: 'community', stem: '', tag: '' }
   if (query.route === 'settings') return { kind: 'settings', stem: '', tag: '' }
@@ -48,6 +50,7 @@ function routeFor(deepLink) {
   const link = deepLink || none()
   if (link.kind === 'recordings') return { type: 'reLaunch', url: '/pages/recordings/index', tab: 'recordings' }
   if (link.kind === 'community') return { type: 'reLaunch', url: '/pages/recordings/index?tab=community', tab: 'community' }
+  if (link.kind === 'books') return { type: 'reLaunch', url: '/pages/recordings/index?tab=books', tab: 'books' }
   if (link.kind === 'settings') return { type: 'navigateTo', url: '/pages/settings/index' }
   if (link.kind === 'record') return { type: 'reLaunch', url: '/pages/recordings/index', tab: 'recordings', tag: link.tag || '' }
   if (link.kind === 'article') {

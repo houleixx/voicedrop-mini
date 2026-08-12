@@ -30,6 +30,33 @@
   padding-bottom: 230rpx;
 }
 
+.shelf-rows { width: auto; margin: 0 8rpx; padding: 12rpx 0 40rpx; }
+.shelf-row-group { width: 100%; }
+.shelf-row { display: flex; width: 100%; align-items: flex-start; gap: 44rpx; }
+.shelf-cell { min-width: 0; flex: 1; }
+.shelf-cell-placeholder { visibility: hidden; }
+.book-cover { position: relative; overflow: hidden; width: 100%; aspect-ratio: 0.7; border-radius: 4rpx 10rpx 10rpx 4rpx; }
+.book-cover::before { content: ''; position: absolute; z-index: 2; inset: 0 auto 0 0; width: 26rpx; background: linear-gradient(90deg, rgba(0,0,0,.36), rgba(0,0,0,.10) 55%, rgba(255,255,255,.12)); pointer-events: none; }
+.book-cover::after { content: ''; position: absolute; z-index: 2; inset: 0 0 0 auto; width: 6rpx; background: repeating-linear-gradient(180deg, rgba(255,255,255,.85) 0, rgba(255,255,255,.85) 2rpx, rgba(214,202,180,.9) 2rpx, rgba(214,202,180,.9) 4rpx); pointer-events: none; }
+.write-cover { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18rpx; box-sizing:border-box; color:#6f685d; background:#f3ece0; border:3rpx dashed #cfc0a6; }
+.write-cover::before,.write-cover::after { display: none; }
+.write-plus { display:flex; width:68rpx; height:68rpx; align-items:center; justify-content:center; border-radius:50%; color:white; background:#e9332c; box-shadow:0 6rpx 9rpx rgba(233,51,44,.30); font-size:38rpx; font-weight:700; line-height:68rpx; }
+.write-label { color:#6f685d; font-size:30rpx; font-weight:600; letter-spacing:2rpx; line-height:38rpx; }
+.cloth { display:flex; box-sizing:border-box; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:52rpx 32rpx 30rpx 48rpx; color:#f7f1df; text-align:left; box-shadow:0 14rpx 16rpx rgba(60,45,30,.35),0 4rpx 4rpx rgba(60,45,30,.20); }
+.cover-image { position:absolute; z-index:1; inset:0; width:100%; height:100%; }
+.cover-main { position:relative; z-index:1; font-family:"Songti SC","STSong",serif; color:#f7f1df; font-size:40rpx; font-weight:700; letter-spacing:6rpx; line-height:1.4; text-shadow:0 2rpx 3rpx rgba(0,0,0,.35); }
+.cover-rule { position:relative; z-index:1; width:52rpx; height:2rpx; margin:18rpx 0; background:rgba(247,241,223,.55); }
+.cover-sub { position:relative; z-index:1; font-family:"Songti SC","STSong",serif; color:rgba(247,241,223,.72); font-size:23rpx; line-height:1.5; }
+.book-caption-stack { margin-top:18rpx; }
+.book-caption,.book-meta { display:block; overflow:hidden; color:#2a2521; font-family:"Songti SC","STSong",serif; font-size:29rpx; font-weight:600; line-height:36rpx; text-overflow:ellipsis; white-space:nowrap; }
+.book-meta { margin-top:4rpx; color:#b8ae9e; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:25rpx; font-weight:400; line-height:30rpx; }
+.shelf-bar { width:auto; height:12rpx; margin:16rpx -12rpx 44rpx; border-radius:2rpx; background:linear-gradient(180deg,#e3d7c2,#c9b99e); box-shadow:0 6rpx 7rpx rgba(120,95,60,.18); }
+.shelf-state { padding:100rpx 40rpx; color:#8f877d; text-align:center; }
+
+@media (min-width: 410px) {
+  .cover-main { font-size: 44rpx; }
+}
+
 .community-feed-tabs {
   position: fixed;
   left: 0;

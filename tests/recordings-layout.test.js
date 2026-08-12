@@ -649,6 +649,57 @@ test('switching back to an already loaded community refreshes the unified feed',
   assert.deepEqual(calls, [{ silent: true, keepDataOnError: true }])
 })
 
+test('books uses the same in-page home tab switch as recordings and community', () => {
+  const navigations = []
+  const { page } = freshRecordingsPage({
+    navigateTo({ url }) { navigations.push(url) },
+    reLaunch({ url }) { navigations.push(url) }
+  })
+  const loads = []
+  const ctx = Object.assign({}, page, {
+    data: Object.assign({}, page.data, {
+      activeTab: 'recordings',
+      currentHomeTab: 'recordings',
+      booksLoaded: false
+    }),
+    setData(update) { Object.assign(this.data, update) },
+    restoreCachedBooks() { return false },
+    loadBooks(options) { loads.push(options) },
+    currentCommandRefs() { return [] }
+  })
+
+  page.switchHomeTab.call(ctx, { detail: { key: 'books' } })
+
+  assert.equal(ctx.data.activeTab, 'books')
+  assert.equal(ctx.data.currentHomeTab, 'books')
+  assert.deepEqual(loads, [undefined])
+  assert.deepEqual(navigations, [])
+})
+
+test('books supports direct home-tab entry and renders inside the recordings page', () => {
+  const { page, helpers } = freshRecordingsPage()
+  const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/recordings/index.wxss'), 'utf8')
+
+  assert.equal(page.initialTab({ tab: 'books' }), 'books')
+  assert.ok(page.data.homeTabs.some((tab) => tab.key === 'books'))
+  assert.match(wxml, /wx:elif="\{\{activeTab === 'books'\}\}"/)
+  assert.match(wxml, /wx:for="\{\{bookRows\}\}"/)
+  assert.match(wxml, /class="shelf-bar"/)
+  assert.match(ruleBody(css, '.shelf-row'), /gap:\s*44rpx;/)
+  assert.match(ruleBody(css, '.book-cover'), /aspect-ratio:\s*0\.7;/)
+  assert.match(ruleBody(css, '.cover-main'), /font-size:\s*40rpx;/)
+  assert.match(css, /@media \(min-width: 410px\)\s*\{\s*\.cover-main\s*\{\s*font-size:\s*44rpx;/)
+  assert.match(ruleBody(css, '.write-cover'), /border:\s*3rpx dashed #cfc0a6;/)
+  assert.match(ruleBody(css, '.shelf-bar'), /height:\s*12rpx;/)
+  assert.deepEqual(helpers.bookRowsFor([
+    { slug: 'one' }, { slug: 'two' }, { slug: 'three' }
+  ]).map((row) => row.map((cell) => cell.kind === 'write' ? 'write' : cell.slug)), [
+    ['write', 'one'],
+    ['two', 'three']
+  ])
+})
+
 test('community restores a cached snapshot before starting its silent refresh', () => {
   const community = require('../services/community')
   const originalCachedFeed = community.cachedFeed

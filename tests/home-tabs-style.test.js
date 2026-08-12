@@ -11,16 +11,16 @@ function ruleBody(css, selector) {
   return match ? match[1] : ''
 }
 
-test('home tabs fixed header keeps screen side padding', () => {
+test('home tabs fixed header matches the iOS 22pt side padding', () => {
   const css = fs.readFileSync(path.join(root, 'components/home-tabs/index.wxss'), 'utf8')
   const head = ruleBody(css, '.home-head')
   const tabs = ruleBody(css, '.section-tabs')
 
-  assert.match(head, /padding-left:\s*32rpx;/)
-  assert.match(head, /padding-right:\s*32rpx;/)
+  assert.match(head, /padding-left:\s*44rpx;/)
+  assert.match(head, /padding-right:\s*44rpx;/)
   assert.match(head, /box-sizing:\s*border-box;/)
-  assert.match(tabs, /padding-left:\s*32rpx;/)
-  assert.match(tabs, /padding-right:\s*32rpx;/)
+  assert.match(tabs, /padding-left:\s*44rpx;/)
+  assert.match(tabs, /padding-right:\s*44rpx;/)
   assert.match(tabs, /box-sizing:\s*border-box;/)
 })
 

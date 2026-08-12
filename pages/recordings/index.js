@@ -8,6 +8,7 @@ const statusSession = require('../../services/status-session')
 const libraryCommand = require('../../services/library-command')
 const asrDictation = require('../../services/asr-dictation')
 const community = require('../../services/community')
+const books = require('../../services/books')
 const blockStore = require('../../utils/block-store')
 const pendingReplies = require('../../utils/pending-replies')
 const prefs = require('../../utils/prefs')
@@ -29,13 +30,24 @@ function layoutOffsets(headerBottom, windowWidth) {
   }
 }
 
+function bookRowsFor(items) {
+  const cells = [{ key: 'write', kind: 'write' }].concat((items || []).map((book) => Object.assign({
+    key: `book:${book.slug}`,
+    kind: 'book'
+  }, book)))
+  const rows = []
+  for (let index = 0; index < cells.length; index += 2) rows.push(cells.slice(index, index + 2))
+  return rows
+}
+
 Page({
   data: {
     activeTab: 'recordings',
     currentHomeTab: 'recordings',
     homeTabs: [
       { key: 'recordings', label: '我的录音' },
-      { key: 'community', label: 'VD社区' }
+      { key: 'community', label: 'VD社区' },
+      { key: 'books', label: '写书' }
     ],
     loading: false,
     recording: false,
@@ -68,6 +80,11 @@ Page({
     communitySearchQuery: '',
     communityError: '',
     communityLoaded: false,
+    bookItems: [],
+    bookRows: bookRowsFor([]),
+    booksLoading: false,
+    booksError: '',
+    booksLoaded: false,
     refreshing: false,
     audioConsentVisible: false,
     scrollContentTop: 0,
@@ -100,6 +117,10 @@ Page({
     if (this.data.activeTab === 'community') {
       const restored = this.restoreCachedCommunityFeed()
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
+    }
+    if (this.data.activeTab === 'books') {
+      const restored = this.restoreCachedBooks()
+      this.loadBooks(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
   },
 
@@ -169,6 +190,9 @@ Page({
         }
       }
     }
+    if (this.data.activeTab === 'books') {
+      this.loadBooks({ silent: true, keepDataOnError: true })
+    }
     const redraw = resumeRefresh.shouldRedrawOnResume(false, this.topLevelUiRendered)
     if (redraw) this.load()
     else this.load({ silent: true, keepDataOnError: true })
@@ -204,7 +228,7 @@ Page({
       selectedTagMissing: Boolean(selectedTag && !homeTags.includes(selectedTag)),
       currentHomeTab: this.data.activeTab === 'community'
         ? 'community'
-        : (selectedTag ? `tag:${selectedTag}` : 'recordings'),
+        : this.data.activeTab === 'books' ? 'books' : (selectedTag ? `tag:${selectedTag}` : 'recordings'),
       records: this.commandRecordsFor(recordsWithRefs, selectedTag)
     })
   },
@@ -253,6 +277,9 @@ Page({
   },
 
   onShareAppMessage() {
+    if (this.data.activeTab === 'books') {
+      return { title: 'VoiceDrop 写书', path: '/pages/recordings/index?tab=books' }
+    }
     return {
       title: this.data.activeTab === 'community' ? 'VD社区' : 'VoiceDrop 口述',
       path: this.data.activeTab === 'community' ? '/pages/recordings/index?tab=community' : '/pages/recordings/index'
@@ -260,6 +287,9 @@ Page({
   },
 
   onShareTimeline() {
+    if (this.data.activeTab === 'books') {
+      return { title: 'VoiceDrop 写书', query: 'tab=books' }
+    }
     return {
       title: this.data.activeTab === 'community' ? 'VD社区' : 'VoiceDrop 口述',
       query: this.data.activeTab === 'community' ? 'tab=community' : ''
@@ -271,7 +301,7 @@ Page({
     const pending = app.globalData.pendingHomeTab || ''
     const tab = fromQuery || pending || 'recordings'
     app.globalData.pendingHomeTab = ''
-    return tab === 'community' ? 'community' : 'recordings'
+    return tab === 'community' || tab === 'books' ? tab : 'recordings'
   },
 
   applyPendingHomeTab() {
@@ -279,10 +309,15 @@ Page({
     if (!pending) return
     app.globalData.pendingHomeTab = ''
     if (pending === this.data.activeTab) return
-    this.setData({ activeTab: pending === 'community' ? 'community' : 'recordings' })
+    const activeTab = pending === 'community' || pending === 'books' ? pending : 'recordings'
+    this.setData({ activeTab, currentHomeTab: activeTab })
     if (this.data.activeTab === 'community') {
       const restored = this.data.communityLoaded || this.restoreCachedCommunityFeed()
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
+    }
+    if (this.data.activeTab === 'books') {
+      const restored = this.data.booksLoaded || this.restoreCachedBooks()
+      this.loadBooks(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
   },
 
@@ -301,7 +336,7 @@ Page({
       if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
       return
     }
-    const activeTab = key === 'community' ? 'community' : 'recordings'
+    const activeTab = key === 'community' || key === 'books' ? key : 'recordings'
     const selectedTag = activeTab === 'recordings' ? '' : this.data.selectedTag
     this.setData({
       activeTab,
@@ -314,6 +349,10 @@ Page({
       const restored = this.data.communityLoaded || this.restoreCachedCommunityFeed()
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
+    if (activeTab === 'books') {
+      const restored = this.data.booksLoaded || this.restoreCachedBooks()
+      this.loadBooks(restored ? { silent: true, keepDataOnError: true } : undefined)
+    }
     if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
   },
 
@@ -323,7 +362,44 @@ Page({
 
   refreshCurrent(options) {
     if (this.data.activeTab === 'community') return this.loadCommunity(options)
+    if (this.data.activeTab === 'books') return this.loadBooks(options)
     return this.load(options)
+  },
+
+  restoreCachedBooks() {
+    const items = books.cachedShelf()
+    if (!items.length) return false
+    this.setData({ bookItems: items, bookRows: bookRowsFor(items), booksLoading: false, booksError: '', booksLoaded: true })
+    return true
+  },
+
+  async loadBooks(options) {
+    const silent = Boolean(options && options.silent)
+    const keepDataOnError = Boolean(options && options.keepDataOnError)
+    if (!silent) this.setData({ booksLoading: true, booksError: '' })
+    try {
+      const bookItems = await books.shelf()
+      this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksError: '', booksLoaded: true })
+      return true
+    } catch (_) {
+      if (!keepDataOnError || !this.data.bookItems.length) {
+        this.setData({ booksError: '书架加载失败，下拉重试' })
+      }
+      return false
+    } finally {
+      this.setData({ booksLoading: false })
+    }
+  },
+
+  writeBook() {
+    wx.navigateTo({ url: '/pages/book-writing/index' })
+  },
+
+  openBook(event) {
+    const slug = event.currentTarget.dataset.slug
+    const book = this.data.bookItems.find((item) => item.slug === slug)
+    if (!book) return
+    wx.navigateTo({ url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main)}` })
   },
 
   refreshFromUser() {
@@ -421,7 +497,7 @@ Page({
     const filteredRecords = this.commandRecordsFor(recordsWithRefs, selectedTag)
     const currentHomeTab = this.data.activeTab === 'community'
       ? 'community'
-      : (selectedTag ? `tag:${selectedTag}` : 'recordings')
+      : this.data.activeTab === 'books' ? 'books' : (selectedTag ? `tag:${selectedTag}` : 'recordings')
     const recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
     this.recordCoverLoadId = recordCoverLoadId
     this.topLevelUiRendered = true
@@ -491,7 +567,7 @@ Page({
       this.recordMetaLoadId = recordMetaLoadId
       const currentHomeTab = this.data.activeTab === 'community'
         ? 'community'
-        : (selectedTag ? `tag:${selectedTag}` : 'recordings')
+        : this.data.activeTab === 'books' ? 'books' : (selectedTag ? `tag:${selectedTag}` : 'recordings')
 
       this.setData({
         allRecords: recordsWithRefs,
@@ -559,7 +635,7 @@ Page({
       const filteredRecords = this.commandRecordsFor(recordsWithRefs, selectedTag)
       const currentHomeTab = this.data.activeTab === 'community'
         ? 'community'
-        : (selectedTag ? `tag:${selectedTag}` : 'recordings')
+        : this.data.activeTab === 'books' ? 'books' : (selectedTag ? `tag:${selectedTag}` : 'recordings')
       const recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
       this.recordCoverLoadId = recordCoverLoadId
       this.setData({
@@ -947,7 +1023,8 @@ Page({
   homeTabsFor(homeTags) {
     return [
       { key: 'recordings', label: '我的录音' },
-      { key: 'community', label: 'VD社区' }
+      { key: 'community', label: 'VD社区' },
+      { key: 'books', label: '写书' }
     ].concat((homeTags || []).map((tag) => ({ key: `tag:${tag}`, label: tag, tag })))
   },
 
@@ -1442,4 +1519,4 @@ Page({
   }
 })
 
-module.exports = { layoutOffsets }
+module.exports = { layoutOffsets, bookRowsFor }
