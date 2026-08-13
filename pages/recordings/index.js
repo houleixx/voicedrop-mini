@@ -399,7 +399,7 @@ Page({
     const slug = event.currentTarget.dataset.slug
     const book = this.data.bookItems.find((item) => item.slug === slug)
     if (!book) return
-    wx.navigateTo({ url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main)}` })
+    wx.navigateTo({ url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author || '')}&cover=${book.cover ? '1' : '0'}` })
   },
 
   refreshFromUser() {
@@ -666,8 +666,10 @@ Page({
   },
 
   async loadRecordingCovers(records, loadId) {
-    const candidates = (records || []).filter((rec) => rec && rec.coverPhotoKey && !rec.coverPhotoUrl)
+    const candidates = (records || []).filter((rec) => rec && !rec.coverPhotoUrl &&
+      ((rec.hasArticles && recordingUtil.coverKeyForStem(rec.stem || rec.audioName)) || rec.coverPhotoKey))
     if (!candidates.length) return
+    if (!this.recordCoverMissingKeys) this.recordCoverMissingKeys = new Set()
     let scope = ''
     try {
       scope = await library.ownerScope()
@@ -676,12 +678,26 @@ Page({
     }
     if (!scope || loadId !== this.recordCoverLoadId) return
     await Promise.all(candidates.map(async (rec) => {
-      try {
-        const coverPhotoUrl = await library.downloadPhotoTemp(rec.coverPhotoKey, scope, { preferThumb: true })
-        if (!coverPhotoUrl || loadId !== this.recordCoverLoadId) return
-        this.updateRecordingCover(rec.stem, coverPhotoUrl)
-      } catch (_) {
+      const dedicatedKey = rec.hasArticles ? recordingUtil.coverKeyForStem(rec.stem || rec.audioName) : ''
+      const dedicatedMissingKey = dedicatedKey ? `${scope}${dedicatedKey}` : ''
+      if (dedicatedKey && !this.recordCoverMissingKeys.has(dedicatedMissingKey)) {
+        try {
+          const dedicatedUrl = await library.downloadPhotoTemp(dedicatedKey, scope, { preferThumb: true })
+          if (dedicatedUrl && loadId === this.recordCoverLoadId) {
+            this.updateRecordingCover(rec.stem, dedicatedUrl, true)
+            return
+          }
+          this.recordCoverMissingKeys.add(dedicatedMissingKey)
+        } catch (_) {
+          this.recordCoverMissingKeys.add(dedicatedMissingKey)
+        }
       }
+      if (!rec.coverPhotoKey) return
+      try {
+        const fallbackUrl = await library.downloadPhotoTemp(rec.coverPhotoKey, scope, { preferThumb: true })
+        if (!fallbackUrl || loadId !== this.recordCoverLoadId) return
+        this.updateRecordingCover(rec.stem, fallbackUrl, false)
+      } catch (_) {}
     }))
   },
 
@@ -690,13 +706,19 @@ Page({
     return (records || []).map((rec) => {
       const cached = current.get(rec.stem)
       if (!cached || !cached.coverPhotoUrl || cached.coverPhotoKey !== rec.coverPhotoKey) return rec
-      return Object.assign({}, rec, { coverPhotoUrl: cached.coverPhotoUrl })
+      return Object.assign({}, rec, {
+        coverPhotoUrl: cached.coverPhotoUrl,
+        coverPhotoIsBook: Boolean(cached.coverPhotoIsBook)
+      })
     })
   },
 
-  updateRecordingCover(stem, coverPhotoUrl) {
+  updateRecordingCover(stem, coverPhotoUrl, coverPhotoIsBook) {
     const update = (records) => (records || []).map((rec) => rec.stem === stem
-      ? Object.assign({}, rec, { coverPhotoUrl: coverPhotoUrl || '' })
+      ? Object.assign({}, rec, {
+          coverPhotoUrl: coverPhotoUrl || '',
+          coverPhotoIsBook: Boolean(coverPhotoUrl && coverPhotoIsBook)
+        })
       : rec)
     this.setData({
       allRecords: update(this.data.allRecords),
@@ -706,7 +728,7 @@ Page({
 
   onRecordCoverError(event) {
     const stem = event.currentTarget.dataset.stem || ''
-    if (stem) this.updateRecordingCover(stem, '')
+    if (stem) this.updateRecordingCover(stem, '', false)
   },
 
   restoreCachedCommunityFeed() {

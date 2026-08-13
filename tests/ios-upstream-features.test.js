@@ -145,7 +145,7 @@ test('public shelf follows current iOS with a native shelf and in-app reader', (
   assert.ok(app.pages.includes('pages/book-reader/index'))
   assert.equal(readerConfig.navigationStyle, 'custom')
   assert.match(readerMarkup, /bindload="onWebLoad"[^>]*binderror="onWebError"[\s\S]*class="reader-loading"/)
-  assert.match(readerSource, /onLoad\(options\)[\s\S]*this\.bookUrl = [`][^`]+[`][\s\S]*onReady\(\)/)
+  assert.match(readerSource, /onLoad\(options\)[\s\S]*this\.bookUrl = books\.readerUrl\(book\)[\s\S]*onReady\(\)/)
   assert.doesNotMatch(readerSource, /wx\.(?:show|hide)Loading/)
   assert.match(readerSource, /this\.setData\(\{ url: this\.bookUrl, loading: true \}\)/)
   assert.match(readerSource, /onWebLoad\(\) \{ this\.finishLoading\(\) \}/)

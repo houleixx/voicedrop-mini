@@ -9,7 +9,8 @@ function loadReaderPage() {
   global.wx = {
     showLoading(options) { calls.push(['showLoading', options]) },
     hideLoading() { calls.push(['hideLoading']) },
-    showToast(options) { calls.push(['showToast', options]) }
+    showToast(options) { calls.push(['showToast', options]) },
+    showShareMenu(options) { calls.push(['showShareMenu', options]) }
   }
   global.Page = (value) => { definition = value }
   const modulePath = require.resolve('../pages/book-reader/index.js')
@@ -43,4 +44,15 @@ test('book reader loading matches the system dark toast treatment', () => {
   assert.match(css, /\.reader-loading-card\s*\{[^}]*width:\s*220rpx;[^}]*height:\s*220rpx;[^}]*flex-direction:\s*column;[^}]*background:\s*rgba\(0, 0, 0, 0\.68\);/s)
   assert.match(css, /\.reader-loading-spinner\s*\{[^}]*border-top-color:\s*#ffffff;/s)
   assert.match(css, /\.reader-loading-copy\s*\{[^}]*color:\s*#ffffff;[^}]*font-weight:\s*400;/s)
+})
+
+test('book reader exposes native WeChat sharing with author and cover', () => {
+  const { page, calls } = loadReaderPage()
+  page.onLoad({ slug: 'sample-book', title: encodeURIComponent('一本书'), author: encodeURIComponent('作者'), cover: '1' })
+  const payload = page.onShareAppMessage()
+  assert.equal(payload.title, '《一本书》 — 作者')
+  assert.equal(payload.imageUrl, 'https://voicedrop.cn/books/sample-book/cover.jpg')
+  assert.match(payload.path, /pages\/book-reader\/index\?slug=sample-book/)
+  assert.deepEqual(calls.find(([name]) => name === 'showShareMenu')[1].menus,
+    ['shareAppMessage', 'shareTimeline'])
 })

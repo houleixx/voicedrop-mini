@@ -17,8 +17,23 @@ function normalizeBook(item) {
     slug: String(book.slug || ''), title: String(book.title || ''),
     main: String(book.main || book.title || '未命名'), sub: String(book.sub || ''),
     c: String(book.c || '#8b6652'), c2: String(book.c2 || '#4b342c'),
-    cover: Boolean(book.cover), chapters: Math.max(0, Number(book.chapters) || 0)
+    cover: Boolean(book.cover), chapters: Math.max(0, Number(book.chapters) || 0),
+    author: String(book.author || ''), createdAt: Math.max(0, Number(book.createdAt) || 0)
   }
+}
+
+function readerUrl(book) {
+  return `${SHELF}${encodeURIComponent(String(book && book.slug || ''))}/`
+}
+
+function coverUrl(book) {
+  return `${readerUrl(book)}cover.jpg`
+}
+
+function shareTitle(book) {
+  const title = String(book && (book.title || book.main) || '未命名').trim() || '未命名'
+  const author = String(book && book.author || '').trim()
+  return `《${title}》${author ? ` — ${author}` : ''}`
 }
 
 function normalizeIndex(data) {
@@ -95,4 +110,4 @@ function result(response) {
   }
 }
 
-module.exports = { API, SHELF, INDEX, BOOK_SUANLI, start, shelf, cachedShelf, normalizeIndex, writingContext, formatBalance, shortfall, message, result }
+module.exports = { API, SHELF, INDEX, BOOK_SUANLI, start, shelf, cachedShelf, normalizeIndex, readerUrl, coverUrl, shareTitle, writingContext, formatBalance, shortfall, message, result }

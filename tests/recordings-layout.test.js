@@ -436,9 +436,54 @@ test('recording rows replace the waveform with an Android-style article cover', 
 
   const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/recordings/index.wxss'), 'utf8')
-  assert.match(wxml, /<image wx:if="\{\{item\.coverPhotoUrl\}\}" class="record-cover"[^>]*mode="aspectFill"[^>]*binderror="onRecordCoverError"/s)
+  assert.match(wxml, /<image wx:if="\{\{item\.coverPhotoUrl\}\}" class="record-cover \{\{item\.coverPhotoIsBook \? 'book-cover-image' : ''\}\}"[^>]*mode="aspectFill"[^>]*binderror="onRecordCoverError"/s)
   assert.match(wxml, /<view wx:else class="record-icon"/)
   assert.match(css, /\.record-cover\s*\{[^}]*width:\s*88rpx;[^}]*height:\s*88rpx;[^}]*border-radius:\s*20rpx;/s)
+})
+
+test('recording rows prefer the dedicated cover and remember misses before using the first photo', async () => {
+  const library = require('../services/library')
+  const originalOwnerScope = library.ownerScope
+  const originalDownloadPhotoTemp = library.downloadPhotoTemp
+  const calls = []
+  library.ownerScope = async () => 'users/anon-1/'
+  library.downloadPhotoTemp = async (key) => {
+    calls.push(key)
+    if (key.endsWith('/cover.jpg')) throw new Error('missing')
+    return 'wxfile://first-photo.jpg'
+  }
+
+  try {
+    const { page } = freshRecordingsPage()
+    const record = {
+      stem: 'VoiceDrop-2026-08-13-091500-3m20s-Wed-Morning-Shanghai',
+      hasArticles: true,
+      coverPhotoKey: 'photos/2026-08-13-091500/3-abc.jpg'
+    }
+    const ctx = Object.assign({}, page, {
+      recordCoverLoadId: 1,
+      data: Object.assign({}, page.data, { allRecords: [record], records: [record] }),
+      setData(update) { Object.assign(this.data, update) }
+    })
+
+    await page.loadRecordingCovers.call(ctx, [record], 1)
+    assert.deepEqual(calls, [
+      'photos/2026-08-13-091500/cover.jpg',
+      'photos/2026-08-13-091500/3-abc.jpg'
+    ])
+    assert.equal(ctx.data.records[0].coverPhotoUrl, 'wxfile://first-photo.jpg')
+    assert.equal(ctx.data.records[0].coverPhotoIsBook, false)
+
+    calls.length = 0
+    const refreshed = Object.assign({}, record)
+    ctx.data = Object.assign({}, ctx.data, { allRecords: [refreshed], records: [refreshed] })
+    ctx.recordCoverLoadId = 2
+    await page.loadRecordingCovers.call(ctx, [refreshed], 2)
+    assert.deepEqual(calls, ['photos/2026-08-13-091500/3-abc.jpg'])
+  } finally {
+    library.ownerScope = originalOwnerScope
+    library.downloadPhotoTemp = originalDownloadPhotoTemp
+  }
 })
 
 test('recording rows use the compact readable home-list treatment', () => {

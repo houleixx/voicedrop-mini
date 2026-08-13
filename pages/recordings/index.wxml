@@ -93,8 +93,8 @@
               bindtouchend="onRowTouchEnd"
               data-index="{{index}}">
           <view class="record-card {{item.isEmpty ? 'silent' : ''}}" style="transform: translateX({{item._translateX || 0}}px);" data-index="{{index}}" bindtap="openDetail">
-            <view class="record-icon-wrapper">
-              <image wx:if="{{item.coverPhotoUrl}}" class="record-cover"
+            <view class="record-icon-wrapper {{item.coverPhotoIsBook ? 'book-cover' : ''}}">
+              <image wx:if="{{item.coverPhotoUrl}}" class="record-cover {{item.coverPhotoIsBook ? 'book-cover-image' : ''}}"
                      src="{{item.coverPhotoUrl}}" mode="aspectFill" lazy-load
                      data-stem="{{item.stem}}" binderror="onRecordCoverError" />
               <view wx:else class="record-icon" aria-hidden="true">

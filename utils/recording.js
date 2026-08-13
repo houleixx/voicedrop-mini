@@ -171,6 +171,15 @@ function photoKey(sessionTs, offset) {
   return `photos/${sessionTs}/${Math.max(0, offset || 0)}-${rand}.jpg`
 }
 
+function coverKey(sessionTs) {
+  return `photos/${sessionTs}/cover.jpg`
+}
+
+function coverKeyForStem(stem) {
+  const parsed = parseStem(stemOf(stem))
+  return parsed ? coverKey(parsed.sessionTs) : ''
+}
+
 function tagsFromRecords(records) {
   const tags = new Set()
   ;(records || []).forEach((rec) => {
@@ -208,6 +217,8 @@ module.exports = {
   timestamp,
   makeName,
   photoKey,
+  coverKey,
+  coverKeyForStem,
   tagsFromRecords,
   filterByTag
 }

@@ -325,6 +325,19 @@
   border-radius: 20rpx;
 }
 
+.record-icon-wrapper.book-cover {
+  width: 80rpx;
+  height: 120rpx;
+}
+
+.record-cover.book-cover-image {
+  width: 80rpx;
+  height: 120rpx;
+  border-radius: 10rpx;
+  box-sizing: border-box;
+  border: 2rpx solid #e8dfd2;
+}
+
 /* Command reference badge (Android: commandNumberBadge) */
 .command-badge {
   position: absolute;
