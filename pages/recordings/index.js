@@ -20,6 +20,11 @@ const audioConsentFlow = require('../../utils/audio-consent-flow')
 const recordPermission = require('../../utils/record-permission')
 
 const app = getApp()
+const MIN_BOOK_REFRESH_FEEDBACK_MS = 600
+
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
 
 function layoutOffsets(headerBottom, windowWidth) {
   const pxPerRpx = Math.max(1, Number(windowWidth) || 375) / 750
@@ -259,6 +264,7 @@ Page({
   onUnload() {
     audioConsentFlow.dispose(this)
     this._pageUnloaded = true
+    this._bookLoadRequestId = (this._bookLoadRequestId || 0) + 1
     this._communityLoadGeneration = (this._communityLoadGeneration || 0) + 1
     this.recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
     this.recordMetaLoadId = (this.recordMetaLoadId || 0) + 1
@@ -376,18 +382,25 @@ Page({
   async loadBooks(options) {
     const silent = Boolean(options && options.silent)
     const keepDataOnError = Boolean(options && options.keepDataOnError)
+    const forceRefresh = Boolean(options && options.forceRefresh)
+    const requestId = (this._bookLoadRequestId || 0) + 1
+    this._bookLoadRequestId = requestId
     if (!silent) this.setData({ booksLoading: true, booksError: '' })
     try {
-      const bookItems = await books.shelf()
+      const bookItems = await books.shelf({ forceRefresh })
+      if (this._pageUnloaded || this._bookLoadRequestId !== requestId) return true
       this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksError: '', booksLoaded: true })
       return true
     } catch (_) {
+      if (this._pageUnloaded || this._bookLoadRequestId !== requestId) return true
       if (!keepDataOnError || !this.data.bookItems.length) {
         this.setData({ booksError: '书架加载失败，下拉重试' })
       }
       return false
     } finally {
-      this.setData({ booksLoading: false })
+      if (!this._pageUnloaded && this._bookLoadRequestId === requestId) {
+        this.setData({ booksLoading: false })
+      }
     }
   },
 
@@ -404,9 +417,15 @@ Page({
 
   refreshFromUser() {
     if (this._refreshPromise) return this._refreshPromise
+    const refreshingBooks = this.data.activeTab === 'books'
+    const options = { silent: true, keepDataOnError: true }
+    if (refreshingBooks) options.forceRefresh = true
     this.setData({ refreshing: true })
-    this._refreshPromise = Promise.resolve(this.refreshCurrent({ silent: true, keepDataOnError: true }))
-      .then((ok) => {
+    this._refreshPromise = Promise.all([
+      Promise.resolve(this.refreshCurrent(options)),
+      refreshingBooks ? wait(MIN_BOOK_REFRESH_FEEDBACK_MS) : Promise.resolve()
+    ])
+      .then(([ok]) => {
         if (ok === false) wx.showToast({ title: '加载失败', icon: 'error' })
         return ok
       })
@@ -416,7 +435,7 @@ Page({
       })
       .finally(() => {
         this._refreshPromise = null
-        this.setData({ refreshing: false })
+        if (!this._pageUnloaded) this.setData({ refreshing: false })
       })
     return this._refreshPromise
   },

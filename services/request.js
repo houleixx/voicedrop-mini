@@ -30,8 +30,12 @@ function authHeader(token, extra) {
   )
 }
 
-async function get(url, token) {
-  return request({ url, header: authHeader(token) })
+async function get(url, token, options) {
+  return request({
+    url,
+    header: authHeader(token, options && options.header),
+    timeout: options && options.timeout
+  })
 }
 
 async function postJson(url, token, data, options) {

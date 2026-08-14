@@ -45,8 +45,18 @@ function cachedShelf() {
   try { return normalizeIndex(wx.getStorageSync(CACHE_KEY)) } catch (_) { return [] }
 }
 
-async function shelf() {
-  const res = await http.get(INDEX)
+function shelfRequestUrl(options) {
+  if (!(options && options.forceRefresh)) return INDEX
+  const supplied = Number(options.now)
+  const now = Number.isFinite(supplied) ? supplied : Date.now()
+  return `${INDEX}${INDEX.includes('?') ? '&' : '?'}_refresh=${encodeURIComponent(String(now))}`
+}
+
+async function shelf(options) {
+  const forceRefresh = Boolean(options && options.forceRefresh)
+  const res = await http.get(shelfRequestUrl(options), '', forceRefresh
+    ? { header: { 'Cache-Control': 'no-cache' } }
+    : undefined)
   if (res.statusCode < 200 || res.statusCode >= 300) throw new Error(`books HTTP ${res.statusCode}`)
   const list = normalizeIndex(res.data)
   wx.setStorageSync(CACHE_KEY, { books: list })
@@ -110,4 +120,4 @@ function result(response) {
   }
 }
 
-module.exports = { API, SHELF, INDEX, BOOK_SUANLI, start, shelf, cachedShelf, normalizeIndex, readerUrl, coverUrl, shareTitle, writingContext, formatBalance, shortfall, message, result }
+module.exports = { API, SHELF, INDEX, BOOK_SUANLI, start, shelf, shelfRequestUrl, cachedShelf, normalizeIndex, readerUrl, coverUrl, shareTitle, writingContext, formatBalance, shortfall, message, result }

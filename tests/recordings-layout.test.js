@@ -645,6 +645,85 @@ test('pull refresh keeps current content visible and forwards silent options to 
   assert.deepEqual(routed, [['recordings', options], ['community', options]])
 })
 
+test('books pull refresh bypasses caches and keeps repeated fast refreshes visible', async () => {
+  const timers = []
+  const originalSetTimeout = global.setTimeout
+  global.setTimeout = (callback, delay) => {
+    timers.push({ callback, delay })
+    return timers.length
+  }
+  try {
+    const { page } = freshRecordingsPage()
+    const seen = []
+    const ctx = Object.assign({}, page, {
+      data: Object.assign({}, page.data, { activeTab: 'books', refreshing: false }),
+      setData(update) { Object.assign(this.data, update) },
+      refreshCurrent(options) {
+        seen.push(options)
+        return Promise.resolve(true)
+      }
+    })
+
+    const first = page.onRefresherRefresh.call(ctx)
+    await new Promise((resolve) => queueMicrotask(resolve))
+    assert.equal(ctx.data.refreshing, true)
+    assert.ok(timers[0].delay >= 500)
+    timers[0].callback()
+    await first
+    assert.equal(ctx.data.refreshing, false)
+
+    const second = page.onRefresherRefresh.call(ctx)
+    await new Promise((resolve) => queueMicrotask(resolve))
+    assert.equal(ctx.data.refreshing, true)
+    assert.ok(timers[1].delay >= 500)
+    timers[1].callback()
+    await second
+
+    assert.equal(ctx.data.refreshing, false)
+    assert.deepEqual(seen, [
+      { silent: true, keepDataOnError: true, forceRefresh: true },
+      { silent: true, keepDataOnError: true, forceRefresh: true }
+    ])
+  } finally {
+    global.setTimeout = originalSetTimeout
+  }
+})
+
+test('books load forwards force refresh and ignores an older response', async () => {
+  const books = require('../services/books')
+  const originalShelf = books.shelf
+  let resolveOld
+  let resolveFresh
+  const calls = []
+  books.shelf = (options) => {
+    calls.push(options)
+    return new Promise((resolve) => {
+      if (calls.length === 1) resolveOld = resolve
+      else resolveFresh = resolve
+    })
+  }
+  try {
+    const { page } = freshRecordingsPage()
+    const ctx = Object.assign({}, page, {
+      data: Object.assign({}, page.data, { bookItems: [] }),
+      setData(update) { Object.assign(this.data, update) }
+    })
+
+    const oldLoad = page.loadBooks.call(ctx, { silent: true })
+    const freshLoad = page.loadBooks.call(ctx, { silent: true, forceRefresh: true })
+    resolveOld([{ slug: 'stale' }])
+    await oldLoad
+    assert.equal(ctx.data.bookItems.length, 0)
+
+    resolveFresh([{ slug: 'fresh' }])
+    await freshLoad
+    assert.equal(ctx.data.bookItems[0].slug, 'fresh')
+    assert.deepEqual(calls, [{ forceRefresh: false }, { forceRefresh: true }])
+  } finally {
+    books.shelf = originalShelf
+  }
+})
+
 test('successful silent recording refresh clears a previous list error', async () => {
   const library = require('../services/library')
   const originalList = library.list
