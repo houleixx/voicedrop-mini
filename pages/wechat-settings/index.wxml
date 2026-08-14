@@ -29,11 +29,11 @@
         <view class="method-options">
           <view class="method-option">
             <text class="method-option-title">电脑打开</text>
-            <text class="method-option-detail">粘贴到电脑浏览器，再用手机微信扫码</text>
+            <text class="method-option-detail">复制链接至电脑浏览器打开，再用手机微信扫码</text>
           </view>
           <view class="method-option">
-            <text class="method-option-title">手机浏览器</text>
-            <text class="method-option-detail">粘贴并打开后截图二维码，再到微信“扫一扫”中从相册选择截图</text>
+            <text class="method-option-title">手机打开</text>
+            <text class="method-option-detail">复制链接至手机浏览器中打开，对页面进行截图，随后打开微信“扫一扫”，选择相册中的截图进行识别</text>
           </view>
         </view>
         <text class="steps-text">3. 选择要绑定的公众号并确认授权，然后返回 VoiceDrop</text>
