@@ -28,7 +28,7 @@
     "pages/record/index"
   ],
   "window": {
-    "navigationBarTitleText": "VoiceDrop Mini",
+    "navigationBarTitleText": "VoiceDrop",
     "navigationBarBackgroundColor": "#faf6ef",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#faf6ef"
