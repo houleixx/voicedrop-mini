@@ -4,6 +4,7 @@ const library = require('../../services/library')
 const usage = require('../../services/usage')
 const prefs = require('../../utils/prefs')
 const appVersion = require('../../utils/app-version')
+const cacheMaintenance = require('../../services/cache-maintenance')
 
 Page({
   data: {
@@ -21,11 +22,32 @@ Page({
     autoShareCommunity: false,
     followUpEnabled: true,
     wechatConfigured: false,
+    cacheSizeText: '计算中',
+    cacheCalculating: false,
+    cacheClearing: false,
     appVersion: '开发版'
   },
 
   onShow() {
+    this._settingsVisible = true
+    this._settingsLifecycleGeneration = (this._settingsLifecycleGeneration || 0) + 1
+    this.setData({ cacheClearing: false })
+    this.refreshCacheSize()
     this.load()
+  },
+
+  onHide() {
+    this.leaveSettingsPage()
+  },
+
+  onUnload() {
+    this.leaveSettingsPage()
+  },
+
+  leaveSettingsPage() {
+    this._settingsVisible = false
+    this._settingsLifecycleGeneration = (this._settingsLifecycleGeneration || 0) + 1
+    this._cacheSizeRequest = (this._cacheSizeRequest || 0) + 1
   },
 
   onShareAppMessage() {
@@ -136,6 +158,49 @@ Page({
     }
   },
 
+  async refreshCacheSize() {
+    const request = (this._cacheSizeRequest || 0) + 1
+    const lifecycle = this._settingsLifecycleGeneration || 0
+    this._cacheSizeRequest = request
+    this.setData({ cacheCalculating: true, cacheSizeText: '计算中' })
+    try {
+      const result = await cacheMaintenance.snapshot()
+      if (!cacheUiActive(this, lifecycle, request)) return
+      this.setData({ cacheCalculating: false, cacheSizeText: cacheMaintenance.formatBytes(result.bytes) })
+    } catch (_) {
+      if (cacheUiActive(this, lifecycle, request)) this.setData({ cacheCalculating: false, cacheSizeText: '暂不可用' })
+    }
+  },
+
+  clearCache() {
+    if (this.data.cacheClearing) return
+    const lifecycle = this._settingsLifecycleGeneration || 0
+    wx.showModal({
+      title: '清除缓存？',
+      content: '将清除可重新下载的文章、图片和社区详情缓存。不会删除录音、待上传内容、账户信息或服务器数据。',
+      confirmText: '清除',
+      confirmColor: '#d8593b',
+      success: async (result) => {
+        if (!result.confirm || this.data.cacheClearing || !cacheUiActive(this, lifecycle)) return
+        this.setData({ cacheClearing: true, cacheCalculating: true, cacheSizeText: '计算中' })
+        try {
+          await cacheMaintenance.clear()
+          if (!cacheUiActive(this, lifecycle)) return
+          await this.refreshCacheSize()
+          if (!cacheUiActive(this, lifecycle)) return
+          wx.showToast({ title: '缓存已清除', icon: 'success' })
+        } catch (_) {
+          if (!cacheUiActive(this, lifecycle)) return
+          await this.refreshCacheSize()
+          if (!cacheUiActive(this, lifecycle)) return
+          wx.showToast({ title: '清除失败，请重试', icon: 'none' })
+        } finally {
+          if (cacheUiActive(this, lifecycle)) this.setData({ cacheClearing: false })
+        }
+      }
+    })
+  },
+
   openPage(event) {
     wx.navigateTo({ url: event.currentTarget.dataset.url })
   }
@@ -144,4 +209,10 @@ Page({
 function accountShortCode(scope) {
   const match = String(scope || '').trim().match(/^users\/anon-([0-9a-f]{6,})\/$/i)
   return match ? match[1].slice(0, 6).toUpperCase() : ''
+}
+
+function cacheUiActive(page, lifecycle, request) {
+  if (page._settingsVisible === false) return false
+  if ((page._settingsLifecycleGeneration || 0) !== lifecycle) return false
+  return request == null || page._cacheSizeRequest === request
 }

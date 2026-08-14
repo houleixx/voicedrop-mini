@@ -5,7 +5,7 @@ const path = require('path')
 
 const root = path.join(__dirname, '..')
 
-function freshSettingsPage(settingsOverrides, wxOverrides) {
+function freshSettingsPage(settingsOverrides, wxOverrides, cacheOverrides) {
   let page
   const settings = Object.assign({
     loadStyle: async () => ({ style: '', name: '', styles: [] }),
@@ -29,6 +29,11 @@ function freshSettingsPage(settingsOverrides, wxOverrides) {
     followUpEnabled: () => true,
     setFollowUpEnabled: () => {}
   }
+  const cacheMaintenance = Object.assign({
+    snapshot: async () => ({ bytes: 0 }),
+    clear: async () => {},
+    formatBytes: (bytes) => `${bytes} B`
+  }, cacheOverrides || {})
 
   global.Page = (definition) => {
     page = definition
@@ -45,11 +50,13 @@ function freshSettingsPage(settingsOverrides, wxOverrides) {
   delete require.cache[require.resolve('../services/library')]
   delete require.cache[require.resolve('../utils/prefs')]
   delete require.cache[require.resolve('../utils/app-version')]
+  delete require.cache[require.resolve('../services/cache-maintenance')]
   require.cache[require.resolve('../services/settings')] = { exports: settings }
   require.cache[require.resolve('../services/usage')] = { exports: usage }
   require.cache[require.resolve('../services/auth')] = { exports: auth }
   require.cache[require.resolve('../services/library')] = { exports: library }
   require.cache[require.resolve('../utils/prefs')] = { exports: prefs }
+  require.cache[require.resolve('../services/cache-maintenance')] = { exports: cacheMaintenance }
   require('../pages/settings/index')
   return page
 }
@@ -99,12 +106,117 @@ test('settings page uses Remix Icon instead of platform glyphs', () => {
     'ri-magic-line',
     'ri-wechat-line',
     'ri-team-line',
+    'ri-delete-bin-line',
     'ri-information-line',
     'ri-arrow-right-s-line'
   ]
 
   expectedIcons.forEach((icon) => assert.match(wxml, new RegExp(`\\b${icon}\\b`)))
   assert.doesNotMatch(wxml, /[✓⚡✎✦➤☻ℹ›]/)
+  assert.doesNotMatch(wxml, /ri-delete-bin-6-line/)
+})
+
+test('settings page presents rebuildable cache size with the Remix 2.5 delete icon', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
+  const icons = fs.readFileSync(path.join(root, 'styles/remixicon.wxss'), 'utf8')
+
+  assert.match(wxml, /ri-delete-bin-line/)
+  assert.match(wxml, />清除缓存</)
+  assert.match(wxml, />文章与图片缓存</)
+  assert.match(wxml, /\{\{cacheSizeText\}\}/)
+  assert.match(icons, /\.ri-delete-bin-line:before\s*\{\s*content:\s*"\\ec2a"/)
+})
+
+test('settings page recalculates cache size asynchronously', async () => {
+  const page = freshSettingsPage({}, {}, {
+    snapshot: async () => ({ bytes: 1536 }),
+    formatBytes: () => '1.5 KB'
+  })
+  const ctx = pageContext(page)
+
+  await page.refreshCacheSize.call(ctx)
+
+  assert.equal(ctx.data.cacheCalculating, false)
+  assert.equal(ctx.data.cacheSizeText, '1.5 KB')
+})
+
+test('settings page recalculates cache whenever it becomes visible', () => {
+  const page = freshSettingsPage()
+  let refreshes = 0
+  let loads = 0
+  const ctx = pageContext(page)
+  ctx.refreshCacheSize = () => { refreshes += 1 }
+  ctx.load = () => { loads += 1 }
+
+  page.onShow.call(ctx)
+  page.onShow.call(ctx)
+
+  assert.equal(refreshes, 2)
+  assert.equal(loads, 2)
+})
+
+test('settings page ignores a cache size result after it becomes hidden', async () => {
+  let resolveSnapshot
+  const page = freshSettingsPage({}, {}, {
+    snapshot: () => new Promise((resolve) => { resolveSnapshot = resolve }),
+    formatBytes: () => '9 MB'
+  })
+  const ctx = pageContext(page)
+  ctx._settingsVisible = true
+  ctx._settingsLifecycleGeneration = 1
+  const pending = page.refreshCacheSize.call(ctx)
+
+  page.onHide.call(Object.assign(ctx, { leaveSettingsPage: page.leaveSettingsPage }))
+  resolveSnapshot({ bytes: 9 * 1024 * 1024 })
+  await pending
+
+  assert.equal(ctx.data.cacheSizeText, '计算中')
+})
+
+test('settings page ignores cache modal confirmation after it becomes hidden', async () => {
+  let modal
+  let clears = 0
+  const toasts = []
+  const page = freshSettingsPage({}, {
+    showModal: (options) => { modal = options },
+    showToast: (options) => toasts.push(options)
+  }, { clear: async () => { clears += 1 } })
+  const ctx = pageContext(page)
+  ctx._settingsVisible = true
+  ctx._settingsLifecycleGeneration = 1
+
+  page.clearCache.call(ctx)
+  page.onUnload.call(Object.assign(ctx, { leaveSettingsPage: page.leaveSettingsPage }))
+  await modal.success({ confirm: true })
+
+  assert.equal(clears, 0)
+  assert.deepEqual(toasts, [])
+})
+
+test('settings cache confirmation protects user data and refreshes after clearing', async () => {
+  let modal
+  let clears = 0
+  let cleared = false
+  const toasts = []
+  const page = freshSettingsPage({}, {
+    showModal: (options) => { modal = options },
+    showToast: (options) => toasts.push(options)
+  }, {
+    snapshot: async () => ({ bytes: cleared ? 0 : 2048 }),
+    clear: async () => { clears += 1; cleared = true },
+    formatBytes: (bytes) => bytes ? '2 KB' : '0 B'
+  })
+  const ctx = pageContext(page)
+  ctx.refreshCacheSize = page.refreshCacheSize
+
+  page.clearCache.call(ctx)
+  assert.match(modal.content, /不会删除录音、待上传内容、账户信息或服务器数据/)
+  await modal.success({ confirm: true })
+
+  assert.equal(clears, 1)
+  assert.equal(ctx.data.cacheSizeText, '0 B')
+  assert.equal(ctx.data.cacheClearing, false)
+  assert.deepEqual(toasts, [{ title: '缓存已清除', icon: 'success' }])
 })
 
 test('profile name editor lifts above the keyboard while focused', () => {

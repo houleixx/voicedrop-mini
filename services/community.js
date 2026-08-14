@@ -9,6 +9,7 @@ const DETAIL_CACHE_INDEX_PREFIX = 'voicedrop.community.detail-index.v1.'
 const DETAIL_CACHE_LIMIT = 40
 const detailMemoryCache = new Map()
 const detailFetches = new Map()
+let detailCacheGeneration = 0
 
 // The standalone reco Worker intentionally has no SESSION_SECRET and therefore
 // accepts the stable anon capability token, not a WeChat session JWT.
@@ -252,10 +253,12 @@ async function get(shareId) {
   const requestKey = `${detailIdentity()}:${id}`
   const existing = detailFetches.get(requestKey)
   if (existing) return existing
+  const generation = detailCacheGeneration
   const promise = (async () => {
     const res = await http.get(`${api.filesBase()}/community/get/${api.path(id)}`, auth.bearer())
     if (res.statusCode < 200 || res.statusCode >= 300) return null
-    return cachePost(res.data && (res.data.post || res.data))
+    const post = res.data && (res.data.post || res.data)
+    return generation === detailCacheGeneration ? cachePost(post) : postFromDetail(post)
   })()
   detailFetches.set(requestKey, promise)
   try {
@@ -263,6 +266,12 @@ async function get(shareId) {
   } finally {
     if (detailFetches.get(requestKey) === promise) detailFetches.delete(requestKey)
   }
+}
+
+function resetDetailCacheState() {
+  detailCacheGeneration += 1
+  detailMemoryCache.clear()
+  detailFetches.clear()
 }
 
 function postFromDetail(raw) {
@@ -503,6 +512,7 @@ module.exports = {
   get,
   cachePost,
   cachedPost,
+  resetDetailCacheState,
   postFromDetail,
   normalizePost,
   formatCommunityDate,

@@ -646,6 +646,24 @@ function clearLocalLibraryCaches() {
   missingPhotoThumbnails = new Set()
 }
 
+function resetRebuildableCacheState() {
+  docFetches.forEach((item, requestKey) => {
+    docCacheGenerations[requestKey] = Number(docCacheGenerations[requestKey] || 0) + 1
+  })
+  photoDownloads.forEach((item) => {
+    const key = item && item.cacheKey
+    if (key) photoCacheGenerations[key] = Number(photoCacheGenerations[key] || 0) + 1
+  })
+  docFetches.clear()
+  photoDownloads.clear()
+  metaCacheIdentity = ''
+  titleCache = {}
+  tagsCache = {}
+  coverCache = {}
+  staleMetaKeys = new Set()
+  missingPhotoThumbnails = new Set()
+}
+
 async function shareUrl(rec, section) {
   const res = await http.get(`${api.filesBase()}/share/${api.path(recording.articleKey(rec.stem))}`, auth.bearer())
   if (res.statusCode < 200 || res.statusCode >= 300 || !res.data || !res.data.url) return ''
@@ -1009,6 +1027,7 @@ module.exports = {
   invalidateArticleCaches,
   cacheDoc,
   cachedDoc,
+  resetRebuildableCacheState,
   fetchDoc,
   fetchDocByArticleKey,
   deleteRecording,

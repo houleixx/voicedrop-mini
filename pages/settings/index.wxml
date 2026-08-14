@@ -120,6 +120,20 @@
     <!-- 其他 -->
     <view class="section-header">其他</view>
     <view class="card menu-card">
+      <!-- 清除缓存 -->
+      <view class="menu-item" bindtap="clearCache">
+        <view class="menu-icon icon-pink">
+          <text class="menu-icon-text ri-delete-bin-line"></text>
+        </view>
+        <view class="menu-content">
+          <text class="menu-title">清除缓存</text>
+          <text class="menu-subtitle">文章与图片缓存</text>
+        </view>
+        <view class="menu-right">
+          <text class="menu-status">{{cacheSizeText}}</text>
+        </view>
+      </view>
+
       <!-- 关于 -->
       <view class="menu-item no-bottom-border" data-url="/pages/about/index" bindtap="openPage">
         <view class="menu-icon icon-beige">
