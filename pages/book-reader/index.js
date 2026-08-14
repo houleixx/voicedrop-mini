@@ -11,13 +11,13 @@ Page({
     const book = {
       slug,
       title: decoded(options.title),
-      main: decoded(options.title),
+      main: decoded(options.main || options.title),
       author: decoded(options.author),
       cover: String(options.cover || '') === '1'
     }
     this.book = book
     this.bookUrl = books.readerUrl(book)
-    this.setData({ title: book.title, author: book.author, cover: book.cover })
+    this.setData({ title: book.main, author: book.author, cover: book.cover })
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
   },
   onReady() {
@@ -36,7 +36,7 @@ Page({
     const book = this.book || {}
     const payload = {
       title: books.shareTitle(book),
-      path: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug || '')}&title=${encodeURIComponent(book.title || '')}&author=${encodeURIComponent(book.author || '')}&cover=${book.cover ? '1' : '0'}`
+      path: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug || '')}&title=${encodeURIComponent(book.title || '')}&main=${encodeURIComponent(book.main || book.title || '')}&author=${encodeURIComponent(book.author || '')}&cover=${book.cover ? '1' : '0'}`
     }
     if (book.cover) payload.imageUrl = books.coverUrl(book)
     return payload

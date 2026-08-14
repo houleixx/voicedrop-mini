@@ -13,8 +13,13 @@ test('uses the shared dedicated article cover key', () => {
 })
 
 test('book index keeps optional author and server order metadata', () => {
-  const list = books.normalizeIndex({ books: [{ slug: 'demo', title: '书', author: '作者', createdAt: 123 }] })
+  const list = books.normalizeIndex({ books: [
+    { slug: 'newer', title: '新书', author: '作者', createdAt: 123 },
+    { slug: 'older', title: '旧书' }
+  ] })
+  assert.deepEqual(list.map((book) => book.slug), ['newer', 'older'])
   assert.equal(list[0].author, '作者')
   assert.equal(list[0].createdAt, 123)
-  assert.equal(books.shareTitle(list[0]), '《书》 — 作者')
+  assert.equal(list[1].createdAt, 0)
+  assert.equal(books.shareTitle(list[0]), '《新书》 — 作者')
 })

@@ -40,6 +40,6 @@ Page({
   openBook(event) {
     const book = this.data.items[event.currentTarget.dataset.index]
     if (!book) return
-    wx.navigateTo({ url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main)}` })
+    wx.navigateTo({ url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.title)}&main=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author)}&cover=${book.cover ? '1' : '0'}` })
   }
 })
