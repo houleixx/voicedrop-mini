@@ -47,7 +47,6 @@ const routePattern = /\/pages\/[A-Za-z0-9_-]+\/index(?:\?[^'"`"\s<>]*)?/g
 const requiredShares = new Set([
   'pages/recordings/index',
   'pages/detail/index',
-  'pages/community/index',
   'pages/community-detail/index'
 ])
 const sharePages = new Set()
