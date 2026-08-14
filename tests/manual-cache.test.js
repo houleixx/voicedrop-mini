@@ -50,6 +50,18 @@ test('manual loads synchronously from bundled content that matches the markdown 
   assert.match(chapters[7].title, /常见问题/)
 })
 
+test('bundled manual describes mini-program account and platform behavior', () => {
+  const markdown = fs.readFileSync(path.join(root, manual.MANUAL_ASSET), 'utf8')
+
+  assert.match(markdown, /匿名身份保存在当前微信的小程序本地存储中/)
+  assert.match(markdown, /登录微信账号/)
+  assert.match(markdown, /账户短码，主要用于电脑端设备配对；它不一定等于邀请码/)
+  assert.doesNotMatch(markdown, /ID 已随 iCloud 钥匙串备份/)
+  assert.doesNotMatch(markdown, /用 Apple 登录（同步设备 · 参与社区）/)
+  assert.doesNotMatch(markdown, /iOS 自己的分享面板/)
+  assert.doesNotMatch(markdown, /iOS 系统的后台传输/)
+})
+
 test('manual remains available when the mini program cannot read code-package markdown through the file system', () => {
   global.wx = {
     getFileSystemManager() {

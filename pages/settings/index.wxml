@@ -11,7 +11,7 @@
         </view>
         <view class="menu-content">
           <text class="menu-title">账户</text>
-          <text class="menu-subtitle">无需登录 · ID 已随 iCloud 钥匙串备份</text>
+          <text class="menu-subtitle">{{accountSubtitle}}</text>
         </view>
         <view class="menu-right">
           <text class="menu-value menu-id">{{shortAnonId}}</text>

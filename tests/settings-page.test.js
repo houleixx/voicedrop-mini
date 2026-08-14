@@ -19,7 +19,11 @@ function freshSettingsPage(settingsOverrides, wxOverrides) {
     articleCapacity: (value) => Math.floor(value / 10)
   }
   const auth = {
-    anonId: () => 'anon-123456'
+    anonId: () => 'anon-123456',
+    isWechatAuthenticated: () => Boolean(settingsOverrides && settingsOverrides.wechatAuthenticated)
+  }
+  const library = {
+    ownerScope: async () => 'users/anon-a1b2c3d4e5f678901234567890abcdef/'
   }
   const prefs = {
     followUpEnabled: () => true,
@@ -38,11 +42,13 @@ function freshSettingsPage(settingsOverrides, wxOverrides) {
   delete require.cache[require.resolve('../services/settings')]
   delete require.cache[require.resolve('../services/usage')]
   delete require.cache[require.resolve('../services/auth')]
+  delete require.cache[require.resolve('../services/library')]
   delete require.cache[require.resolve('../utils/prefs')]
   delete require.cache[require.resolve('../utils/app-version')]
   require.cache[require.resolve('../services/settings')] = { exports: settings }
   require.cache[require.resolve('../services/usage')] = { exports: usage }
   require.cache[require.resolve('../services/auth')] = { exports: auth }
+  require.cache[require.resolve('../services/library')] = { exports: library }
   require.cache[require.resolve('../utils/prefs')] = { exports: prefs }
   require('../pages/settings/index')
   return page
@@ -119,6 +125,26 @@ test('settings page loads current profile name from style endpoint', async () =>
 
   assert.equal(ctx.data.profileName, '王小明')
   assert.equal(ctx.data.nameInput, '王小明')
+})
+
+test('settings page shows the backend account prefix and anonymous local-storage status', async () => {
+  const page = freshSettingsPage()
+  const ctx = pageContext(page)
+
+  await page.load.call(ctx)
+
+  assert.equal(ctx.data.shortAnonId, 'A1B2C3')
+  assert.equal(ctx.data.accountSubtitle, '匿名 ID 保存在本机')
+})
+
+test('settings page shows signed-in status for a WeChat session', async () => {
+  const page = freshSettingsPage({ wechatAuthenticated: true })
+  const ctx = pageContext(page)
+
+  await page.load.call(ctx)
+
+  assert.equal(ctx.data.accountSubtitle, '已登录微信账号')
+  assert.equal(ctx.data.shortAnonId, '')
 })
 
 test('settings about entry shows the current release version', async () => {

@@ -1,5 +1,6 @@
 const settings = require('../../services/settings')
 const auth = require('../../services/auth')
+const library = require('../../services/library')
 const usage = require('../../services/usage')
 const prefs = require('../../utils/prefs')
 const appVersion = require('../../utils/app-version')
@@ -16,6 +17,7 @@ Page({
     balance: null,
     capacity: 0,
     shortAnonId: '',
+    accountSubtitle: '匿名 ID 保存在本机',
     autoShareCommunity: false,
     followUpEnabled: true,
     wechatConfigured: false,
@@ -43,15 +45,16 @@ Page({
   async load() {
     this.setData({ appVersion: appVersion.label() })
     try {
-      const [styleResult, configResult, balanceResult, wechatResult] = await Promise.all([
+      const [styleResult, configResult, balanceResult, wechatResult, anonymousScope] = await Promise.all([
         settings.loadStyle(),
         settings.loadConfig(),
         usage.balance(),
-        settings.wechatBindStatus()
+        settings.wechatBindStatus(),
+        library.ownerScope({ anonymous: true }).catch(() => '')
       ])
 
-      const anonId = auth.anonId()
-      const shortId = anonId ? anonId.slice(-6).toUpperCase() : ''
+      const wechatAuthed = auth.isWechatAuthenticated()
+      const shortId = wechatAuthed ? '' : accountShortCode(anonymousScope)
 
       this.setData({
         style: styleResult.style || '',
@@ -61,6 +64,7 @@ Page({
         balance: balanceResult,
         capacity: usage.articleCapacity(balanceResult.suanli || 0),
         shortAnonId: shortId,
+        accountSubtitle: wechatAuthed ? '已登录微信账号' : '匿名 ID 保存在本机',
         autoShareCommunity: Boolean(configResult.autoShareCommunity),
         followUpEnabled: prefs.followUpEnabled(),
         wechatConfigured: Boolean(wechatResult && wechatResult.connected)
@@ -136,3 +140,8 @@ Page({
     wx.navigateTo({ url: event.currentTarget.dataset.url })
   }
 })
+
+function accountShortCode(scope) {
+  const match = String(scope || '').trim().match(/^users\/anon-([0-9a-f]{6,})\/$/i)
+  return match ? match[1].slice(0, 6).toUpperCase() : ''
+}
