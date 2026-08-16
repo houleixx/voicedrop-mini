@@ -2,13 +2,76 @@ const auth = require('./auth')
 const http = require('./request')
 
 const API = 'https://lab.jianshuo.dev/api/book'
+const HISTORY_API = API + '/history'
+const REVISE_API = API + '/revise'
 const SHELF = 'https://voicedrop.cn/books/'
 const BOOK_SUANLI = 320
+const REVISE_SUANLI = 40
 const INDEX = 'https://voicedrop.cn/books/?format=json'
 const CACHE_KEY = 'voicedrop.books.shelf.v1'
 
 async function start(seed) {
   return http.postJson(API, auth.bearer(), { seed: String(seed || '').trim().slice(0, 20000) }, { timeout: 30000 })
+}
+
+async function history(slug) {
+  const value = String(slug || '').trim()
+  return http.get(HISTORY_API + '?slug=' + encodeURIComponent(value), auth.bearer(), { timeout: 20000 })
+}
+
+async function revise(slug, instruction) {
+  return http.postJson(REVISE_API, auth.bearer(), {
+    slug: String(slug || '').trim(),
+    instruction: String(instruction || '').trim().slice(0, 4000)
+  }, { timeout: 30000 })
+}
+
+function formatThreadStamp(value) {
+  const date = new Date(Number(value) || 0)
+  if (!Number.isFinite(date.getTime())) return ''
+  const two = (part) => String(part).padStart(2, '0')
+  return (date.getMonth() + 1) + '月' + date.getDate() + '日 ' + two(date.getHours()) + ':' + two(date.getMinutes())
+}
+
+function normalizeThread(data) {
+  const body = data && typeof data === 'object' ? data : {}
+  const entries = Array.isArray(body.thread) ? body.thread : []
+  const thread = entries.map((item, index) => {
+    const entry = item && typeof item === 'object' ? item : {}
+    const ts = Number(entry.ts)
+    const status = ['running', 'done', 'failed'].includes(entry.status) ? entry.status : 'done'
+    return {
+      id: (Number.isFinite(ts) ? ts : 0) + '-' + index,
+      ts: Number.isFinite(ts) ? ts : 0,
+      stamp: formatThreadStamp(ts),
+      kind: entry.kind === 'create' ? 'create' : 'revise',
+      instruction: String(entry.instruction || ''),
+      status,
+      reply: String(entry.reply || ''),
+      error: String(entry.error || '')
+    }
+  })
+  return {
+    slug: String(body.slug || ''),
+    author: String(body.author || ''),
+    running: Boolean(body.running) || thread.some((entry) => entry.status === 'running'),
+    thread
+  }
+}
+
+function reviseMessage(statusCode, data) {
+  if (statusCode === 202) return '已提交修改，可以关掉小程序，改完后这里会留下修改说明。'
+  if (statusCode === 402) {
+    const body = data && typeof data === 'object' ? data : {}
+    const need = formatSuanli(body.need_suanli, REVISE_SUANLI)
+    const have = formatSuanli(body.suanli, 0)
+    return '算力不足：改一次要 ' + need + ' 算力，你现在有 ' + have + '。'
+  }
+  if (statusCode === 401) return '身份校验没过，请稍后重试。'
+  if (statusCode === 403) return '只有这本书的主人能修改。'
+  if (statusCode === 404) return '这本书是早期写的，还没登记主人，暂时不能在线修改。'
+  if (statusCode === 409) return '上一个修改还在进行，等它改完再提。'
+  return statusCode ? '服务器返回 ' + statusCode + '，请稍后重试。' : '没连上服务器，请检查网络后重试。'
 }
 
 function normalizeBook(item) {
@@ -120,4 +183,9 @@ function result(response) {
   }
 }
 
-module.exports = { API, SHELF, INDEX, BOOK_SUANLI, start, shelf, shelfRequestUrl, cachedShelf, normalizeIndex, readerUrl, coverUrl, shareTitle, writingContext, formatBalance, shortfall, message, result }
+module.exports = {
+  API, HISTORY_API, REVISE_API, SHELF, INDEX, BOOK_SUANLI, REVISE_SUANLI,
+  start, history, revise, shelf, shelfRequestUrl, cachedShelf, normalizeIndex,
+  normalizeThread, formatThreadStamp, reviseMessage, readerUrl, coverUrl,
+  shareTitle, writingContext, formatBalance, shortfall, message, result
+}

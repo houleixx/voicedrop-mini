@@ -13,6 +13,7 @@
     "pages/book-writing/index",
     "pages/book-shelf/index",
     "pages/book-reader/index",
+    "pages/book-revise/index",
     "pages/web/index",
     "pages/blocked-users/index",
     "pages/audio-consent/index",

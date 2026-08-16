@@ -5,7 +5,7 @@ function decoded(value) {
 }
 
 Page({
-  data: { url: '', loading: false, title: '', author: '', cover: false },
+  data: { url: '', loading: false, title: '', author: '', cover: false, moreTop: 92, moreRight: 12 },
   onLoad(options) {
     const slug = String(options.slug || '').replace(/[^A-Za-z0-9_-]/g, '')
     const book = {
@@ -17,7 +17,15 @@ Page({
     }
     this.book = book
     this.bookUrl = books.readerUrl(book)
-    this.setData({ title: book.main, author: book.author, cover: book.cover })
+    let moreTop = 92
+    let moreRight = 12
+    try {
+      const system = wx.getSystemInfoSync()
+      const menu = wx.getMenuButtonBoundingClientRect()
+      if (menu && menu.bottom) moreTop = menu.bottom + 8
+      if (system && system.windowWidth && menu && menu.right) moreRight = system.windowWidth - menu.right
+    } catch (_) {}
+    this.setData({ title: book.main, author: book.author, cover: book.cover, moreTop, moreRight })
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
   },
   onReady() {
@@ -31,6 +39,29 @@ Page({
   onWebError() {
     this.finishLoading()
     wx.showToast({ title: '书籍加载失败', icon: 'none' })
+  },
+  onShow() {
+    if (!this._reloadAfterRevise) return
+    this._reloadAfterRevise = false
+    const separator = this.bookUrl.includes('?') ? '&' : '?'
+    this.setData({ url: this.bookUrl + separator + '_refresh=' + Date.now(), loading: true })
+  },
+  openActions() {
+    wx.showActionSheet({
+      itemList: ['修改这本书'],
+      success: (result) => {
+        if (result.tapIndex === 0) this.openRevise()
+      }
+    })
+  },
+  openRevise() {
+    const book = this.book || {}
+    this._reloadAfterRevise = true
+    wx.navigateTo({
+      url: '/pages/book-revise/index?slug=' + encodeURIComponent(book.slug || '') +
+        '&title=' + encodeURIComponent(book.main || book.title || ''),
+      fail: () => { this._reloadAfterRevise = false }
+    })
   },
   sharePayload() {
     const book = this.book || {}
@@ -47,6 +78,7 @@ Page({
     return { title: payload.title, query: payload.path.split('?')[1] || '', imageUrl: payload.imageUrl }
   },
   onUnload() {
+    this._reloadAfterRevise = false
     this.bookUrl = ''
     this.book = null
   }

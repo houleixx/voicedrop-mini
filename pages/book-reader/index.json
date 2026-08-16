@@ -1,1 +1,5 @@
-{ "navigationStyle": "custom" }
+{
+  "navigationStyle": "custom",
+  "navigationBarBackgroundColor": "#fcf6eb",
+  "backgroundColor": "#fcf6eb"
+}

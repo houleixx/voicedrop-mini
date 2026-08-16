@@ -1,0 +1,37 @@
+<view class="screen revise-page">
+  <page-header title="修改《{{title}}》" />
+  <view wx:if="{{denied}}" class="denied-state">
+    <view class="denied-icon ri-lock-line"></view>
+    <text class="denied-copy">{{denied}}</text>
+  </view>
+  <block wx:else>
+    <scroll-view class="thread-scroll" scroll-y enhanced bounces scroll-into-view="{{scrollIntoView}}">
+      <view class="thread-body">
+        <view wx:if="{{loading && !thread.length}}" class="thread-state">正在读取修改记录…</view>
+        <view class="thread-entry" wx:for="{{thread}}" wx:key="id">
+          <view class="instruction-side">
+            <text class="entry-label">{{item.kind === 'create' ? '开书种子' : '修改指令'}}</text>
+            <text class="instruction-bubble">{{item.instruction}}</text>
+            <text class="entry-stamp">{{item.stamp}}</text>
+          </view>
+          <view wx:if="{{item.status === 'running'}}" class="reply-bubble running-reply">
+            <view class="reply-spinner"></view>
+            <text>{{item.kind === 'create' ? '正在写这本书…' : '正在修改…（改完这里会出现修改说明）'}}</text>
+          </view>
+          <text wx:elif="{{item.status === 'failed'}}" class="reply-bubble failed-reply">{{item.kind === 'create' ? '这本书当时没写完就中断了' : '这次修改没有完成，可以再试一次'}}</text>
+          <text wx:elif="{{item.reply}}" class="reply-bubble">{{item.reply}}</text>
+          <text wx:else class="reply-fallback">{{item.kind === 'create' ? '书写好了，上架在「写书」书架。' : '改好了。'}}</text>
+        </view>
+        <text wx:if="{{error}}" class="thread-error">{{error}}</text>
+        <view id="thread-bottom" class="thread-bottom"></view>
+      </view>
+    </scroll-view>
+    <view class="revise-input-bar">
+      <view class="input-row">
+        <textarea class="revise-input" value="{{input}}" maxlength="4000" auto-height bindinput="onInput" disabled="{{sending || running}}" placeholder="想怎么改这本书？比如：第三章开头太啰嗦，删一半" placeholder-class="revise-placeholder" />
+        <button class="send-button ri-arrow-up-line {{canSend ? '' : 'disabled'}}" bindtap="send" disabled="{{!canSend}}" aria-label="发送修改指令"></button>
+      </view>
+      <text class="input-hint">{{running ? '有一个修改正在进行，等它改完再提下一个' : '每次修改 40 算力 · 提交后可以关掉，改完这里会留下修改说明'}}</text>
+    </view>
+  </block>
+</view>
