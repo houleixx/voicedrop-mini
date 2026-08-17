@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "",
   "navigationStyle": "custom",
+  "disableScroll": true,
   "usingComponents": {
     "audio-consent-dialog": "/components/audio-consent-dialog/index"
   }

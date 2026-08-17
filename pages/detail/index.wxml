@@ -4,7 +4,7 @@
       <button class="inline-edit-action cancel" disabled="{{inlineEditSaving}}" bindtap="cancelInlineEdit">取消</button>
       <button class="inline-edit-action done" style="right: {{capsuleSafeRightPx}}px;" loading="{{inlineEditSaving}}" disabled="{{inlineEditSaving}}" bindtap="saveInlineEdit">完成</button>
     </view>
-    <view wx:else class="tool-button back-button" bindtap="goBack" aria-label="返回">
+    <view wx:else class="tool-button back-button" bindtap="goBack" role="button" aria-label="返回">
       <text class="back-icon ri-arrow-left-s-line"></text>
     </view>
     <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;" wx:if="{{!inlineEditing}}">
@@ -32,15 +32,17 @@
     </view>
   </view>
 
-  <view wx:if="{{loading}}" class="loading-state">
-    <view class="loading-spinner" aria-hidden="true"></view>
-    <text>加载中...</text>
-  </view>
-  <view wx:elif="{{!current}}" class="empty card">
-    <text class="empty-title">文章还没生成</text>
-    <text class="empty-sub">稍后刷新，或回到列表查看处理状态。</text>
-  </view>
-  <view wx:else class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight}}px + 54rpx);">
+  <scroll-view class="detail-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="detail-scroll-content">
+      <view wx:if="{{loading}}" class="loading-state">
+        <view class="loading-spinner" aria-hidden="true"></view>
+        <text>加载中...</text>
+      </view>
+      <view wx:elif="{{!current}}" class="empty card">
+        <text class="empty-title">文章还没生成</text>
+        <text class="empty-sub">稍后刷新，或回到列表查看处理状态。</text>
+      </view>
+      <view wx:else class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight}}px + 54rpx);">
     <view class="article-head">
       <text class="article-title">{{current.title}}</text>
       <view class="article-meta">
@@ -112,7 +114,9 @@
       </view>
       <view wx:if="{{!history.versions || history.versions.length === 0}}" class="version-empty">暂无历史版本</view>
     </view>
-  </view>
+      </view>
+    </view>
+  </scroll-view>
 
   <view class="more-menu-layer" wx:if="{{moreMenuOpen}}" bindtap="closeMoreMenu">
     <view class="more-menu-card" style="top: {{toolbarTop + toolbarHeight + 20}}px;" catchtap="noop">

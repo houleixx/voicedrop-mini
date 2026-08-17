@@ -1,6 +1,6 @@
 <view class="screen community-detail-screen {{post.isPrompt ? 'prompt-detail-screen' : ''}}">
   <view class="detail-toolbar" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx;">
-    <view class="tool-button back-button" bindtap="goBack" aria-label="返回">
+    <view class="tool-button back-button" bindtap="goBack" role="button" aria-label="返回">
       <text class="back-icon ri-arrow-left-s-line"></text>
     </view>
     <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;">
@@ -16,7 +16,9 @@
     </view>
   </view>
 
-  <view class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight}}px + 54rpx);">
+  <scroll-view class="detail-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="detail-scroll-content">
+      <view class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight}}px + 54rpx);">
     <view class="article-head">
       <text class="article-title">{{article.title || post.title || '社区文章'}}</text>
       <view class="article-meta">
@@ -112,7 +114,9 @@
         </view>
       </block>
     </view>
-  </view>
+      </view>
+    </view>
+  </scroll-view>
 
   <view class="more-menu-layer" wx:if="{{moreMenuOpen}}" bindtap="closeMoreMenu">
     <view class="more-menu-card" style="top: {{toolbarTop + toolbarHeight + 20}}px;" catchtap="noop">

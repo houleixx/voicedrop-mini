@@ -1,5 +1,22 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('fs')
+const path = require('path')
+
+const root = path.join(__dirname, '..')
+
+test('VD detail keeps its standard back tap outside a dedicated vertical scroller', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/community-detail/index.wxml'), 'utf8')
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/community-detail/index.json'), 'utf8'))
+  const back = wxml.match(/<view[^>]*class="tool-button back-button"[^>]*>/)[0]
+  const toolbarEnd = wxml.indexOf('</view>', wxml.indexOf('class="detail-toolbar"'))
+  const scroller = wxml.indexOf('<scroll-view class="detail-scroll"')
+
+  assert.match(back, /bindtap="goBack"/)
+  assert.equal(config.disableScroll, true)
+  assert.ok(scroller > toolbarEnd)
+  assert.match(wxml.slice(scroller), /<scroll-view class="detail-scroll" scroll-y enhanced show-scrollbar="\{\{false\}\}">/)
+})
 
 function freshCommunityDetailPage(routes, currentCommunityPost, sharedStorage) {
   let page
@@ -360,7 +377,7 @@ test('community article detail shares the list gutter and audio-detail reading r
 
   assert.match(wxml, /padding-top: calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 54rpx\)/)
   assert.doesNotMatch(wxml, /padding-top: 115px/)
-  assert.match(wxss, /\.community-detail-screen\s*\{[^}]*padding:\s*0 32rpx 72rpx;/s)
+  assert.match(wxss, /\.detail-scroll-content\s*\{[^}]*padding:\s*0 32rpx 72rpx;/s)
   assert.match(wxss, /\.detail-toolbar\s*\{[^}]*padding:\s*0 15rpx 0 32rpx;/s)
   assert.match(wxss, /\.article-head\s*\{[^}]*padding:\s*0 0 20rpx;/s)
   assert.match(wxss, /\.article,\s*\.empty\s*\{[^}]*padding:\s*0;/s)

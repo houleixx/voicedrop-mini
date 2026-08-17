@@ -5,6 +5,19 @@ const path = require('path')
 
 const root = path.join(__dirname, '..')
 
+test('audio detail keeps its standard back tap outside a dedicated vertical scroller', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/detail/index.json'), 'utf8'))
+  const back = wxml.match(/<view[^>]*class="tool-button back-button"[^>]*>/)[0]
+  const toolbarEnd = wxml.indexOf('</view>', wxml.indexOf('class="detail-toolbar"'))
+  const scroller = wxml.indexOf('<scroll-view class="detail-scroll"')
+
+  assert.match(back, /bindtap="goBack"/)
+  assert.equal(config.disableScroll, true)
+  assert.ok(scroller > toolbarEnd)
+  assert.match(wxml.slice(scroller), /<scroll-view class="detail-scroll" scroll-y enhanced show-scrollbar="\{\{false\}\}">/)
+})
+
 test('audio detail loading state shows a spinner above the text', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
@@ -624,7 +637,7 @@ test('detail page keeps a compact readable rhythm and responsive safe-area toolb
   assert.doesNotMatch(wxml, /padding-top: 115px/)
   assert.match(wxml, /class="hold-edit-button \{\{holdEditState\}\}"[^>]*aria-label="\{\{holdEditButtonText\}\}"/s)
   assert.match(js, /holdEditButtonText: '按住说话，修改文章'/)
-  assert.match(css, /\.detail-screen\s*\{[^}]*padding:\s*0 32rpx 204rpx;/s)
+  assert.match(css, /\.detail-scroll-content\s*\{[^}]*padding:\s*0 32rpx 204rpx;/s)
   assert.match(css, /\.detail-toolbar\s*\{[^}]*padding-left:\s*32rpx;/s)
   assert.match(css, /\.toolbar-actions\s*\{[^}]*gap:\s*14rpx;/s)
   assert.match(css, /\.tool-button\s*\{[^}]*width:\s*72rpx;[^}]*height:\s*72rpx;/s)
