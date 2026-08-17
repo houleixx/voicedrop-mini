@@ -165,8 +165,9 @@
               </view>
               <view wx:else class="shelf-cell" data-slug="{{cell.slug}}" bindtap="openBook">
                 <view class="book-cover cloth" style="background: radial-gradient(circle at 25% 15%, rgba(255,255,255,.10), rgba(255,255,255,0) 64%), linear-gradient(145deg, {{cell.c}}, {{cell.c2}});">
-                  <image wx:if="{{cell.cover}}" class="cover-image" src="https://voicedrop.cn/books/{{cell.slug}}/cover.jpg" mode="aspectFill" />
+                  <image wx:if="{{cell.cover}}" class="cover-image" src="{{cell.coverUrl}}" mode="aspectFill" />
                   <block wx:else><text class="cover-main">{{cell.main}}</text><view class="cover-rule"></view><text wx:if="{{cell.sub}}" class="cover-sub">{{cell.sub}}</text></block>
+                  <button wx:if="{{cell.editableByAuthor}}" class="book-revise" hover-class="book-revise-active" data-slug="{{cell.slug}}" catchtap="reviseBook" aria-label="修改{{cell.main}}"><text class="ri-edit-line"></text></button>
                 </view>
                 <view class="book-caption-stack"><text class="book-caption">{{cell.main}}</text><text class="book-meta">{{cell.chapters ? cell.chapters + ' 章' : (cell.sub || ' ')}}</text></view>
               </view>

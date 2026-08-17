@@ -90,28 +90,39 @@ test('book reader exposes native WeChat sharing with author and cover', () => {
     ['shareAppMessage', 'shareTimeline'])
 })
 
-test('book reader opens the revise conversation and refreshes the web book on return', () => {
-  const { page, calls } = loadReaderPage()
-  page.onLoad({ slug: 'sample-book', title: encodeURIComponent('一本书'), main: encodeURIComponent('主标题') })
-  page.openActions()
-  const sheet = calls.find(([name]) => name === 'showActionSheet')[1]
-  assert.deepEqual(sheet.itemList, ['修改这本书'])
-  sheet.success({ tapIndex: 0 })
-  const route = calls.find(([name]) => name === 'navigateTo')[1].url
-  assert.match(route, /^\/pages\/book-revise\/index\?slug=sample-book&title=/)
+test('book reader shares the current in-book chapter and versioned cover', () => {
+  const { page } = loadReaderPage()
+  page.onLoad({ slug: 'sample-book', title: encodeURIComponent('一本书'), author: encodeURIComponent('作者'), cover: '1', coverAt: '456' })
+  page.onWebLoad({ detail: { src: 'https://voicedrop.cn/books/sample-book/chapter-2.html' } })
 
-  page.onShow()
-  assert.match(page.data.url, /^https:\/\/voicedrop\.cn\/books\/sample-book\/\?_refresh=\d+$/)
-  assert.equal(page.data.loading, true)
+  const payload = page.onShareAppMessage()
+
+  assert.match(payload.path, /page=https%3A%2F%2Fvoicedrop\.cn%2Fbooks%2Fsample-book%2Fchapter-2\.html/)
+  assert.equal(payload.imageUrl, 'https://voicedrop.cn/books/sample-book/cover.jpg?v=456')
 })
 
-test('book reader native controls are siblings after web-view so they remain visible', () => {
-  const markup = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxml'), 'utf8')
-  const webViewClose = markup.indexOf('</web-view>')
-  const reviseControl = markup.indexOf('class="reader-more"')
-  assert.ok(webViewClose >= 0)
-  assert.ok(reviseControl > webViewClose,
-    'reader-more nested inside web-view is swallowed by the native component')
+test('book shelf opens the revise conversation only for an author match', () => {
+  const shelf = loadShelfPage([{ slug: 'sample-book', title: '一本书', main: '主标题', editableByAuthor: true }])
+
+  shelf.page.reviseBook({ currentTarget: { dataset: { index: 0 } } })
+
+  const route = shelf.calls.find(([name]) => name === 'navigateTo')[1].url
+  assert.match(route, /^\/pages\/book-revise\/index\?slug=sample-book&title=/)
+
+  shelf.page.data.items[0].editableByAuthor = false
+  shelf.page.reviseBook({ currentTarget: { dataset: { index: 0 } } })
+  assert.equal(shelf.calls.filter(([name]) => name === 'navigateTo').length, 1)
+})
+
+test('book shelf owns the revise entry because web-view cannot host native overlays reliably', () => {
+  const readerMarkup = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxml'), 'utf8')
+  const shelfMarkup = fs.readFileSync(path.join(__dirname, '../pages/book-shelf/index.wxml'), 'utf8')
+  const recordingsMarkup = fs.readFileSync(path.join(__dirname, '../pages/recordings/index.wxml'), 'utf8')
+
+  assert.doesNotMatch(readerMarkup, /reader-more|openActions/)
+  assert.match(shelfMarkup, /wx:if="\{\{item\.editableByAuthor\}\}"[^>]*class="book-revise"[^>]*catchtap="reviseBook"/)
+  assert.match(shelfMarkup, /class="book-revise"[^>]*>[\s\S]*?class="ri-edit-line"/)
+  assert.match(recordingsMarkup, /wx:if="\{\{cell\.editableByAuthor\}\}"[^>]*class="book-revise"[^>]*catchtap="reviseBook"/)
 })
 
 test('opening a shelf book preserves its full title for WeChat sharing', () => {

@@ -76,13 +76,16 @@ function reviseMessage(statusCode, data) {
 
 function normalizeBook(item) {
   const book = item && typeof item === 'object' ? item : {}
-  return {
+  const normalized = {
     slug: String(book.slug || ''), title: String(book.title || ''),
     main: String(book.main || book.title || '未命名'), sub: String(book.sub || ''),
     c: String(book.c || '#8b6652'), c2: String(book.c2 || '#4b342c'),
-    cover: Boolean(book.cover), chapters: Math.max(0, Number(book.chapters) || 0),
+    cover: Boolean(book.cover), coverAt: Math.max(0, Number(book.coverAt) || 0),
+    chapters: Math.max(0, Number(book.chapters) || 0),
     author: String(book.author || ''), createdAt: Math.max(0, Number(book.createdAt) || 0)
   }
+  normalized.coverUrl = normalized.cover ? coverUrl(normalized) : ''
+  return normalized
 }
 
 function readerUrl(book) {
@@ -90,7 +93,14 @@ function readerUrl(book) {
 }
 
 function coverUrl(book) {
-  return `${readerUrl(book)}cover.jpg`
+  const version = Math.max(0, Number(book && book.coverAt) || 0)
+  return `${readerUrl(book)}cover.jpg${version ? `?v=${encodeURIComponent(String(version))}` : ''}`
+}
+
+function readerPageUrl(book, value) {
+  const root = readerUrl(book)
+  const candidate = String(value || '')
+  return candidate.startsWith(root) ? candidate : root
 }
 
 function shareTitle(book) {
@@ -102,6 +112,13 @@ function shareTitle(book) {
 function normalizeIndex(data) {
   return (data && Array.isArray(data.books) ? data.books : [])
     .map(normalizeBook).filter((book) => book.slug)
+}
+
+function markEditableByAuthor(items, author) {
+  const currentAuthor = String(author || '').trim()
+  return (items || []).map((book) => Object.assign({}, book, {
+    editableByAuthor: Boolean(currentAuthor) && String(book && book.author || '').trim() === currentAuthor
+  }))
 }
 
 function cachedShelf() {
@@ -186,6 +203,7 @@ function result(response) {
 module.exports = {
   API, HISTORY_API, REVISE_API, SHELF, INDEX, BOOK_SUANLI, REVISE_SUANLI,
   start, history, revise, shelf, shelfRequestUrl, cachedShelf, normalizeIndex,
+  markEditableByAuthor,
   normalizeThread, formatThreadStamp, reviseMessage, readerUrl, coverUrl,
-  shareTitle, writingContext, formatBalance, shortfall, message, result
+  shareTitle, readerPageUrl, writingContext, formatBalance, shortfall, message, result
 }

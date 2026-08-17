@@ -16,29 +16,6 @@
   background: #fcf6eb;
 }
 
-.reader-more {
-  position: fixed;
-  z-index: 20;
-  display: flex;
-  width: 76rpx;
-  height: 76rpx;
-  align-items: center;
-  justify-content: center;
-  border: 1rpx solid #e7ded2;
-  border-radius: 18rpx;
-  background: rgba(255, 253, 249, 0.96);
-  box-shadow: 0 6rpx 18rpx rgba(65, 52, 41, 0.14);
-}
-
-.reader-more-dots {
-  color: #756d63;
-  background: transparent;
-  font-size: 26rpx;
-  font-weight: 700;
-  letter-spacing: 2rpx;
-  line-height: 1;
-}
-
 .reader-loading-card {
   display: flex;
   width: 220rpx;

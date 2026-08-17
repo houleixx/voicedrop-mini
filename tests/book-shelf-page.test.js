@@ -10,9 +10,13 @@ function deferred() {
 function loadShelfPage(shelf, cachedShelf = () => [{ slug: 'cached' }]) {
   let definition
   const booksPath = require.resolve('../services/books')
+  const settingsPath = require.resolve('../services/settings')
   const pagePath = require.resolve('../pages/book-shelf/index.js')
   const originalBooks = require.cache[booksPath]
-  require.cache[booksPath] = { exports: { cachedShelf, shelf } }
+  const originalSettings = require.cache[settingsPath]
+  const markEditableByAuthor = require('../services/books').markEditableByAuthor
+  require.cache[booksPath] = { exports: { cachedShelf, shelf, markEditableByAuthor } }
+  require.cache[settingsPath] = { exports: { loadStyle: async () => ({ name: '' }) } }
   global.Page = (page) => { definition = page }
   delete require.cache[pagePath]
   require(pagePath)
@@ -20,6 +24,8 @@ function loadShelfPage(shelf, cachedShelf = () => [{ slug: 'cached' }]) {
   delete require.cache[pagePath]
   if (originalBooks) require.cache[booksPath] = originalBooks
   else delete require.cache[booksPath]
+  if (originalSettings) require.cache[settingsPath] = originalSettings
+  else delete require.cache[settingsPath]
 
   const context = {
     ...definition,

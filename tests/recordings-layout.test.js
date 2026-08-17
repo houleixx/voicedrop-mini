@@ -824,6 +824,42 @@ test('books supports direct home-tab entry and renders inside the recordings pag
   ])
 })
 
+test('books keep edit buttons visible while refreshing the same account profile', async () => {
+  const settings = require('../services/settings')
+  const auth = require('../services/auth')
+  const originalLoadStyle = settings.loadStyle
+  const originalBearer = auth.bearer
+  let resolveProfile
+  settings.loadStyle = () => new Promise((resolve) => { resolveProfile = resolve })
+  auth.bearer = () => 'same-account'
+
+  try {
+    const { page, helpers } = freshRecordingsPage()
+    const items = [{ slug: 'mine', author: 'Holly', editableByAuthor: true }]
+    const ctx = Object.assign({}, page, {
+      data: Object.assign({}, page.data, {
+        bookProfileAuthor: 'Holly',
+        bookItems: items,
+        bookRows: helpers.bookRowsFor(items)
+      }),
+      _bookProfileAuthorLoaded: true,
+      _bookProfileAuthorBearer: 'same-account',
+      setData(update) { Object.assign(this.data, update) }
+    })
+
+    const refreshing = page.loadBookProfileAuthor.call(ctx, { force: true })
+    assert.equal(ctx.data.bookProfileAuthor, 'Holly')
+    assert.equal(ctx.data.bookItems[0].editableByAuthor, true)
+
+    resolveProfile({ name: 'Holly' })
+    await refreshing
+    assert.equal(ctx.data.bookItems[0].editableByAuthor, true)
+  } finally {
+    settings.loadStyle = originalLoadStyle
+    auth.bearer = originalBearer
+  }
+})
+
 test('community restores a cached snapshot before starting its silent refresh', () => {
   const community = require('../services/community')
   const originalCachedFeed = community.cachedFeed

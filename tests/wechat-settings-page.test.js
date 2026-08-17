@@ -99,7 +99,7 @@ test('wechat settings replaces AppID and Secret form with authorization actions'
   assert.match(wxml, /电脑打开/)
   assert.match(wxml, /手机微信扫码/)
   assert.match(wxml, /手机打开/)
-  assert.match(wxml, /截图二维码/)
+  assert.match(wxml, /对页面进行截图/)
   assert.match(wxml, /微信“扫一扫”/)
   assert.match(wxss, /\.method-options\s*\{[^}]*flex-direction:\s*column;/)
   assert.match(wxss, /\.steps-card\s*\{[^}]*margin:\s*34rpx -8rpx 0;[^}]*border:\s*2rpx solid #ece3d5;/)

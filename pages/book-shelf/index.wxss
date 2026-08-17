@@ -1,3 +1,5 @@
+@import '../../styles/remixicon.wxss';
+
 .shelf-page { height: 100vh; background: #faf6ef; }
 .shelf-scroll { position: fixed; inset: 198rpx 0 0; box-sizing: border-box; }
 .shelf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 34rpx 28rpx; padding: 24rpx 38rpx 80rpx; }
@@ -8,6 +10,9 @@
 .write-plus { display:flex; width:76rpx; height:76rpx; align-items:center; justify-content:center; border-radius:50%; color:white; background:#d64a36; font-size:54rpx; font-weight:400; }
 .cloth { display:flex; box-sizing:border-box; flex-direction:column; align-items:center; justify-content:center; padding:26rpx 22rpx; color:#fff8e9; text-align:center; }
 .cover-image { position:absolute; inset:0; width:100%; height:100%; }
+.book-revise { position:absolute; z-index:3; top:8rpx; right:8rpx; display:flex; width:58rpx!important; height:58rpx!important; margin:0!important; padding:0!important; align-items:center; justify-content:center; border:2rpx solid rgba(117,109,99,.42); border-radius:50%; background:rgba(255,253,249,.96); box-shadow:0 5rpx 14rpx rgba(45,34,25,.32); color:#544c44; font-size:28rpx; line-height:58rpx!important; transition:opacity .12s ease,transform .12s ease; }
+.book-revise::after { border:0; }
+.book-revise-active { opacity:.82; transform:scale(.94); }
 .cover-main { font-family: serif; font-size:37rpx; font-weight:700; line-height:1.25; }
 .cover-rule { width:48rpx; height:2rpx; margin:20rpx 0; background:rgba(255,255,255,.7); }
 .cover-sub { font-family: serif; font-size:23rpx; line-height:1.4; }

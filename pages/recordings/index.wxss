@@ -44,6 +44,9 @@
 .write-label { color:#6f685d; font-size:30rpx; font-weight:600; letter-spacing:2rpx; line-height:38rpx; }
 .cloth { display:flex; box-sizing:border-box; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:52rpx 32rpx 30rpx 48rpx; color:#f7f1df; text-align:left; box-shadow:0 14rpx 16rpx rgba(60,45,30,.35),0 4rpx 4rpx rgba(60,45,30,.20); }
 .cover-image { position:absolute; z-index:1; inset:0; width:100%; height:100%; }
+.book-revise { position:absolute; z-index:3; top:8rpx; right:8rpx; display:flex; width:58rpx!important; height:58rpx!important; margin:0!important; padding:0!important; align-items:center; justify-content:center; border:2rpx solid rgba(117,109,99,.42); border-radius:50%; background:rgba(255,253,249,.96); box-shadow:0 5rpx 14rpx rgba(45,34,25,.32); color:#544c44; font-size:28rpx; line-height:58rpx!important; transition:opacity .12s ease,transform .12s ease; }
+.book-revise::after { border:0; }
+.book-revise-active { opacity:.82; transform:scale(.94); }
 .cover-main { position:relative; z-index:1; font-family:"Songti SC","STSong",serif; color:#f7f1df; font-size:40rpx; font-weight:700; letter-spacing:6rpx; line-height:1.4; text-shadow:0 2rpx 3rpx rgba(0,0,0,.35); }
 .cover-rule { position:relative; z-index:1; width:52rpx; height:2rpx; margin:18rpx 0; background:rgba(247,241,223,.55); }
 .cover-sub { position:relative; z-index:1; font-family:"Songti SC","STSong",serif; color:rgba(247,241,223,.72); font-size:23rpx; line-height:1.5; }

@@ -124,6 +124,10 @@
   background: #faf6ef;
 }
 
+.revise-input-bar.keyboard-open {
+  padding-bottom: 22rpx;
+}
+
 .input-row {
   display: flex;
   align-items: flex-end;
@@ -133,7 +137,7 @@
 .revise-input {
   box-sizing: border-box;
   width: auto;
-  min-height: 82rpx;
+  min-height: 112rpx;
   max-height: 220rpx;
   flex: 1;
   padding: 18rpx 22rpx;

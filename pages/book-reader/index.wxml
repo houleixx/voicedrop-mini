@@ -1,7 +1,4 @@
 <web-view wx:if="{{url}}" src="{{url}}" bindload="onWebLoad" binderror="onWebError"></web-view>
-<cover-view class="reader-more" style="top: {{moreTop}}px; right: {{moreRight}}px;" catchtap="openActions" aria-label="更多">
-  <cover-view class="reader-more-dots">•••</cover-view>
-</cover-view>
 <cover-view wx:if="{{loading}}" class="reader-loading">
   <cover-view class="reader-loading-card">
     <cover-view class="reader-loading-spinner"></cover-view>

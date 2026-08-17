@@ -9,6 +9,7 @@ const libraryCommand = require('../../services/library-command')
 const asrDictation = require('../../services/asr-dictation')
 const community = require('../../services/community')
 const books = require('../../services/books')
+const settings = require('../../services/settings')
 const blockStore = require('../../utils/block-store')
 const pendingReplies = require('../../utils/pending-replies')
 const prefs = require('../../utils/prefs')
@@ -87,6 +88,7 @@ Page({
     communityLoaded: false,
     bookItems: [],
     bookRows: bookRowsFor([]),
+    bookProfileAuthor: '',
     booksLoading: false,
     booksError: '',
     booksLoaded: false,
@@ -124,6 +126,7 @@ Page({
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
     if (this.data.activeTab === 'books') {
+      this.loadBookProfileAuthor()
       const restored = this.restoreCachedBooks()
       this.loadBooks(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
@@ -196,6 +199,7 @@ Page({
       }
     }
     if (this.data.activeTab === 'books') {
+      this.loadBookProfileAuthor({ force: true })
       this.loadBooks({ silent: true, keepDataOnError: true })
     }
     const redraw = resumeRefresh.shouldRedrawOnResume(false, this.topLevelUiRendered)
@@ -322,6 +326,7 @@ Page({
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
     if (this.data.activeTab === 'books') {
+      this.loadBookProfileAuthor()
       const restored = this.data.booksLoaded || this.restoreCachedBooks()
       this.loadBooks(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
@@ -356,6 +361,7 @@ Page({
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
     if (activeTab === 'books') {
+      this.loadBookProfileAuthor()
       const restored = this.data.booksLoaded || this.restoreCachedBooks()
       this.loadBooks(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
@@ -375,8 +381,31 @@ Page({
   restoreCachedBooks() {
     const items = books.cachedShelf()
     if (!items.length) return false
-    this.setData({ bookItems: items, bookRows: bookRowsFor(items), booksLoading: false, booksError: '', booksLoaded: true })
+    const bookItems = books.markEditableByAuthor(items, this.data.bookProfileAuthor)
+    this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksLoading: false, booksError: '', booksLoaded: true })
     return true
+  },
+
+  async loadBookProfileAuthor(options) {
+    let bearer = ''
+    try { bearer = auth.bearer() } catch (_) { return }
+    const sameAccount = this._bookProfileAuthorLoaded && this._bookProfileAuthorBearer === bearer
+    if (sameAccount && !(options && options.force)) return
+    const requestId = (this._bookProfileAuthorRequestId || 0) + 1
+    this._bookProfileAuthorRequestId = requestId
+    if (!sameAccount) {
+      const hiddenItems = books.markEditableByAuthor(this.data.bookItems, '')
+      this.setData({ bookProfileAuthor: '', bookItems: hiddenItems, bookRows: bookRowsFor(hiddenItems) })
+    }
+    try {
+      const profile = await settings.loadStyle()
+      if (this._pageUnloaded || this._bookProfileAuthorRequestId !== requestId) return
+      const bookProfileAuthor = String(profile && profile.name || '').trim()
+      const bookItems = books.markEditableByAuthor(this.data.bookItems, bookProfileAuthor)
+      this._bookProfileAuthorLoaded = true
+      this._bookProfileAuthorBearer = bearer
+      this.setData({ bookProfileAuthor, bookItems, bookRows: bookRowsFor(bookItems) })
+    } catch (_) {}
   },
 
   async loadBooks(options) {
@@ -387,8 +416,9 @@ Page({
     this._bookLoadRequestId = requestId
     if (!silent) this.setData({ booksLoading: true, booksError: '' })
     try {
-      const bookItems = await books.shelf({ forceRefresh })
+      const items = await books.shelf({ forceRefresh })
       if (this._pageUnloaded || this._bookLoadRequestId !== requestId) return true
+      const bookItems = books.markEditableByAuthor(items, this.data.bookProfileAuthor)
       this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksError: '', booksLoaded: true })
       return true
     } catch (_) {
@@ -408,11 +438,20 @@ Page({
     wx.navigateTo({ url: '/pages/book-writing/index' })
   },
 
+  reviseBook(event) {
+    const slug = event.currentTarget.dataset.slug
+    const book = this.data.bookItems.find((item) => item.slug === slug)
+    if (!book || !book.editableByAuthor) return
+    wx.navigateTo({
+      url: `/pages/book-revise/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main || book.title || '')}`
+    })
+  },
+
   openBook(event) {
     const slug = event.currentTarget.dataset.slug
     const book = this.data.bookItems.find((item) => item.slug === slug)
     if (!book) return
-    wx.navigateTo({ url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author || '')}&cover=${book.cover ? '1' : '0'}` })
+    wx.navigateTo({ url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author || '')}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}` })
   },
 
   refreshFromUser() {

@@ -155,10 +155,28 @@ test('book revise page turns owner and legacy-book failures into blocking states
 test('book revise page is registered and exposes the 40-suanli conversation UI', () => {
   const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
   const markup = fs.readFileSync(path.join(root, 'pages/book-revise/index.wxml'), 'utf8')
+  const styles = fs.readFileSync(path.join(root, 'pages/book-revise/index.wxss'), 'utf8')
   const source = fs.readFileSync(path.join(root, 'pages/book-revise/index.js'), 'utf8')
   assert.ok(app.pages.includes('pages/book-revise/index'))
   assert.match(markup, /每次修改 40 算力/)
   assert.match(markup, /开书种子/)
   assert.match(markup, /修改说明/)
+  assert.match(styles, /\.revise-input\s*\{[\s\S]*?min-height:\s*112rpx;/)
   assert.match(source, /const POLL_MS = 6000/)
+})
+
+test('book revise composer follows the keyboard instead of being covered', () => {
+  const markup = fs.readFileSync(path.join(root, 'pages/book-revise/index.wxml'), 'utf8')
+  const styles = fs.readFileSync(path.join(root, 'pages/book-revise/index.wxss'), 'utf8')
+  const page = loadRevisePage()
+  page.setData = function setData(update) { Object.assign(this.data, update) }
+
+  assert.match(markup, /class="revise-input-bar \{\{keyboardHeight \? 'keyboard-open' : ''\}\}"[^>]*style="bottom: \{\{keyboardHeight\}\}px;"/)
+  assert.match(markup, /<textarea[^>]*bindkeyboardheightchange="onKeyboardHeightChange"[^>]*adjust-position="\{\{false\}\}"/)
+  assert.match(styles, /\.revise-input-bar\.keyboard-open\s*\{[\s\S]*?padding-bottom:\s*22rpx;/)
+
+  page.onKeyboardHeightChange({ detail: { height: 318 } })
+  assert.equal(page.data.keyboardHeight, 318)
+  page.onKeyboardHeightChange({ detail: { height: -1 } })
+  assert.equal(page.data.keyboardHeight, 0)
 })

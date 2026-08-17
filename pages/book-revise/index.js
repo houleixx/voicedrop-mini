@@ -9,7 +9,7 @@ function decoded(value) {
 Page({
   data: {
     slug: '', title: '', thread: [], loading: true, denied: '', error: '', input: '',
-    sending: false, running: false, canSend: false, scrollIntoView: ''
+    sending: false, running: false, canSend: false, scrollIntoView: '', keyboardHeight: 0
   },
 
   onLoad(options) {
@@ -89,6 +89,11 @@ Page({
   onInput(event) {
     this.setData({ input: String(event.detail.value || '').slice(0, 4000), error: '' })
     this.updateSubmit()
+  },
+
+  onKeyboardHeightChange(event) {
+    const height = Number(event && event.detail && event.detail.height) || 0
+    this.setData({ keyboardHeight: Math.max(0, height) })
   },
 
   updateSubmit() {

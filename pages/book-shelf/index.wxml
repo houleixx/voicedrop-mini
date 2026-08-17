@@ -10,8 +10,9 @@
       </view>
       <view class="shelf-cell" wx:for="{{items}}" wx:key="slug" data-index="{{index}}" bindtap="openBook">
         <view class="book-cover cloth" style="background: linear-gradient(145deg, {{item.c}}, {{item.c2}});">
-          <image wx:if="{{item.cover}}" class="cover-image" src="https://voicedrop.cn/books/{{item.slug}}/cover.jpg" mode="aspectFill" />
+          <image wx:if="{{item.cover}}" class="cover-image" src="{{item.coverUrl}}" mode="aspectFill" />
           <block wx:else><text class="cover-main">{{item.main}}</text><view class="cover-rule"></view><text class="cover-sub">{{item.sub}}</text></block>
+          <button wx:if="{{item.editableByAuthor}}" class="book-revise" hover-class="book-revise-active" data-index="{{index}}" catchtap="reviseBook" aria-label="修改{{item.main}}"><text class="ri-edit-line"></text></button>
         </view>
         <text class="book-caption">{{item.main}}</text>
         <text class="book-meta">{{item.chapters ? item.chapters + ' 章' : item.sub}}</text>

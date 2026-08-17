@@ -5,7 +5,7 @@
     <text class="denied-copy">{{denied}}</text>
   </view>
   <block wx:else>
-    <scroll-view class="thread-scroll" scroll-y enhanced bounces scroll-into-view="{{scrollIntoView}}">
+    <scroll-view class="thread-scroll" style="bottom: calc(238rpx + {{keyboardHeight}}px + env(safe-area-inset-bottom));" scroll-y enhanced bounces scroll-into-view="{{scrollIntoView}}">
       <view class="thread-body">
         <view wx:if="{{loading && !thread.length}}" class="thread-state">正在读取修改记录…</view>
         <view class="thread-entry" wx:for="{{thread}}" wx:key="id">
@@ -26,9 +26,9 @@
         <view id="thread-bottom" class="thread-bottom"></view>
       </view>
     </scroll-view>
-    <view class="revise-input-bar">
+    <view class="revise-input-bar {{keyboardHeight ? 'keyboard-open' : ''}}" style="bottom: {{keyboardHeight}}px;">
       <view class="input-row">
-        <textarea class="revise-input" value="{{input}}" maxlength="4000" auto-height bindinput="onInput" disabled="{{sending || running}}" placeholder="想怎么改这本书？比如：第三章开头太啰嗦，删一半" placeholder-class="revise-placeholder" />
+        <textarea class="revise-input" value="{{input}}" maxlength="4000" auto-height bindinput="onInput" bindkeyboardheightchange="onKeyboardHeightChange" adjust-position="{{false}}" disabled="{{sending || running}}" placeholder="想怎么改这本书？比如：第三章开头太啰嗦，删一半" placeholder-class="revise-placeholder" />
         <button class="send-button ri-arrow-up-line {{canSend ? '' : 'disabled'}}" bindtap="send" disabled="{{!canSend}}" aria-label="发送修改指令"></button>
       </view>
       <text class="input-hint">{{running ? '有一个修改正在进行，等它改完再提下一个' : '每次修改 40 算力 · 提交后可以关掉，改完这里会留下修改说明'}}</text>

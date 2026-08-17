@@ -145,14 +145,14 @@ test('public shelf follows current iOS with a native shelf and in-app reader', (
   assert.ok(app.pages.includes('pages/book-reader/index'))
   assert.equal(readerConfig.navigationStyle, 'custom')
   assert.match(readerMarkup, /bindload="onWebLoad"[^>]*binderror="onWebError"[\s\S]*class="reader-loading"/)
-  assert.match(readerSource, /onLoad\(options\)[\s\S]*this\.bookUrl = books\.readerUrl\(book\)[\s\S]*onReady\(\)/)
+  assert.match(readerSource, /onLoad\(options\)[\s\S]*this\.bookUrl = books\.readerPageUrl\(book, decoded\(options\.page\)\)[\s\S]*onReady\(\)/)
   assert.doesNotMatch(readerSource, /wx\.(?:show|hide)Loading/)
   assert.match(readerSource, /this\.setData\(\{ url: this\.bookUrl, loading: true \}\)/)
-  assert.match(readerSource, /onWebLoad\(\) \{ this\.finishLoading\(\) \}/)
+  assert.match(readerSource, /onWebLoad\(event\)[\s\S]*this\.bookUrl = books\.readerPageUrl\(this\.book, source \|\| this\.bookUrl\)[\s\S]*this\.finishLoading\(\)/)
   assert.match(readerSource, /wx\.showToast\(\{ title: '书籍加载失败', icon: 'none' \}\)/)
   const shelf = fs.readFileSync(path.join(root, 'pages/book-shelf/index.wxml'), 'utf8')
   assert.match(shelf, /写一本新书/)
-  assert.match(shelf, /cover\.jpg/)
+  assert.match(shelf, /src="\{\{item\.coverUrl\}\}"/)
 })
 
 test('restyle requests use the five minute client timeout', () => {
