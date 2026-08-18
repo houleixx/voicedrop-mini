@@ -594,6 +594,22 @@
   line-height: 1.28;
 }
 
+.ai-generated-label {
+  display: inline-flex;
+  min-height: 38rpx;
+  margin-top: 16rpx;
+  box-sizing: border-box;
+  padding: 4rpx 14rpx;
+  align-items: center;
+  border: 1rpx solid #ebc6b9;
+  border-radius: 999rpx;
+  color: #d8593b;
+  background: #f6e4dc;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .article-meta {
   display: flex;
   margin-top: 10rpx;
@@ -605,6 +621,12 @@
   gap: 8rpx;
 }
 
+.article-meta .ai-generated-label {
+  margin-top: 0;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
 .style-mark,
 .meta-chevron {
   color: #9b9388;
@@ -613,7 +635,7 @@
 .style-trigger {
   display: inline-flex;
   min-height: 40rpx;
-  margin: 0;
+  margin: 0 0 0 12rpx;
   padding: 0;
   align-items: center;
   gap: 8rpx;
@@ -624,7 +646,6 @@
   font-weight: 500;
   line-height: 1.4;
   text-align: left;
-  transform: translateX(-34rpx);
 }
 
 .style-trigger::after {

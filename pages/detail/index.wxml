@@ -52,6 +52,9 @@
           <text>{{styleLabel}}</text>
           <text class="meta-chevron">›</text>
         </button>
+        <view class="ai-generated-label" role="note" aria-label="AI生成内容">
+          <text>AI生成</text>
+        </view>
       </view>
     </view>
 

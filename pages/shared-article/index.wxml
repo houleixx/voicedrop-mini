@@ -8,6 +8,11 @@
   <view class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight}}px + 54rpx);">
     <view class="article-head" wx:if="{{!loading && !error}}">
       <text class="article-title">{{article.title}}</text>
+      <view class="ai-generated-row">
+        <view class="ai-generated-label" role="note" aria-label="AI生成内容">
+          <text>AI生成</text>
+        </view>
+      </view>
     </view>
     <view class="loading-card" wx:if="{{loading}}"><view class="loading-spinner"></view><text>加载中...</text></view>
     <view class="empty" wx:elif="{{error}}">{{error}}</view>

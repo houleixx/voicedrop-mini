@@ -149,6 +149,22 @@
   line-height: 1.28;
 }
 
+.ai-generated-label {
+  display: inline-flex;
+  min-height: 38rpx;
+  margin-top: 16rpx;
+  box-sizing: border-box;
+  padding: 4rpx 14rpx;
+  align-items: center;
+  border: 1rpx solid #ebc6b9;
+  border-radius: 999rpx;
+  color: #d8593b;
+  background: #f6e4dc;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .article-meta {
   display: flex;
   margin-top: 10px;
@@ -156,6 +172,12 @@
   gap: 16rpx;
   font-size: 26rpx;
   line-height: 1.4;
+}
+
+.article-meta .ai-generated-label {
+  margin-top: 0;
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .article-author {

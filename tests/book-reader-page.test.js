@@ -120,6 +120,7 @@ test('book shelf owns the revise entry because web-view cannot host native overl
   const recordingsMarkup = fs.readFileSync(path.join(__dirname, '../pages/recordings/index.wxml'), 'utf8')
 
   assert.doesNotMatch(readerMarkup, /reader-more|openActions/)
+  assert.doesNotMatch(readerMarkup, /ai-generated-label/)
   assert.match(shelfMarkup, /wx:if="\{\{item\.editableByAuthor\}\}"[^>]*class="book-revise"[^>]*catchtap="reviseBook"/)
   assert.match(shelfMarkup, /class="book-revise"[^>]*>[\s\S]*?class="ri-edit-line"/)
   assert.match(recordingsMarkup, /wx:if="\{\{cell\.editableByAuthor\}\}"[^>]*class="book-revise"[^>]*catchtap="reviseBook"/)
