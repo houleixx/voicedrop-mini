@@ -24,6 +24,36 @@
   gap: 36rpx;
 }
 
+.ai-generated-notice {
+  display: flex;
+  min-height: 68rpx;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 18rpx;
+  padding: 12rpx 20rpx;
+  border: 2rpx solid #ebc6b9;
+  border-radius: 18rpx;
+  background: #fff8f4;
+}
+
+.ai-generated-badge {
+  flex: 0 0 auto;
+  padding: 5rpx 14rpx;
+  border-radius: 999rpx;
+  background: #f6e4dc;
+  color: #d8593b;
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.ai-generated-copy {
+  color: #6f6259;
+  font-size: 24rpx;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
 .price-card {
   display: flex;
   min-height: 174rpx;

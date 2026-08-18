@@ -45,6 +45,29 @@
   letter-spacing: 2rpx;
 }
 
+.record-ai-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14rpx;
+  margin: 12rpx 40rpx 0;
+}
+
+.record-ai-badge {
+  flex: 0 0 auto;
+  color: #d8593b;
+  font-size: 23rpx;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.record-ai-copy {
+  color: #9b9388;
+  font-size: 22rpx;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
 /* Center content */
 .center-content {
   flex: 1;

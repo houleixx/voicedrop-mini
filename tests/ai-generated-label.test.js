@@ -58,3 +58,13 @@ test('community prompt shares are not incorrectly labelled as AI-generated artic
 
   assert.match(wxml, /class="ai-generated-label"\s+wx:if="\{\{!post\.isPrompt\}\}"/)
 })
+
+test('recording entry prominently explains that AI generates the article', () => {
+  const wxml = read('pages/record/index.wxml')
+  const wxss = read('pages/record/index.wxss')
+
+  assert.match(wxml, /class="record-ai-notice"[^>]*>[\s\S]*?>AI生成</)
+  assert.match(wxml, /录音结束后将由人工智能转写并生成文章/)
+  assert.match(wxss, /\.record-ai-notice\s*\{[^}]*display:\s*flex;/s)
+  assert.doesNotMatch(wxss, /\.record-ai-notice\s*\{[^}]*(?:border|background):/s)
+})

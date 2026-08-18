@@ -6,6 +6,10 @@
   <block wx:else>
   <scroll-view class="writing-scroll" scroll-y enhanced bounces>
     <view class="writing-body">
+      <view class="ai-generated-notice" role="note" aria-label="AI生成内容说明">
+        <text class="ai-generated-badge">AI生成</text>
+        <text class="ai-generated-copy">本功能使用人工智能生成书籍内容</text>
+      </view>
       <view class="price-card">
         <view class="price-main"><view class="price"><text class="bolt ri-flashlight-line"></text><view class="price-copy"><text class="amount">320</text><text class="price-unit">算力</text></view></view><text class="price-note">写一本书的价钱，提交时一次扣清</text></view>
         <view class="balance"><text wx:if="{{balance === null}}" class="balance-loading">加载中…</text><block wx:else><text class="balance-value {{balance < 320 ? 'short' : ''}}">{{balanceDisplay}}</text><text class="balance-label">你现在的算力</text></block></view>
@@ -23,6 +27,6 @@
       <text wx:if="{{message}}" class="feature-hint error">{{message}}</text>
     </view>
   </scroll-view>
-  <view class="writing-bottom"><button class="feature-primary" bindtap="start" disabled="{{!canSubmit}}">{{sending ? '提交中…' : (shortfall > 0 ? '算力不够 · 还差 ' + shortfall : '开始写书 · 320 算力')}}</button><text class="bottom-hint">提交后就可以关小程序 · 10–30 分钟写完，出现在「写书」书架</text></view>
+  <view class="writing-bottom"><button class="feature-primary" bindtap="start" disabled="{{!canSubmit}}">{{sending ? '提交中…' : (shortfall > 0 ? '算力不够 · 还差 ' + shortfall : '开始写书 · 320 算力')}}</button><text class="bottom-hint">AI生成 · 提交后可关闭小程序，10–30 分钟写完并出现在「写书」书架</text></view>
   </block>
 </view>

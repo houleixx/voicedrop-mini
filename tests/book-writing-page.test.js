@@ -1,5 +1,14 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+
+test('book writing page prominently discloses AI-generated content', () => {
+  const wxml = fs.readFileSync(path.join(__dirname, '../pages/book-writing/index.wxml'), 'utf8')
+  assert.match(wxml, /class="ai-generated-notice"/)
+  assert.match(wxml, />AI生成</)
+  assert.match(wxml, /本功能使用人工智能生成书籍内容/)
+})
 
 function loadWritingPage(start) {
   const events = []

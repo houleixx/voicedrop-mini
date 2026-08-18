@@ -8,6 +8,10 @@
       <text class="status-text">{{interviewActive ? 'AI 采访中' : '正在录音'}}</text>
     </view>
     <text wx:if="{{interviewActive}}" class="interview-status {{interviewState}}">{{interviewStateText}}</text>
+    <view class="record-ai-notice" role="note" aria-label="AI生成内容说明">
+      <text class="record-ai-badge">AI生成</text>
+      <text class="record-ai-copy">录音结束后将由人工智能转写并生成文章</text>
+    </view>
   </view>
 
   <!-- Center content: timer + waveform -->
