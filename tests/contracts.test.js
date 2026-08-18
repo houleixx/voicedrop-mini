@@ -6,7 +6,6 @@ const audio = require('../services/audio')
 const library = require('../services/library')
 const request = require('../services/request')
 const settings = require('../services/settings')
-const shareCollect = require('../services/share-collect')
 const article = require('../utils/article')
 const prefs = require('../utils/prefs')
 const recording = require('../utils/recording')
@@ -130,42 +129,6 @@ test('rejects recordings shorter than four seconds using RecorderManager millise
   assert.equal(recordingQuality.durationSeconds(0, 4000), 4)
   assert.equal(recordingQuality.isTooShort(3.999), true)
   assert.equal(recordingQuality.isTooShort(4), false)
-})
-
-test('creates Android-compatible style extraction task names', () => {
-  const now = new Date(2026, 6, 4, 9, 30, 0)
-  assert.match(shareCollect.styleExtractTaskName(true, now), /^VoiceDrop-2026-07-04-093000-0m0s-Sat-Morning-TaskStyleExtract\.m4a$/)
-  assert.match(shareCollect.styleExtractTaskName(false, now), /^VoiceDrop-2026-07-04-093000-0m0s-Sat-Morning-TaskStyleExtractKeep\.m4a$/)
-  assert.ok(shareCollect.silentAudioData().length > 100)
-})
-
-test('builds Android-compatible style collection request body', () => {
-  assert.deepEqual(shareCollect.collectStyleBody('web', '标题', '正文', 'mp.weixin.qq.com'), {
-    type: 'web',
-    title: '标题',
-    text: '正文',
-    source: 'mp.weixin.qq.com'
-  })
-})
-
-test('uses shared text first line as style collection fallback title', () => {
-  assert.equal(shareCollect.titleForText('\n 第一行标题 \n正文', 'fallback'), '第一行标题')
-  assert.equal(shareCollect.titleForText('\n\n', 'fallback'), 'fallback')
-  assert.equal(shareCollect.titleForText('123456789012345678901234567890123456789012345', 'fallback').length, 40)
-})
-
-test('plans Android-compatible image article generation uploads', () => {
-  const plan = shareCollect.imageArticlePlan(2, new Date(2026, 6, 4, 9, 30, 0))
-  assert.match(plan.audioName, /^VoiceDrop-2026-07-04-093000-0m0s-Sat-Morning\.m4a$/)
-  assert.equal(plan.sessionTs, '2026-07-04-093000')
-  assert.equal(plan.photoKeys.length, 2)
-  assert.match(plan.photoKeys[0], /^photos\/2026-07-04-093000\/0-[0-9a-z]{3}\.jpg$/)
-  assert.match(plan.photoKeys[1], /^photos\/2026-07-04-093000\/1-[0-9a-z]{3}\.jpg$/)
-})
-
-test('plans Android-compatible audio file generation uploads', () => {
-  const plan = shareCollect.audioArticlePlan(125, new Date(2026, 6, 4, 9, 30, 0))
-  assert.match(plan.audioName, /^VoiceDrop-2026-07-04-093000-2m5s-Sat-Morning\.m4a$/)
 })
 
 test('builds dynamic recording tags and filters records by tag', () => {

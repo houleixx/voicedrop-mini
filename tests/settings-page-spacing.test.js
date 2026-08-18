@@ -46,6 +46,16 @@ test('writing style settings use one active version without multi-style comparis
   assert.doesNotMatch(logic, /saveStyleSelection|onCompareModeChange|selectedStyles/)
 })
 
+test('mini program omits the share collection page and service', () => {
+  const app = JSON.parse(read('app.json'))
+  const manual = read('assets/help_manual.md')
+
+  assert.equal(app.pages.includes('pages/share-collect/index'), false)
+  assert.equal(fs.existsSync(path.join(root, 'pages/share-collect')), false)
+  assert.equal(fs.existsSync(path.join(root, 'services/share-collect.js')), false)
+  assert.doesNotMatch(manual, /素材收集页|收集文风|风格数据集|提取文章风格/)
+})
+
 test('settings card dividers start at the menu text column', () => {
   const styles = read('pages/settings/index.wxss')
 

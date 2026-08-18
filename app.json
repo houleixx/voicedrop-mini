@@ -18,7 +18,6 @@
     "pages/blocked-users/index",
     "pages/audio-consent/index",
     "pages/wechat-settings/index",
-    "pages/share-collect/index",
     "pages/style-settings/index",
     "pages/instruction-settings/index",
     "pages/instruction-edit/index",

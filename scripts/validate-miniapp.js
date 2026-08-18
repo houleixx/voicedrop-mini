@@ -88,7 +88,7 @@ console.log('Miniapp static OK')
 function walk(dir) {
   const out = []
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === 'node_modules' || entry.name === '.git') continue
+    if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.worktrees') continue
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) out.push(...walk(full))
     else out.push(full)
