@@ -402,20 +402,25 @@ test('recordings scroll view enables pull refresh for both home tabs', () => {
   assert.match(css, /\.pull-refresh-spinner\s*\{[^}]*box-sizing:\s*border-box;[^}]*width:\s*30px;[^}]*height:\s*30px;[^}]*flex:\s*0 0 30px;[^}]*position:\s*relative;[^}]*top:\s*8px;/s)
 })
 
-test('recording rows replace the waveform with an Android-style article cover', async () => {
+test('recording rows keep the square waveform until the dedicated article cover renders', async () => {
   const library = require('../services/library')
   const originalOwnerScope = library.ownerScope
   const originalDownloadPhotoTemp = library.downloadPhotoTemp
   library.ownerScope = async () => 'users/anon-1/'
   library.downloadPhotoTemp = async (key, scope) => {
-    assert.equal(key, 'photos/session/cover.jpg')
     assert.equal(scope, 'users/anon-1/')
-    return 'wxfile://record-cover.jpg'
+    if (key === 'photos/2026-08-13-091500/cover.jpg') return 'wxfile://record-cover.jpg'
+    if (key === 'photos/2026-08-13-091500/3-first.jpg') return 'wxfile://first-photo.jpg'
+    throw new Error(`unexpected cover key: ${key}`)
   }
 
   try {
     const { page } = freshRecordingsPage()
-    const record = { stem: 'VoiceDrop-cover', coverPhotoKey: 'photos/session/cover.jpg' }
+    const record = {
+      stem: 'VoiceDrop-2026-08-13-091500-3m20s-Wed-Morning-Shanghai',
+      hasArticles: true,
+      coverPhotoKey: 'photos/2026-08-13-091500/3-first.jpg'
+    }
     const ctx = Object.assign({}, page, {
       recordCoverLoadId: 3,
       data: Object.assign({}, page.data, { allRecords: [record], records: [record] }),
@@ -426,9 +431,20 @@ test('recording rows replace the waveform with an Android-style article cover', 
 
     assert.equal(ctx.data.allRecords[0].coverPhotoUrl, 'wxfile://record-cover.jpg')
     assert.equal(ctx.data.records[0].coverPhotoUrl, 'wxfile://record-cover.jpg')
+    assert.equal(ctx.data.records[0].coverPhotoIsBook, true)
+    assert.equal(ctx.data.records[0].coverPhotoLoaded, false)
 
-    page.onRecordCoverError.call(ctx, { currentTarget: { dataset: { stem: record.stem } } })
-    assert.equal(ctx.data.records[0].coverPhotoUrl, '')
+    page.onRecordCoverLoad.call(ctx, {
+      currentTarget: { dataset: { stem: record.stem, url: 'wxfile://record-cover.jpg' } }
+    })
+    assert.equal(ctx.data.records[0].coverPhotoLoaded, true)
+
+    await page.onRecordCoverError.call(ctx, {
+      currentTarget: { dataset: { stem: record.stem, url: 'wxfile://record-cover.jpg' } }
+    })
+    assert.equal(ctx.data.records[0].coverPhotoUrl, 'wxfile://first-photo.jpg')
+    assert.equal(ctx.data.records[0].coverPhotoIsBook, false)
+    assert.equal(ctx.data.records[0].coverPhotoLoaded, true)
   } finally {
     library.ownerScope = originalOwnerScope
     library.downloadPhotoTemp = originalDownloadPhotoTemp
@@ -436,9 +452,11 @@ test('recording rows replace the waveform with an Android-style article cover', 
 
   const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/recordings/index.wxss'), 'utf8')
-  assert.match(wxml, /<image wx:if="\{\{item\.coverPhotoUrl\}\}" class="record-cover \{\{item\.coverPhotoIsBook \? 'book-cover-image' : ''\}\}"[^>]*mode="aspectFill"[^>]*binderror="onRecordCoverError"/s)
-  assert.match(wxml, /<view wx:else class="record-icon"/)
+  assert.match(wxml, /class="record-icon-wrapper \{\{item\.coverPhotoIsBook && item\.coverPhotoLoaded \? 'book-cover' : ''\}\}"/)
+  assert.match(wxml, /<view wx:if="\{\{!item\.coverPhotoUrl \|\| \(item\.coverPhotoIsBook && !item\.coverPhotoLoaded\)\}\}" class="record-icon"/)
+  assert.match(wxml, /<image wx:if="\{\{item\.coverPhotoUrl\}\}" class="record-cover \{\{item\.coverPhotoIsBook \? 'book-cover-image' : ''\}\} \{\{item\.coverPhotoIsBook && !item\.coverPhotoLoaded \? 'record-cover-preloading' : ''\}\}"[^>]*bindload="onRecordCoverLoad"[^>]*binderror="onRecordCoverError"/s)
   assert.match(css, /\.record-cover\s*\{[^}]*width:\s*88rpx;[^}]*height:\s*88rpx;[^}]*border-radius:\s*20rpx;/s)
+  assert.match(css, /\.record-cover\.record-cover-preloading\s*\{[^}]*position:\s*absolute;[^}]*opacity:\s*0;/s)
 })
 
 test('recording rows prefer the dedicated cover and remember misses before using the first photo', async () => {
@@ -473,6 +491,7 @@ test('recording rows prefer the dedicated cover and remember misses before using
     ])
     assert.equal(ctx.data.records[0].coverPhotoUrl, 'wxfile://first-photo.jpg')
     assert.equal(ctx.data.records[0].coverPhotoIsBook, false)
+    assert.equal(ctx.data.records[0].coverPhotoLoaded, true)
 
     calls.length = 0
     const refreshed = Object.assign({}, record)

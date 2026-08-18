@@ -328,6 +328,16 @@
   border-radius: 20rpx;
 }
 
+.record-cover.record-cover-preloading {
+  position: absolute;
+  width: 88rpx;
+  height: 88rpx;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .record-icon-wrapper.book-cover {
   width: 80rpx;
   height: 120rpx;

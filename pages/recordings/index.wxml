@@ -93,17 +93,18 @@
               bindtouchend="onRowTouchEnd"
               data-index="{{index}}">
           <view class="record-card {{item.isEmpty ? 'silent' : ''}}" style="transform: translateX({{item._translateX || 0}}px);" data-index="{{index}}" bindtap="openDetail">
-            <view class="record-icon-wrapper {{item.coverPhotoIsBook ? 'book-cover' : ''}}">
-              <image wx:if="{{item.coverPhotoUrl}}" class="record-cover {{item.coverPhotoIsBook ? 'book-cover-image' : ''}}"
-                     src="{{item.coverPhotoUrl}}" mode="aspectFill" lazy-load
-                     data-stem="{{item.stem}}" binderror="onRecordCoverError" />
-              <view wx:else class="record-icon" aria-hidden="true">
+            <view class="record-icon-wrapper {{item.coverPhotoIsBook && item.coverPhotoLoaded ? 'book-cover' : ''}}">
+              <view wx:if="{{!item.coverPhotoUrl || (item.coverPhotoIsBook && !item.coverPhotoLoaded)}}" class="record-icon" aria-hidden="true">
                 <view class="record-wave">
                   <view class="record-wave-line record-wave-line-short"></view>
                   <view class="record-wave-line record-wave-line-tall"></view>
                   <view class="record-wave-line record-wave-line-mid record-wave-line-last"></view>
                 </view>
               </view>
+              <image wx:if="{{item.coverPhotoUrl}}" class="record-cover {{item.coverPhotoIsBook ? 'book-cover-image' : ''}} {{item.coverPhotoIsBook && !item.coverPhotoLoaded ? 'record-cover-preloading' : ''}}"
+                     src="{{item.coverPhotoUrl}}" mode="aspectFill" lazy-load
+                     data-stem="{{item.stem}}" data-url="{{item.coverPhotoUrl}}"
+                     bindload="onRecordCoverLoad" binderror="onRecordCoverError" />
               <view wx:if="{{commandTalking && item._commandRef}}" class="command-badge">
                 {{item._commandRef}}
               </view>

@@ -742,7 +742,9 @@ Page({
         try {
           const dedicatedUrl = await library.downloadPhotoTemp(dedicatedKey, scope, { preferThumb: true })
           if (dedicatedUrl && loadId === this.recordCoverLoadId) {
-            this.updateRecordingCover(rec.stem, dedicatedUrl, true)
+            // Keep the square waveform visible until the mini-program image
+            // component has actually decoded the dedicated portrait cover.
+            this.updateRecordingCover(rec.stem, dedicatedUrl, true, false)
             return
           }
           this.recordCoverMissingKeys.add(dedicatedMissingKey)
@@ -754,7 +756,7 @@ Page({
       try {
         const fallbackUrl = await library.downloadPhotoTemp(rec.coverPhotoKey, scope, { preferThumb: true })
         if (!fallbackUrl || loadId !== this.recordCoverLoadId) return
-        this.updateRecordingCover(rec.stem, fallbackUrl, false)
+        this.updateRecordingCover(rec.stem, fallbackUrl, false, true)
       } catch (_) {}
     }))
   },
@@ -766,16 +768,18 @@ Page({
       if (!cached || !cached.coverPhotoUrl || cached.coverPhotoKey !== rec.coverPhotoKey) return rec
       return Object.assign({}, rec, {
         coverPhotoUrl: cached.coverPhotoUrl,
-        coverPhotoIsBook: Boolean(cached.coverPhotoIsBook)
+        coverPhotoIsBook: Boolean(cached.coverPhotoIsBook),
+        coverPhotoLoaded: Boolean(cached.coverPhotoLoaded)
       })
     })
   },
 
-  updateRecordingCover(stem, coverPhotoUrl, coverPhotoIsBook) {
+  updateRecordingCover(stem, coverPhotoUrl, coverPhotoIsBook, coverPhotoLoaded) {
     const update = (records) => (records || []).map((rec) => rec.stem === stem
       ? Object.assign({}, rec, {
           coverPhotoUrl: coverPhotoUrl || '',
-          coverPhotoIsBook: Boolean(coverPhotoUrl && coverPhotoIsBook)
+          coverPhotoIsBook: Boolean(coverPhotoUrl && coverPhotoIsBook),
+          coverPhotoLoaded: Boolean(coverPhotoUrl && coverPhotoLoaded)
         })
       : rec)
     this.setData({
@@ -784,9 +788,41 @@ Page({
     })
   },
 
-  onRecordCoverError(event) {
+  onRecordCoverLoad(event) {
     const stem = event.currentTarget.dataset.stem || ''
-    if (stem) this.updateRecordingCover(stem, '', false)
+    const url = event.currentTarget.dataset.url || ''
+    if (!stem || !url) return
+    const update = (records) => (records || []).map((rec) => rec.stem === stem && rec.coverPhotoUrl === url
+      ? Object.assign({}, rec, { coverPhotoLoaded: true })
+      : rec)
+    this.setData({
+      allRecords: update(this.data.allRecords),
+      records: update(this.data.records)
+    })
+  },
+
+  async onRecordCoverError(event) {
+    const stem = event.currentTarget.dataset.stem || ''
+    const url = event.currentTarget.dataset.url || ''
+    if (!stem) return
+    const record = (this.data.allRecords || []).find((rec) => rec.stem === stem)
+    if (!record || (url && record.coverPhotoUrl !== url)) return
+    const wasDedicatedCover = Boolean(record.coverPhotoIsBook)
+    this.updateRecordingCover(stem, '', false, false)
+    if (!wasDedicatedCover || !record.coverPhotoKey) return
+
+    const dedicatedKey = recordingUtil.coverKeyForStem(record.stem || record.audioName)
+    if (record.coverPhotoKey === dedicatedKey) return
+    const loadId = this.recordCoverLoadId
+    try {
+      const scope = await library.ownerScope()
+      if (!scope || loadId !== this.recordCoverLoadId) return
+      if (!this.recordCoverMissingKeys) this.recordCoverMissingKeys = new Set()
+      if (dedicatedKey) this.recordCoverMissingKeys.add(`${scope}${dedicatedKey}`)
+      const fallbackUrl = await library.downloadPhotoTemp(record.coverPhotoKey, scope, { preferThumb: true })
+      if (!fallbackUrl || loadId !== this.recordCoverLoadId) return
+      this.updateRecordingCover(stem, fallbackUrl, false, true)
+    } catch (_) {}
   },
 
   restoreCachedCommunityFeed() {
