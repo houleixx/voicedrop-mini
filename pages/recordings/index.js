@@ -9,6 +9,7 @@ const libraryCommand = require('../../services/library-command')
 const asrDictation = require('../../services/asr-dictation')
 const community = require('../../services/community')
 const books = require('../../services/books')
+const bookCoverCache = require('../../services/book-cover-cache')
 const settings = require('../../services/settings')
 const blockStore = require('../../utils/block-store')
 const pendingReplies = require('../../utils/pending-replies')
@@ -272,6 +273,7 @@ Page({
     this._communityLoadGeneration = (this._communityLoadGeneration || 0) + 1
     this.recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
     this.recordMetaLoadId = (this.recordMetaLoadId || 0) + 1
+    if (this._bookCoverSession) this._bookCoverSession.dispose()
     if (this.statusSession) this.statusSession.close()
     if (this.commandSession) this.commandSession.close()
     if (this.asrSession) this.asrSession.close()
@@ -381,9 +383,40 @@ Page({
   restoreCachedBooks() {
     const items = books.cachedShelf()
     if (!items.length) return false
-    const bookItems = books.markEditableByAuthor(items, this.data.bookProfileAuthor)
+    const bookItems = this.prepareBookItems(items, this.data.bookProfileAuthor)
     this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksLoading: false, booksError: '', booksLoaded: true })
+    this._bookCoverSession.load(bookItems)
     return true
+  },
+
+  ensureBookCoverSession() {
+    if (this._bookCoverSession) return this._bookCoverSession
+    this._bookCoverSession = bookCoverCache.createSession(null, (slug, key, filePath) => {
+      if (this._pageUnloaded) return
+      let changed = false
+      const bookItems = this.data.bookItems.map((book) => {
+        if (book.slug !== slug || book.coverCacheKey !== key) return book
+        changed = true
+        return Object.assign({}, book, { coverDisplayUrl: filePath })
+      })
+      if (changed) this.setData({ bookItems, bookRows: bookRowsFor(bookItems) })
+    })
+    return this._bookCoverSession
+  },
+
+  prepareBookItems(items, author) {
+    return this.ensureBookCoverSession().decorate(books.markEditableByAuthor(items, author))
+  },
+
+  onBookCoverError(event) {
+    const slug = event.currentTarget.dataset.slug
+    const book = this.data.bookItems.find((item) => item.slug === slug)
+    if (!book) return
+    const bookItems = this.data.bookItems.map((item) => item.slug === slug
+      ? Object.assign({}, item, { coverDisplayUrl: '' })
+      : item)
+    this.setData({ bookItems, bookRows: bookRowsFor(bookItems) })
+    this.ensureBookCoverSession().retry(book)
   },
 
   async loadBookProfileAuthor(options) {
@@ -418,8 +451,9 @@ Page({
     try {
       const items = await books.shelf({ forceRefresh })
       if (this._pageUnloaded || this._bookLoadRequestId !== requestId) return true
-      const bookItems = books.markEditableByAuthor(items, this.data.bookProfileAuthor)
+      const bookItems = this.prepareBookItems(items, this.data.bookProfileAuthor)
       this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksError: '', booksLoaded: true })
+      this._bookCoverSession.load(bookItems)
       return true
     } catch (_) {
       if (this._pageUnloaded || this._bookLoadRequestId !== requestId) return true

@@ -1,4 +1,5 @@
 const books = require('../../services/books')
+const bookCoverCache = require('../../services/book-cover-cache')
 const settings = require('../../services/settings')
 const MIN_REFRESH_FEEDBACK_MS = 600
 
@@ -18,8 +19,11 @@ Page({
 
   onLoad() {
     this._shelfActive = true
+    this.ensureBookCoverSession()
     const cached = books.cachedShelf()
-    this.setData({ items: books.markEditableByAuthor(cached, ''), loading: cached.length === 0 })
+    const items = this.prepareBookItems(cached, '')
+    this.setData({ items, loading: cached.length === 0 })
+    this._bookCoverSession.load(items)
     this.loadProfileAuthor()
     this.load({ keepData: true })
   },
@@ -59,7 +63,9 @@ Page({
     try {
       const items = await books.shelf({ forceRefresh })
       if (this._shelfRequestId !== requestId) return
-      this.setData({ items: books.markEditableByAuthor(items, this.data.profileAuthor), error: '' })
+      const prepared = this.prepareBookItems(items, this.data.profileAuthor)
+      this.setData({ items: prepared, error: '' })
+      this._bookCoverSession.load(prepared)
     } catch (_) {
       if (this._shelfRequestId !== requestId) return
       if (!(options && options.keepData) || this.data.items.length === 0) {
@@ -90,6 +96,33 @@ Page({
     this._shelfActive = false
     this._shelfRequestId = (this._shelfRequestId || 0) + 1
     this._profileAuthorRequestId = (this._profileAuthorRequestId || 0) + 1
+    if (this._bookCoverSession) this._bookCoverSession.dispose()
+  },
+  ensureBookCoverSession() {
+    if (this._bookCoverSession) return this._bookCoverSession
+    this._bookCoverSession = bookCoverCache.createSession(null, (slug, key, filePath) => {
+      if (this._shelfActive === false) return
+      let changed = false
+      const items = this.data.items.map((book) => {
+        if (book.slug !== slug || book.coverCacheKey !== key) return book
+        changed = true
+        return Object.assign({}, book, { coverDisplayUrl: filePath })
+      })
+      if (changed) this.setData({ items })
+    })
+    return this._bookCoverSession
+  },
+  prepareBookItems(items, author) {
+    return this.ensureBookCoverSession().decorate(books.markEditableByAuthor(items, author))
+  },
+  onBookCoverError(event) {
+    const slug = event.currentTarget.dataset.slug
+    const book = this.data.items.find((item) => item.slug === slug)
+    if (!book) return
+    this.setData({ items: this.data.items.map((item) => item.slug === slug
+      ? Object.assign({}, item, { coverDisplayUrl: '' })
+      : item) })
+    this.ensureBookCoverSession().retry(book)
   },
   switchTab(event) {
     const key = event.detail && event.detail.key

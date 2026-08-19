@@ -1,5 +1,6 @@
 const CLEARABLE_PREFIXES = [
   'voicedrop.books.shelf.v1',
+  'voicedrop.books.cover-files.v1',
   'voicedrop.library.meta.v1.',
   'voicedrop.library.list.v1.',
   'voicedrop.library.doc.v1.',
@@ -11,6 +12,7 @@ const CLEARABLE_PREFIXES = [
 const PHOTO_INDEX_PREFIX = 'voicedrop.library.photo-index.v1.'
 const AUDIO_INDEX_PREFIX = 'voicedrop.library.audio-index.v1.'
 const IMAGE_EXTENSION = /\.(?:jpe?g|png|webp|gif|heic)(?:$|[?#])/i
+const BOOK_COVER_CACHE_KEY = 'voicedrop.books.cover-files.v1'
 
 function isClearableStorageKey(key) {
   const value = String(key || '')
@@ -74,6 +76,20 @@ function photoPaths(key, value, options) {
         .map((entry) => String(entry && entry.path || ''))
         .filter((path) => isManagedImagePath(path, opts.userDataPath) && !denied.has(path))
       : []
+  } catch (_) {
+    return []
+  }
+}
+
+function bookCoverPaths(key, value, options) {
+  if (String(key || '') !== BOOK_COVER_CACHE_KEY) return []
+  const opts = options || {}
+  try {
+    const manifest = typeof value === 'string' ? JSON.parse(value || '{}') : value
+    const entries = manifest && typeof manifest.entries === 'object' ? manifest.entries : {}
+    return Object.values(entries)
+      .map((path) => String(path || ''))
+      .filter((path) => isManagedImagePath(path, opts.userDataPath))
   } catch (_) {
     return []
   }
@@ -158,7 +174,10 @@ function create(dependencies) {
       deniedPaths: deniedAudioPaths(api),
       userDataPath: api && api.env && api.env.USER_DATA_PATH
     }
-    const paths = Array.from(new Set(entries.flatMap((entry) => photoPaths(entry.key, entry.value, options))))
+    const paths = Array.from(new Set(entries.flatMap((entry) => [
+      ...photoPaths(entry.key, entry.value, options),
+      ...bookCoverPaths(entry.key, entry.value, options)
+    ])))
     const storageBytes = entries.reduce((sum, entry) => sum + utf8ByteLength(serialized(entry.value)), 0)
     let fileBytes = 0
     const fs = api && api.getFileSystemManager ? api.getFileSystemManager() : null
@@ -189,12 +208,14 @@ module.exports = {
   CLEARABLE_PREFIXES,
   PHOTO_INDEX_PREFIX,
   AUDIO_INDEX_PREFIX,
+  BOOK_COVER_CACHE_KEY,
   isClearableStorageKey,
   isPhotoKey,
   isManagedImagePath,
   utf8ByteLength,
   formatBytes,
   photoPaths,
+  bookCoverPaths,
   create,
   snapshot: instance.snapshot,
   clear: instance.clear

@@ -152,7 +152,7 @@ test('public shelf follows current iOS with a native shelf and in-app reader', (
   assert.match(readerSource, /wx\.showToast\(\{ title: '书籍加载失败', icon: 'none' \}\)/)
   const shelf = fs.readFileSync(path.join(root, 'pages/book-shelf/index.wxml'), 'utf8')
   assert.match(shelf, /写一本新书/)
-  assert.match(shelf, /src="\{\{item\.coverUrl\}\}"/)
+  assert.match(shelf, /src="\{\{item\.coverDisplayUrl\}\}"/)
 })
 
 test('restyle requests use the five minute client timeout', () => {

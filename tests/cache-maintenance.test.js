@@ -23,11 +23,12 @@ function harness() {
     'voicedrop.library.photo-index.v1.account': photoIndex,
     'voicedrop.library.audio-index.v1.account': '[{"path":"/audio/keep.m4a"},{"path":"/cache/audio-cover.jpg"}]',
     'voicedrop.books.shelf.v1': '{"books":[{"slug":"cached-book"}]}',
+    'voicedrop.books.cover-files.v1': '{"entries":{"cached-book:1":"/cache/book-cover.jpg"},"slugs":{"cached-book":"cached-book:1"}}',
     'voicedrop.community.detail.v1.account.share': '{"shareId":"share"}',
     'voicedrop.community.detail-index.v1.account': '["share"]',
     'voicedrop.community.feed.v1.account': '{"posts":[]}'
   }
-  const sizes = { '/cache/a.jpg': 1536, '/cache/thumb-a.jpg': 512 }
+  const sizes = { '/cache/a.jpg': 1536, '/cache/thumb-a.jpg': 512, '/cache/book-cover.jpg': 1024 }
   const unlinked = []
   const resets = []
   const fs = {
@@ -61,9 +62,9 @@ test('cache size includes only rebuildable shelf, article, image and community d
   const expectedStorage = clearableValues.reduce((sum, value) => sum + cacheMaintenance.utf8ByteLength(value), 0)
 
   assert.equal(result.storageBytes, expectedStorage)
-  assert.equal(result.fileBytes, 2048)
-  assert.equal(result.bytes, expectedStorage + 2048)
-  assert.deepEqual(result.paths.sort(), ['/cache/a.jpg', '/cache/thumb-a.jpg'])
+  assert.equal(result.fileBytes, 3072)
+  assert.equal(result.bytes, expectedStorage + 3072)
+  assert.deepEqual(result.paths.sort(), ['/cache/a.jpg', '/cache/book-cover.jpg', '/cache/thumb-a.jpg'])
 })
 
 test('cache clear preserves identity, settings, uploads, audio and community feed data', async () => {
@@ -71,7 +72,7 @@ test('cache clear preserves identity, settings, uploads, audio and community fee
 
   await h.service.clear()
 
-  assert.deepEqual(h.unlinked.sort(), ['/cache/a.jpg', '/cache/thumb-a.jpg'])
+  assert.deepEqual(h.unlinked.sort(), ['/cache/a.jpg', '/cache/book-cover.jpg', '/cache/thumb-a.jpg'])
   assert.deepEqual(h.resets, ['library', 'community'])
   assert.equal(h.storage['voicedrop.auth.anon'], 'anon_secret')
   assert.equal(h.storage['voicedrop.recording.uploads.v1'], '[pending]')
@@ -80,6 +81,7 @@ test('cache clear preserves identity, settings, uploads, audio and community fee
   assert.match(h.storage['voicedrop.library.audio-index.v1.account'], /audio-cover\.jpg/)
   assert.match(h.storage['voicedrop.community.feed.v1.account'], /posts/)
   assert.equal(h.storage['voicedrop.books.shelf.v1'], undefined)
+  assert.equal(h.storage['voicedrop.books.cover-files.v1'], undefined)
   assert.equal(Object.keys(h.storage).some(cacheMaintenance.isClearableStorageKey), false)
 })
 
