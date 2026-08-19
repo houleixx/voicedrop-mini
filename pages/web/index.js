@@ -1,6 +1,8 @@
 const ALLOWED = new Set([
   'https://voicedrop.cn/help/manual/',
-  'https://voicedrop.cn/books/'
+  'https://voicedrop.cn/books/',
+  'https://jianshuo.dev/voicedrop/help/manual/',
+  'https://jianshuo.dev/voicedrop/books/'
 ])
 
 Page({

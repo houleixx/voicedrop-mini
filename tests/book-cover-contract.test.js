@@ -49,4 +49,16 @@ test('book chapter share accepts only pages under the selected book root', () =>
     'https://voicedrop.cn/books/safe-book/')
   assert.equal(books.readerPageUrl(book, 'https://voicedrop.cn/books/other/chapter-2.html'),
     'https://voicedrop.cn/books/safe-book/')
+  assert.equal(books.readerPageUrl(book, 'https://voicedrop.cn/books/safe-book/../admin/'),
+    'https://voicedrop.cn/books/safe-book/')
+  assert.equal(books.readerPageUrl(book, 'https://voicedrop.cn/books/safe-book/%2e%2e/admin/'),
+    'https://voicedrop.cn/books/safe-book/')
+})
+
+test('both shelf surfaces refresh route-dependent cover URLs before decorating cache items', () => {
+  const fs = require('node:fs')
+  for (const file of ['pages/book-shelf/index.js', 'pages/recordings/index.js']) {
+    const source = fs.readFileSync(require('node:path').join(__dirname, '..', file), 'utf8')
+    assert.match(source, /books\.refreshCoverUrls\(items\)/)
+  }
 })

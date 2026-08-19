@@ -83,7 +83,7 @@ for f in $(rg --files -g '*.js'); do node --check "$f" || exit 1; done
 Required before claiming full parity:
 
 - Import the project in WeChat Developer Tools.
-- Configure `https://voicedrop.cn` as the request/download/upload legal domain and `wss://jianshuo.dev` as the socket legal domain. HTTP APIs and photos no longer fall back to the old HTTP host.
+- Configure both `https://voicedrop.cn` and `https://jianshuo.dev` as request/download/upload legal domains, and `wss://jianshuo.dev` as the socket legal domain. The HTTP route selector probes both public backends; also configure `jianshuo.dev` as a business domain before testing the selected public bookshelf in `web-view`.
 - Test recording upload on a real device.
 - Test first-use audio agreement view/decline/agree actions and confirm that merely viewing does not grant consent.
 - Test main recording, home voice commands, article voice editing, and community voice replies all remain blocked before agreement.

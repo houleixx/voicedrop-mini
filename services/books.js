@@ -1,14 +1,21 @@
 const auth = require('./auth')
 const http = require('./request')
+const route = require('./api-route')
 
 const API = 'https://lab.jianshuo.dev/api/book'
 const HISTORY_API = API + '/history'
 const REVISE_API = API + '/revise'
-const SHELF = 'https://voicedrop.cn/books/'
 const BOOK_SUANLI = 320
 const REVISE_SUANLI = 40
-const INDEX = 'https://voicedrop.cn/books/?format=json'
 const CACHE_KEY = 'voicedrop.books.shelf.v1'
+
+function shelfWebUrl() {
+  return `${route.publicWebBase()}/books/`
+}
+
+function indexUrl() {
+  return `${shelfWebUrl()}?format=json`
+}
 
 async function start(seed) {
   return http.postJson(API, auth.bearer(), { seed: String(seed || '').trim().slice(0, 20000) }, { timeout: 30000 })
@@ -89,7 +96,7 @@ function normalizeBook(item) {
 }
 
 function readerUrl(book) {
-  return `${SHELF}${encodeURIComponent(String(book && book.slug || ''))}/`
+  return `${shelfWebUrl()}${encodeURIComponent(String(book && book.slug || ''))}/`
 }
 
 function coverUrl(book) {
@@ -97,10 +104,38 @@ function coverUrl(book) {
   return `${readerUrl(book)}cover.jpg${version ? `?v=${encodeURIComponent(String(version))}` : ''}`
 }
 
+function trustedReaderRoots(book) {
+  const slug = encodeURIComponent(String(book && book.slug || ''))
+  return [
+    `https://voicedrop.cn/books/${slug}/`,
+    `https://jianshuo.dev/voicedrop/books/${slug}/`
+  ]
+}
+
 function readerPageUrl(book, value) {
   const root = readerUrl(book)
-  const candidate = String(value || '')
-  return candidate.startsWith(root) ? candidate : root
+  let candidate
+  try { candidate = new URL(String(value || '')) } catch (_) { return root }
+  const trustedRoot = trustedReaderRoots(book)
+    .map((value) => new URL(value))
+    .find((value) => candidate.origin === value.origin && candidate.pathname.startsWith(value.pathname))
+  if (!trustedRoot) return root
+
+  // Reject traversal hidden behind encoded dots or slashes. URL already
+  // normalizes literal and %2e dot-segments; repeated decoding covers servers
+  // that decode an encoded path more than once.
+  let decodedPath = candidate.pathname
+  try {
+    for (let index = 0; index < 3; index += 1) {
+      const next = decodeURIComponent(decodedPath)
+      if (next === decodedPath) break
+      decodedPath = next
+    }
+  } catch (_) { return root }
+  if (decodedPath.split('/').some((segment) => segment === '.' || segment === '..')) return root
+
+  const suffix = candidate.pathname.slice(trustedRoot.pathname.length)
+  return root + suffix + candidate.search + candidate.hash
 }
 
 function shareTitle(book) {
@@ -112,6 +147,12 @@ function shareTitle(book) {
 function normalizeIndex(data) {
   return (data && Array.isArray(data.books) ? data.books : [])
     .map(normalizeBook).filter((book) => book.slug)
+}
+
+function refreshCoverUrls(items) {
+  return (items || []).map((book) => Object.assign({}, book, {
+    coverUrl: book && book.cover ? coverUrl(book) : ''
+  }))
 }
 
 function markEditableByAuthor(items, author) {
@@ -126,10 +167,11 @@ function cachedShelf() {
 }
 
 function shelfRequestUrl(options) {
-  if (!(options && options.forceRefresh)) return INDEX
+  const index = indexUrl()
+  if (!(options && options.forceRefresh)) return index
   const supplied = Number(options.now)
   const now = Number.isFinite(supplied) ? supplied : Date.now()
-  return `${INDEX}${INDEX.includes('?') ? '&' : '?'}_refresh=${encodeURIComponent(String(now))}`
+  return `${index}${index.includes('?') ? '&' : '?'}_refresh=${encodeURIComponent(String(now))}`
 }
 
 async function shelf(options) {
@@ -201,8 +243,9 @@ function result(response) {
 }
 
 module.exports = {
-  API, HISTORY_API, REVISE_API, SHELF, INDEX, BOOK_SUANLI, REVISE_SUANLI,
-  start, history, revise, shelf, shelfRequestUrl, cachedShelf, normalizeIndex,
+  API, HISTORY_API, REVISE_API, BOOK_SUANLI, REVISE_SUANLI,
+  shelfWebUrl, indexUrl,
+  start, history, revise, shelf, shelfRequestUrl, cachedShelf, normalizeIndex, refreshCoverUrls,
   markEditableByAuthor,
   normalizeThread, formatThreadStamp, reviseMessage, readerUrl, coverUrl,
   shareTitle, readerPageUrl, writingContext, formatBalance, shortfall, message, result

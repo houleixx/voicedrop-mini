@@ -14,7 +14,7 @@ Page({
     this.updateSubmit()
   },
   onInput(event) { this.setData({ seed: String(event.detail.value || '').slice(0, 20000), message: '', error: false }); this.updateSubmit() },
-  openShelf() { wx.navigateTo({ url: `/pages/web/index?url=${encodeURIComponent(books.SHELF)}&title=${encodeURIComponent('公开书架')}` }) },
+  openShelf() { wx.navigateTo({ url: `/pages/web/index?url=${encodeURIComponent(books.shelfWebUrl())}&title=${encodeURIComponent('公开书架')}` }) },
   done() { wx.navigateBack() },
   updateSubmit() {
     this.setData({ canSubmit: Boolean(this.data.seed.trim()) && !this.data.sending && !this.data.submitted &&

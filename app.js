@@ -3,6 +3,7 @@ const prefs = require('./utils/prefs')
 const auth = require('./services/auth')
 const promptTree = require('./utils/prompt-tree')
 const referral = require('./services/referral')
+const apiRoute = require('./services/api-route')
 
 function currentPageMatchesRoute(route) {
   if (!route || route.type !== 'navigateTo' || typeof getCurrentPages !== 'function') return false
@@ -52,12 +53,14 @@ App({
       wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
     }
     this.handleRouteOptions(options)
+    apiRoute.probe().catch(() => {})
   },
 
   onShow(options) {
     this.handleImportToken(options)
     this.handleReferral(options)
     this.handleRouteOptions(options)
+    apiRoute.probeIfDue().catch(() => {})
   },
 
   handleReferral(options) {

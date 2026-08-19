@@ -113,7 +113,8 @@ Page({
     return this._bookCoverSession
   },
   prepareBookItems(items, author) {
-    return this.ensureBookCoverSession().decorate(books.markEditableByAuthor(items, author))
+    const routed = books.refreshCoverUrls(items)
+    return this.ensureBookCoverSession().decorate(books.markEditableByAuthor(routed, author))
   },
   onBookCoverError(event) {
     const slug = event.currentTarget.dataset.slug

@@ -14,8 +14,9 @@ function loadShelfPage(shelf, cachedShelf = () => [{ slug: 'cached' }]) {
   const pagePath = require.resolve('../pages/book-shelf/index.js')
   const originalBooks = require.cache[booksPath]
   const originalSettings = require.cache[settingsPath]
-  const markEditableByAuthor = require('../services/books').markEditableByAuthor
-  require.cache[booksPath] = { exports: { cachedShelf, shelf, markEditableByAuthor } }
+  const realBooks = require('../services/books')
+  const { markEditableByAuthor, refreshCoverUrls } = realBooks
+  require.cache[booksPath] = { exports: { cachedShelf, shelf, markEditableByAuthor, refreshCoverUrls } }
   require.cache[settingsPath] = { exports: { loadStyle: async () => ({ name: '' }) } }
   global.Page = (page) => { definition = page }
   delete require.cache[pagePath]
