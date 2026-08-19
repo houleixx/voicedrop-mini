@@ -40,7 +40,8 @@ function freshSettingsPage(settingsOverrides, wxOverrides, cacheOverrides) {
   }
   global.wx = Object.assign({
     showToast: () => {},
-    navigateTo: () => {}
+    navigateTo: () => {},
+    getSystemInfoSync: () => ({ windowWidth: 375 })
   }, wxOverrides || {})
 
   delete require.cache[require.resolve('../pages/settings/index')]
@@ -222,7 +223,7 @@ test('settings cache confirmation protects user data and refreshes after clearin
 test('profile name editor lifts above the keyboard while focused', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
 
-  assert.match(wxml, /class="dialog-overlay"[^>]+style="padding-bottom: \{\{nameKeyboardHeight \? nameKeyboardHeight \+ 44 : 44\}\}px;"/)
+  assert.match(wxml, /class="dialog-overlay"[^>]+style="padding-bottom: \{\{nameKeyboardHeight \? nameKeyboardHeight \+ 44 : 44\}\}rpx;"/)
   assert.match(wxml, /bindkeyboardheightchange="onNameKeyboardHeightChange"/)
   assert.match(wxml, /adjust-position="\{\{false\}\}"/)
 })
@@ -307,7 +308,7 @@ test('settings page stores keyboard height for the name editor overlay', () => {
   const ctx = pageContext(page)
 
   page.onNameKeyboardHeightChange.call(ctx, { detail: { height: 312 } })
-  assert.equal(ctx.data.nameKeyboardHeight, 312)
+  assert.equal(ctx.data.nameKeyboardHeight, 624)
 
   page.onNameKeyboardHeightChange.call(ctx, { detail: { height: 0 } })
   assert.equal(ctx.data.nameKeyboardHeight, 0)

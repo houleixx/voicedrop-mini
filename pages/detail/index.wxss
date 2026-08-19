@@ -29,7 +29,7 @@
   z-index: 10;
   display: flex;
   padding-top: 0;
-  padding-right: 15rpx;
+  padding-right: 0;
   padding-bottom: 0;
   padding-left: 32rpx;
   align-items: center;
@@ -84,7 +84,7 @@
 .history-button-group {
   display: flex;
   border: 1rpx solid rgba(224, 216, 204, 0.72);
-  border-radius: 18rpx;
+  border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 6rpx 18rpx rgba(65, 52, 41, 0.1);
 }
@@ -93,13 +93,13 @@
   border-radius: 0;
   border: 0;
   box-shadow: none;
-  min-width: 64rpx;
-  max-width: 64rpx;
-  width: 64rpx;
-  height: 72rpx;
-  min-height: 72rpx;
-  max-height: 72rpx;
-  flex: 0 0 64rpx;
+  min-width: 32px;
+  max-width: 32px;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  max-height: 32px;
+  flex: 0 0 32px;
 }
 
 .history-button-group .tool-button:first-child {
@@ -141,46 +141,47 @@
 
 .tool-button {
   display: flex;
-  width: 72rpx;
-  height: 72rpx;
-  min-width: 72rpx;
-  max-width: 72rpx;
-  min-height: 72rpx;
-  max-height: 72rpx;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  min-height: 32px;
+  max-height: 32px;
   padding: 0;
-  flex: 0 0 72rpx;
+  flex: 0 0 32px;
   align-items: center;
   justify-content: center;
-  border-radius: 18rpx;
+  border-radius: 8px;
   color: #2a2521;
   background: #fffdf9;
 }
 
 .back-icon {
   display: flex;
-  width: 72rpx;
-  height: 72rpx;
+  width: 32px;
+  height: 32px;
   align-items: center;
   justify-content: center;
   border: 1rpx solid rgba(224, 216, 204, 0.72);
-  border-radius: 18rpx;
+  border-radius: 8px;
   color: #2a2521;
   background: #fffdf9;
   box-shadow: 0 6rpx 18rpx rgba(65, 52, 41, 0.1);
-  font-size: 40rpx;
+  font-size: 20px;
   font-weight: 700;
-  line-height: 72rpx;
+  line-height: 32px;
   text-align: center;
 }
 
 .back-button {
   margin: 0;
-  width: 88rpx;
-  height: 88rpx;
-  min-width: 88rpx;
-  max-width: 88rpx;
-  min-height: 88rpx;
-  max-height: 88rpx;
+  margin-left: -5px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  min-height: 44px;
+  max-height: 44px;
   border: 0;
   background: transparent;
   box-shadow: none;
@@ -189,16 +190,17 @@
 .play-button {
   position: relative;
   display: flex;
-  width: 72rpx;
-  height: 72rpx;
-  min-width: 72rpx;
-  max-width: 72rpx;
-  min-height: 72rpx;
-  max-height: 72rpx;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  min-height: 32px;
+  max-height: 32px;
   padding: 0;
-  flex: 0 0 72rpx;
+  flex: 0 0 32px;
   align-items: center;
   justify-content: center;
+  overflow: visible;
   border-radius: 50%;
   background: #fffdf9;
 }
@@ -208,8 +210,8 @@
   top: 50%;
   left: 50%;
   z-index: 0;
-  width: 78rpx;
-  height: 78rpx;
+  width: 40px;
+  height: 40px;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -217,11 +219,11 @@
 .play-icon {
   position: relative;
   z-index: 1;
-  width: 72rpx;
-  height: 72rpx;
+  width: 32px;
+  height: 32px;
   color: #2a2521;
-  font-size: 50rpx;
-  line-height: 72rpx;
+  font-size: 23px;
+  line-height: 32px;
   text-align: center;
 }
 
@@ -231,10 +233,10 @@
 
 .image-icon {
   position: relative;
-  width: 32rpx;
-  height: 28rpx;
-  border: 4rpx solid #2a2521;
-  border-radius: 4rpx;
+  width: 16px;
+  height: 14px;
+  border: 2px solid #2a2521;
+  border-radius: 2px;
 }
 
 .image-sun {
@@ -267,19 +269,21 @@
 }
 
 .history-icon {
-  width: 32rpx;
-  height: 32rpx;
-  font-size: 32rpx;
-  line-height: 32rpx;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
   text-align: center;
 }
 
 .more-icon {
-  margin-top: -6rpx;
+  width: 21px;
+  height: 21px;
   color: #817b72;
-  font-size: 30rpx;
+  font-size: 21px;
   font-weight: 900;
-  letter-spacing: 0;
+  line-height: 21px;
+  text-align: center;
 }
 
 .more-menu-layer {

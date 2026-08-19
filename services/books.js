@@ -8,13 +8,18 @@ const REVISE_API = API + '/revise'
 const BOOK_SUANLI = 320
 const REVISE_SUANLI = 40
 const CACHE_KEY = 'voicedrop.books.shelf.v1'
+const BOOK_WEB_BASE = 'https://voicedrop.cn/books/'
 
-function shelfWebUrl() {
+function routedShelfBase() {
   return `${route.publicWebBase()}/books/`
 }
 
+function shelfWebUrl() {
+  return BOOK_WEB_BASE
+}
+
 function indexUrl() {
-  return `${shelfWebUrl()}?format=json`
+  return `${routedShelfBase()}?format=json`
 }
 
 async function start(seed) {
@@ -101,7 +106,8 @@ function readerUrl(book) {
 
 function coverUrl(book) {
   const version = Math.max(0, Number(book && book.coverAt) || 0)
-  return `${readerUrl(book)}cover.jpg${version ? `?v=${encodeURIComponent(String(version))}` : ''}`
+  const slug = encodeURIComponent(String(book && book.slug || ''))
+  return `${routedShelfBase()}${slug}/cover.jpg${version ? `?v=${encodeURIComponent(String(version))}` : ''}`
 }
 
 function trustedReaderRoots(book) {

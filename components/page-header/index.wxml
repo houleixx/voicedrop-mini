@@ -1,6 +1,8 @@
 <view class="page-header" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx; background: {{bgColor}}; padding-left: {{paddingLeft}}rpx;">
   <view class="header-back" wx:if="{{!hideBack}}" bindtap="goBack" aria-label="返回">
-    <text class="header-back-icon header-back-icon-arrow"></text>
+    <view class="header-back-surface">
+      <text class="header-back-icon header-back-icon-arrow"></text>
+    </view>
   </view>
   <view class="header-left" wx:else><slot name="left" /></view>
   <text class="header-title {{titleAlign === 'left' ? 'title-left' : ''}}" wx:if="{{title}}" style="color: {{textColor}};">{{title}}</text>

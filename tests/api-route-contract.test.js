@@ -43,7 +43,7 @@ test('HTTP and original-photo URLs follow the selected host while WS, thumbnails
   })
 })
 
-test('book shelf, covers, index, and reader follow publicWebBase while writing APIs stay on lab', () => {
+test('book web-views stay on voicedrop.cn while data and covers follow publicWebBase', () => {
   const originalWx = global.wx
   global.wx = { getStorageSync() {}, setStorageSync() {} }
   try {
@@ -52,14 +52,14 @@ test('book shelf, covers, index, and reader follow publicWebBase while writing A
     }, () => {
       const books = require(booksPath)
       const book = { slug: 'hello world', coverAt: 456 }
-      assert.equal(books.shelfWebUrl(), 'https://jianshuo.dev/voicedrop/books/')
+      assert.equal(books.shelfWebUrl(), 'https://voicedrop.cn/books/')
       assert.equal(books.indexUrl(), 'https://jianshuo.dev/voicedrop/books/?format=json')
-      assert.equal(books.readerUrl(book), 'https://jianshuo.dev/voicedrop/books/hello%20world/')
+      assert.equal(books.readerUrl(book), 'https://voicedrop.cn/books/hello%20world/')
       assert.equal(books.coverUrl(book),
         'https://jianshuo.dev/voicedrop/books/hello%20world/cover.jpg?v=456')
       assert.equal(books.readerPageUrl(book,
         'https://jianshuo.dev/voicedrop/books/hello%20world/chapter-2.html'),
-      'https://jianshuo.dev/voicedrop/books/hello%20world/chapter-2.html')
+      'https://voicedrop.cn/books/hello%20world/chapter-2.html')
       assert.equal(books.API, 'https://lab.jianshuo.dev/api/book')
       assert.equal(books.REVISE_API, 'https://lab.jianshuo.dev/api/book/revise')
     })
@@ -69,7 +69,7 @@ test('book shelf, covers, index, and reader follow publicWebBase while writing A
   }
 })
 
-test('books re-route stale cover data and trusted chapters after the selected host changes', () => {
+test('books re-route stale covers but keep trusted chapter web-views on voicedrop.cn', () => {
   let base = 'https://voicedrop.cn'
   withRouteMock({ publicWebBase: () => base }, () => {
     const books = require(booksPath)
@@ -85,17 +85,17 @@ test('books re-route stale cover data and trusted chapters after the selected ho
     assert.equal(book.coverUrl, 'https://voicedrop.cn/books/route-book/cover.jpg?v=456')
     assert.equal(books.readerPageUrl(book,
       'https://voicedrop.cn/books/route-book/chapter-2.html?from=share#note'),
-    'https://jianshuo.dev/voicedrop/books/route-book/chapter-2.html?from=share#note')
+    'https://voicedrop.cn/books/route-book/chapter-2.html?from=share#note')
     assert.equal(books.readerPageUrl(book,
       'https://jianshuo.dev/voicedrop/books/other/chapter-2.html'),
-    'https://jianshuo.dev/voicedrop/books/route-book/')
+    'https://voicedrop.cn/books/route-book/')
     for (const unsafe of [
       'https://voicedrop.cn/books/route-book/../admin/',
       'https://voicedrop.cn/books/route-book/%2e%2e/admin/',
       'https://voicedrop.cn/books/route-book/%252e%252e%252fadmin/'
     ]) {
       assert.equal(books.readerPageUrl(book, unsafe),
-        'https://jianshuo.dev/voicedrop/books/route-book/')
+        'https://voicedrop.cn/books/route-book/')
     }
   })
 })

@@ -36,6 +36,12 @@ test('audio detail more-menu dividers are inset from both edges', () => {
   assert.doesNotMatch(css, /\.more-menu-separator\s*\{[^}]*border-top:/s)
 })
 
+test('audio detail more button uses the shared Remix icon font', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+  assert.match(wxml, /class="more-icon ri-more-fill"/)
+  assert.doesNotMatch(wxml, />•••</)
+})
+
 test('audio detail only reserves the community check indent while it is visible', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
   const menu = wxml.slice(wxml.indexOf('<view class="more-menu-layer"'), wxml.indexOf('<view class="style-sheet-layer"'))
@@ -640,7 +646,7 @@ test('detail page keeps a compact readable rhythm and responsive safe-area toolb
   assert.match(css, /\.detail-scroll-content\s*\{[^}]*padding:\s*0 32rpx 204rpx;/s)
   assert.match(css, /\.detail-toolbar\s*\{[^}]*padding-left:\s*32rpx;/s)
   assert.match(css, /\.toolbar-actions\s*\{[^}]*gap:\s*14rpx;/s)
-  assert.match(css, /\.tool-button\s*\{[^}]*width:\s*72rpx;[^}]*height:\s*72rpx;/s)
+  assert.match(css, /\.tool-button\s*\{[^}]*width:\s*32px;[^}]*height:\s*32px;/s)
   assert.match(css, /\.article-head\s*\{[^}]*padding:\s*0 0 20rpx;/s)
   assert.match(css, /\.article\s*\{[^}]*padding:\s*0;/s)
   assert.match(css, /\.article-tabs\s*\{[^}]*padding:\s*0;/s)
@@ -1858,6 +1864,36 @@ test('detail reuses the persistent downloaded audio file while the page stays al
 
   assert.match(playback, /this\._playbackFilePath\s*\|\|\s*await library\.downloadAudioFile/)
   assert.match(playback, /this\._playbackFilePath\s*=\s*filePath/)
+})
+
+test('detail playback ring uses the same coordinates as its fixed display canvas', () => {
+  const arcs = []
+  const canvas = {
+    clearRect() {},
+    setLineWidth() {},
+    setLineCap() {},
+    setStrokeStyle() {},
+    beginPath() {},
+    arc(...args) { arcs.push(args) },
+    stroke() {},
+    draw() {}
+  }
+  const page = freshDetailPage({}, {
+    getSystemInfoSync: () => ({ windowWidth: 375 }),
+    createCanvasContext: () => canvas
+  })
+
+  page.drawPlaybackRing.call({}, 0.5)
+
+  assert.deepEqual(arcs[0].slice(0, 3), [20, 20, 18.5])
+  assert.deepEqual(arcs[1].slice(0, 3), [20, 20, 18.5])
+
+  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
+  assert.match(wxml, /canvas-id="playbackRingCanvas" width="40" height="40"/)
+  assert.match(css, /\.playback-ring-canvas\s*\{[^}]*width:\s*40px;[^}]*height:\s*40px;/s)
+  assert.match(css, /\.play-button\s*\{[^}]*overflow:\s*visible;/s)
+  assert.match(wxml, /playbackMode === 'playing' \? 'ri-stop-fill' : 'ri-play-fill'/)
 })
 
 test('detail page renders a cached article before background revalidation finishes', () => {

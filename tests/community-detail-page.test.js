@@ -293,6 +293,7 @@ test('community detail has custom actions and loading markup', () => {
   const toolbarActionsRule = wxss.match(/\.toolbar-actions\s*\{([^}]*)\}/)[1]
   const toolButtonRule = wxss.match(/\.tool-button\s*\{([^}]*)\}/)[1]
   const iconButtonRule = wxss.match(/\.icon-only-button\s*\{([^}]*)\}/)[1]
+  const compactIconButtonRule = wxss.match(/\.toolbar-actions \.icon-only-button \+ \.icon-only-button\s*\{([^}]*)\}/)?.[1] || ''
   const actionIconRule = wxss.match(/\.action-icon\s*\{([^}]*)\}/)[1]
   const moreButtonRule = wxss.match(/\.toolbar-actions \.tool-button\.more-button\s*\{([^}]*)\}/)[1]
   const moreIconRule = wxss.match(/\.more-icon\s*\{([^}]*)\}/)[1]
@@ -335,16 +336,17 @@ test('community detail has custom actions and loading markup', () => {
   assert.match(wxml, /ri-hand/)
   assert.match(toolbarActionsRule, /gap:\s*0;/)
   assert.doesNotMatch(toolbarActionsRule, /column-gap|margin-(left|right):/)
-  assert.match(toolButtonRule, /width:\s*72rpx;/)
-  assert.match(toolButtonRule, /height:\s*72rpx;/)
+  assert.match(toolButtonRule, /width:\s*32px;/)
+  assert.match(toolButtonRule, /height:\s*32px;/)
   assert.doesNotMatch(iconButtonRule, /margin-(left|right):/)
-  assert.match(moreButtonRule, /margin-left:\s*11px;/)
-  assert.match(actionIconRule, /width:\s*42rpx;/)
-  assert.match(actionIconRule, /height:\s*42rpx;/)
-  assert.match(actionIconRule, /font-size:\s*42rpx;/)
-  assert.match(moreIconRule, /width:\s*42rpx;/)
-  assert.match(moreIconRule, /height:\s*42rpx;/)
-  assert.match(moreIconRule, /font-size:\s*42rpx;/)
+  assert.match(compactIconButtonRule, /margin-left:\s*0;/)
+  assert.match(moreButtonRule, /margin-left:\s*8px;/)
+  assert.match(actionIconRule, /width:\s*21px;/)
+  assert.match(actionIconRule, /height:\s*21px;/)
+  assert.match(actionIconRule, /font-size:\s*21px;/)
+  assert.match(moreIconRule, /width:\s*21px;/)
+  assert.match(moreIconRule, /height:\s*21px;/)
+  assert.match(moreIconRule, /font-size:\s*21px;/)
   assert.doesNotMatch(moreIconRule, /margin-top:/)
   assert.match(loadingRule, /justify-content:\s*center;/)
   assert.match(loadingRule, /flex-direction:\s*column;/)
@@ -378,7 +380,7 @@ test('community article detail shares the list gutter and audio-detail reading r
   assert.match(wxml, /padding-top: calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 54rpx\)/)
   assert.doesNotMatch(wxml, /padding-top: 115px/)
   assert.match(wxss, /\.detail-scroll-content\s*\{[^}]*padding:\s*0 32rpx 72rpx;/s)
-  assert.match(wxss, /\.detail-toolbar\s*\{[^}]*padding:\s*0 15rpx 0 32rpx;/s)
+  assert.match(wxss, /\.detail-toolbar\s*\{[^}]*padding:\s*0 0 0 32rpx;/s)
   assert.match(wxss, /\.article-head\s*\{[^}]*padding:\s*0 0 20rpx;/s)
   assert.match(wxss, /\.article,\s*\.empty\s*\{[^}]*padding:\s*0;/s)
   assert.match(wxss, /\.article-title\s*\{[^}]*font-size:\s*48rpx;[^}]*font-weight:\s*800;[^}]*line-height:\s*1\.28;/s)

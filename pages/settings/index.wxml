@@ -149,7 +149,7 @@
       </view>
     </view>
 
-    <view class="dialog-overlay" wx:if="{{nameEditorOpen}}" bindtap="closeNameEditor" style="padding-bottom: {{nameKeyboardHeight ? nameKeyboardHeight + 44 : 44}}px;">
+    <view class="dialog-overlay" wx:if="{{nameEditorOpen}}" bindtap="closeNameEditor" style="padding-bottom: {{nameKeyboardHeight ? nameKeyboardHeight + 44 : 44}}rpx;">
       <view class="name-dialog" catchtap="preventNameEditorClose">
         <text class="dialog-title">名字</text>
         <input class="name-input" value="{{nameInput}}" bindinput="onNameInput" bindkeyboardheightchange="onNameKeyboardHeightChange" adjust-position="{{false}}" maxlength="20" placeholder="你的名字" focus="{{nameEditorOpen}}" />

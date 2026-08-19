@@ -9,8 +9,8 @@
     </view>
     <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;" wx:if="{{!inlineEditing}}">
       <button class="play-button {{playbackMode === 'playing' ? 'playing' : ''}}" bindtap="togglePlayback" aria-label="{{playbackMode === 'playing' ? '停止播放' : '播放录音'}}">
-        <canvas class="playback-ring-canvas" canvas-id="playbackRingCanvas" width="78" height="78" wx:if="{{playbackMode !== 'idle'}}"></canvas>
-        <text class="play-icon ri-play-fill"></text>
+        <canvas class="playback-ring-canvas" canvas-id="playbackRingCanvas" width="40" height="40" wx:if="{{playbackMode !== 'idle'}}"></canvas>
+        <text class="play-icon {{playbackMode === 'playing' ? 'ri-stop-fill' : 'ri-play-fill'}}"></text>
       </button>
       <button class="tool-button" bindtap="insertPhoto" aria-label="插入图片">
         <view class="image-icon">
@@ -27,7 +27,7 @@
         </button>
       </view>
       <button class="tool-button" bindtap="showMoreActions" aria-label="更多">
-        <text class="more-icon">•••</text>
+        <text class="more-icon ri-more-fill"></text>
       </button>
     </view>
   </view>

@@ -49,7 +49,7 @@ test('shared article back follows community-detail root-page behavior but return
 test('shared article uses the same fixed toolbar button and transparent article styling as community detail', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'pages/shared-article/index.wxss'), 'utf8')
 
-  assert.match(css, /\.tool-button\s*\{[^}]*width:\s*72rpx;[^}]*height:\s*72rpx;[^}]*max-width:\s*72rpx;[^}]*max-height:\s*72rpx;[^}]*flex:\s*0 0 72rpx;/s)
+  assert.match(css, /\.tool-button\s*\{[^}]*width:\s*32px;[^}]*height:\s*32px;[^}]*max-width:\s*32px;[^}]*max-height:\s*32px;[^}]*flex:\s*0 0 32px;/s)
   assert.match(css, /\.community-detail-screen\s*\{[^}]*background:\s*#fbf7f0;/s)
   assert.match(css, /\.article,\s*\.empty\s*\{[^}]*padding:\s*0;[^}]*border:\s*0;[^}]*background:\s*transparent;/s)
   assert.match(css, /\.paragraph\s*\{[^}]*color:\s*#514b44;[^}]*font-size:\s*35rpx;[^}]*line-height:\s*1\.72;/s)

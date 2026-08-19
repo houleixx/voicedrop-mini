@@ -68,13 +68,13 @@
 }
 
 .settings-icon {
-  width: 44rpx;
-  height: 44rpx;
+  width: 21px;
+  height: 21px;
   color: #2a2521;
   font-family: 'remixicon' !important;
-  font-size: 42rpx;
+  font-size: 21px;
   font-weight: 700;
-  line-height: 44rpx;
+  line-height: 21px;
   text-align: center;
 }
 

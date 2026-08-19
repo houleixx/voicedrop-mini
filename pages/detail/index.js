@@ -27,6 +27,9 @@ const publicShare = require('../../services/public-share')
 
 const app = getApp()
 const ARTICLE_PHOTO_CONCURRENCY = 3
+const TOOLBAR_ACTION_GAP_RPX = 14
+const PLAYBACK_RING_CANVAS_SIZE = 40
+const PLAYBACK_RING_LINE_WIDTH = 3
 
 function xhsCardDate(rec) {
   const parsed = recording.parseStem(rec && rec.stem)
@@ -418,7 +421,11 @@ Page({
         toolbarHeight = menu.height
         const windowWidth = (sysInfo && sysInfo.windowWidth) || 0
         if (windowWidth && menu.left != null) {
-          capsuleSafeRightPx = capsuleLayout.safeRightPx(sysInfo, menu)
+          capsuleSafeRightPx = capsuleLayout.safeRightPx(
+            sysInfo,
+            menu,
+            capsuleLayout.rpxToPx(sysInfo, TOOLBAR_ACTION_GAP_RPX)
+          )
           photoSheetToolbarRightPadding = capsuleSafeRightPx
         }
       }
@@ -1402,10 +1409,8 @@ Page({
     const ctx = wx.createCanvasContext('playbackRingCanvas', this)
     if (!ctx) return
     const clamped = Math.max(0, Math.min(1, Number(progress) || 0))
-    const systemInfo = wx.getSystemInfoSync ? wx.getSystemInfoSync() : {}
-    const windowWidth = Number(systemInfo.windowWidth) || 375
-    const ringSize = windowWidth * 78 / 750
-    const lineWidth = windowWidth * 6 / 750
+    const ringSize = PLAYBACK_RING_CANVAS_SIZE
+    const lineWidth = PLAYBACK_RING_LINE_WIDTH
     const center = ringSize / 2
     const radius = center - lineWidth / 2
     ctx.clearRect(0, 0, ringSize, ringSize)

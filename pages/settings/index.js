@@ -134,7 +134,9 @@ Page({
 
   onNameKeyboardHeightChange(event) {
     const height = Number(event && event.detail && event.detail.height) || 0
-    this.setData({ nameKeyboardHeight: Math.max(0, height) })
+    const screenWidth = wx.getSystemInfoSync().windowWidth
+    const rpxRatio = 750 / screenWidth
+    this.setData({ nameKeyboardHeight: Math.max(0, Math.round(height * rpxRatio)) })
   },
 
   async saveName() {

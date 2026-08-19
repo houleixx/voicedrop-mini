@@ -57,9 +57,9 @@ npm run validate:miniapp
 
 然后在微信开发者工具中导入仓库根目录。请在开发者工具或本机的 `project.private.config.json` 中设置自己的小程序 AppID；微信登录会通过 `wx.getAccountInfoSync()` 读取当前运行环境的 AppID，不应在源码中硬编码。
 
-HTTP API、上传、下载、照片原图和书架会在 `https://voicedrop.cn`（国内 EdgeOne）与 `https://jianshuo.dev`（Cloudflare）之间自动选择较优线路；WebSocket 和 Cloudflare 图片缩略图仍固定使用 `jianshuo.dev`，分享与邀请链接仍固定使用 `voicedrop.cn`，`lab.jianshuo.dev` 的写书/修书接口不参与切换。冷启动会并发探测两条线路，回到前台超过 30 分钟后复测；新线路至少快 150ms 才切换。
+HTTP API、上传、下载、照片原图、书架数据和封面会在 `https://voicedrop.cn`（国内 EdgeOne）与 `https://jianshuo.dev`（Cloudflare）之间自动选择较优线路；书架和书籍阅读器的 `web-view`、分享与邀请链接固定使用 `voicedrop.cn`，WebSocket 和 Cloudflare 图片缩略图仍固定使用 `jianshuo.dev`，`lab.jianshuo.dev` 的写书/修书接口不参与切换。冷启动会并发探测两条线路，回到前台超过 30 分钟后复测；新线路至少快 150ms 才切换。
 
-真机调试和发布前，请在微信公众平台把 `https://voicedrop.cn`、`https://jianshuo.dev` 和 `https://lab.jianshuo.dev` 配置为相应的 request、uploadFile、downloadFile 合法域名，并把 `wss://jianshuo.dev` 与 `wss://lab.jianshuo.dev` 配置为 socket 合法域名。公开书架通过 `web-view` 加载时，还需确认 `jianshuo.dev` 已配置为业务域名；服务器合法域名配置不会自动授予业务域名权限。公众号授权链接由小程序生成并复制到手机或电脑浏览器打开，不在小程序 WebView 中加载。
+真机调试和发布前，请在微信公众平台把 `https://voicedrop.cn`、`https://jianshuo.dev` 和 `https://lab.jianshuo.dev` 配置为相应的 request、uploadFile、downloadFile 合法域名，并把 `wss://jianshuo.dev` 与 `wss://lab.jianshuo.dev` 配置为 socket 合法域名。公开书架和书籍阅读器通过 `web-view` 加载时，还需确认 `voicedrop.cn` 已配置为业务域名；服务器合法域名配置不会自动授予业务域名权限。公众号授权链接由小程序生成并复制到手机或电脑浏览器打开，不在小程序 WebView 中加载。
 
 ## 敏感配置
 

@@ -94,6 +94,13 @@ test('settings icon tiles use the shared semantic palette', () => {
   assert.match(styles, /\.icon-green \.menu-icon-text\s*\{[^}]*color:\s*#5e8a6a;/s)
 })
 
+test('profile name dialog buttons stay inside the dialog', () => {
+  const styles = read('pages/settings/index.wxss')
+
+  assert.match(styles, /\.dialog-actions\s*\{[^}]*display:\s*flex;[^}]*width:\s*100%;[^}]*gap:\s*18rpx;/s)
+  assert.match(styles, /\.dialog-button\s*\{[^}]*flex:\s*1\s+1\s+0;[^}]*width:\s*0;[^}]*min-width:\s*0;[^}]*margin:\s*0;/s)
+})
+
 test('about pages inherit the compact settings rhythm and readable secondary text', () => {
   const aboutMarkup = read('pages/about/index.wxml')
   const aboutStyles = read('pages/about/index.wxss')

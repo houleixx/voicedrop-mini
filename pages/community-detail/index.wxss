@@ -23,7 +23,7 @@
   right: 0;
   z-index: 10;
   display: flex;
-  padding: 0 15rpx 0 32rpx;
+  padding: 0 0 0 32rpx;
   align-items: center;
   justify-content: space-between;
   background: #fbf7f0;
@@ -37,19 +37,19 @@
 
 .tool-button {
   display: flex;
-  width: 72rpx;
-  height: 72rpx;
-  min-width: 72rpx;
-  max-width: 72rpx;
-  min-height: 72rpx;
-  max-height: 72rpx;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  min-height: 32px;
+  max-height: 32px;
   margin: 0;
   padding: 0;
-  flex: 0 0 72rpx;
+  flex: 0 0 32px;
   align-items: center;
   justify-content: center;
   border: 1rpx solid rgba(224, 216, 204, 0.72);
-  border-radius: 18rpx;
+  border-radius: 8px;
   color: #2a2521;
   background: #fffdf9;
   box-shadow: 0 6rpx 18rpx rgba(65, 52, 41, 0.1);
@@ -57,29 +57,30 @@
 
 .back-icon {
   display: flex;
-  width: 72rpx;
-  height: 72rpx;
+  width: 32px;
+  height: 32px;
   align-items: center;
   justify-content: center;
   border: 1rpx solid rgba(224, 216, 204, 0.72);
-  border-radius: 18rpx;
+  border-radius: 8px;
   color: #2a2521;
   background: #fffdf9;
   box-shadow: 0 6rpx 18rpx rgba(65, 52, 41, 0.1);
-  font-size: 40rpx;
+  font-size: 20px;
   font-weight: 700;
-  line-height: 72rpx;
+  line-height: 32px;
   text-align: center;
 }
 
 .back-button {
   margin: 0;
-  width: 88rpx;
-  height: 88rpx;
-  min-width: 88rpx;
-  max-width: 88rpx;
-  min-height: 88rpx;
-  max-height: 88rpx;
+  margin-left: -5px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  min-height: 44px;
+  max-height: 44px;
   border: 0;
   background: transparent;
   box-shadow: none;
@@ -91,6 +92,10 @@
   box-shadow: none;
 }
 
+.toolbar-actions .icon-only-button + .icon-only-button {
+  margin-left: 0;
+}
+
 .icon-only-button.liked {
   color: #d8593b;
 }
@@ -100,11 +105,11 @@
 }
 
 .action-icon {
-  width: 42rpx;
-  height: 42rpx;
+  width: 21px;
+  height: 21px;
   color: currentColor;
-  font-size: 42rpx;
-  line-height: 42rpx;
+  font-size: 21px;
+  line-height: 21px;
   text-align: center;
 }
 
@@ -113,17 +118,17 @@
 }
 
 .toolbar-actions .tool-button.more-button {
-  margin-left: 11px;
+  margin-left: 8px;
 }
 
 .more-icon {
-  width: 42rpx;
-  height: 42rpx;
+  width: 21px;
+  height: 21px;
   color: #2a2521;
-  font-size: 42rpx;
+  font-size: 21px;
   font-weight: 900;
   letter-spacing: 0;
-  line-height: 42rpx;
+  line-height: 21px;
   text-align: center;
 }
 

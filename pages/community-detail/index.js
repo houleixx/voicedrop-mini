@@ -16,6 +16,7 @@ const promptTree = require('../../utils/prompt-tree')
 
 const app = getApp()
 const REPLY_WAVE_PATTERN = [0.25, 0.62, 0.38, 0.9, 0.48, 0.72, 0.34, 0.58]
+const TOOLBAR_ACTION_GAP_RPX = 14
 
 function suanliText(value) {
   const number = Number(value) || 0
@@ -71,7 +72,11 @@ Page({
       if (menu && menu.top != null && menu.height) {
         toolbarTop = menu.top
         toolbarHeight = menu.height
-        capsuleSafeRightPx = capsuleLayout.safeRightPx(sysInfo, menu)
+        capsuleSafeRightPx = capsuleLayout.safeRightPx(
+          sysInfo,
+          menu,
+          capsuleLayout.rpxToPx(sysInfo, TOOLBAR_ACTION_GAP_RPX)
+        )
       }
     } catch (_) {
     }

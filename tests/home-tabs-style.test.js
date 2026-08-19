@@ -24,7 +24,7 @@ test('home tabs fixed header matches the iOS 22pt side padding', () => {
   assert.match(tabs, /box-sizing:\s*border-box;/)
 })
 
-test('settings shortcut uses recommended tap target and icon size', () => {
+test('settings shortcut uses a recommended tap target and optically balanced icon size', () => {
   const css = fs.readFileSync(path.join(root, 'components/home-tabs/index.wxss'), 'utf8')
   const wxml = fs.readFileSync(path.join(root, 'components/home-tabs/index.wxml'), 'utf8')
   const button = ruleBody(css, '.settings-button')
@@ -39,11 +39,11 @@ test('settings shortcut uses recommended tap target and icon size', () => {
   assert.match(surface, /width:\s*32px;/)
   assert.match(surface, /height:\s*32px;/)
   assert.match(surface, /border-radius:\s*8px;/)
-  assert.match(icon, /width:\s*44rpx;/)
-  assert.match(icon, /height:\s*44rpx;/)
+  assert.match(icon, /width:\s*21px;/)
+  assert.match(icon, /height:\s*21px;/)
   assert.match(icon, /font-family:\s*'remixicon'\s*!important;/)
-  assert.match(icon, /font-size:\s*42rpx;/)
-  assert.match(icon, /line-height:\s*44rpx;/)
+  assert.match(icon, /font-size:\s*21px;/)
+  assert.match(icon, /line-height:\s*21px;/)
   assert.match(css, /\.settings-icon-gear::before\s*\{[^}]*content:\s*"\\f0e8";/s)
 })
 
