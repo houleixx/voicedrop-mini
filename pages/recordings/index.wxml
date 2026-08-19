@@ -67,6 +67,8 @@
     refresher-threshold="72"
     refresher-background="#faf6ef"
     bindrefresherrefresh="onRefresherRefresh"
+    scroll-top="{{scrollTop}}"
+    bindscroll="onScroll"
     style="top: {{activeTab === 'community' ? communityScrollContentTop : scrollContentTop}}px;"
     bindtouchstart="onScreenTouchStart"
   >

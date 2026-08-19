@@ -95,6 +95,7 @@ Page({
     booksLoaded: false,
     refreshing: false,
     audioConsentVisible: false,
+    scrollTop: 0,
     scrollContentTop: 0,
     communityScrollContentTop: 0
   },
@@ -105,6 +106,9 @@ Page({
     this.topLevelUiRendered = false
     this._pageUnloaded = false
     const activeTab = this.initialTab(options)
+    this._scrollPositions = { recordings: 0, community: 0, books: 0 }
+    this._refreshPromises = Object.create(null)
+    this._refreshingTabs = Object.create(null)
     this.setData({ activeTab, currentHomeTab: activeTab })
     try {
       const info = wx.getSystemInfoSync()
@@ -322,7 +326,12 @@ Page({
     app.globalData.pendingHomeTab = ''
     if (pending === this.data.activeTab) return
     const activeTab = pending === 'community' || pending === 'books' ? pending : 'recordings'
-    this.setData({ activeTab, currentHomeTab: activeTab })
+    this.setData({
+      activeTab,
+      currentHomeTab: activeTab,
+      scrollTop: this.scrollPositionFor(activeTab),
+      refreshing: this.isTabRefreshing(activeTab)
+    })
     if (this.data.activeTab === 'community') {
       const restored = this.data.communityLoaded || this.restoreCachedCommunityFeed()
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
@@ -344,6 +353,8 @@ Page({
         currentHomeTab: key,
         selectedTag: tag,
         selectedTagMissing: Boolean(tag && !this.data.homeTags.includes(tag)),
+        scrollTop: this.scrollPositionFor('recordings'),
+        refreshing: this.isTabRefreshing('recordings'),
         records: this.commandRecordsFor(this.data.allRecords, tag)
       })
       if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
@@ -356,6 +367,8 @@ Page({
       currentHomeTab: key,
       selectedTag,
       selectedTagMissing: false,
+      scrollTop: this.scrollPositionFor(activeTab),
+      refreshing: this.isTabRefreshing(activeTab),
       records: activeTab === 'recordings' ? this.commandRecordsFor(this.data.allRecords, '') : this.data.records
     })
     if (activeTab === 'community') {
@@ -374,9 +387,40 @@ Page({
     wx.navigateTo({ url: '/pages/settings/index' })
   },
 
-  refreshCurrent(options) {
-    if (this.data.activeTab === 'community') return this.loadCommunity(options)
-    if (this.data.activeTab === 'books') return this.loadBooks(options)
+  scrollTab(tab) {
+    return tab === 'community' || tab === 'books' ? tab : 'recordings'
+  },
+
+  scrollPositions() {
+    if (!this._scrollPositions) {
+      this._scrollPositions = { recordings: 0, community: 0, books: 0 }
+      const activeTab = this.scrollTab(this.data.activeTab)
+      this._scrollPositions[activeTab] = Math.max(0, Number(this.data.scrollTop) || 0)
+    }
+    return this._scrollPositions
+  },
+
+  scrollPositionFor(tab) {
+    return Math.max(0, Number(this.scrollPositions()[this.scrollTab(tab)]) || 0)
+  },
+
+  onScroll(event) {
+    const tab = this.scrollTab(this.data.activeTab)
+    if (this.isTabRefreshing(tab)) return
+    const scrollTop = Number(event && event.detail && event.detail.scrollTop)
+    if (!Number.isFinite(scrollTop) || scrollTop < 0) return
+    this.scrollPositions()[tab] = scrollTop
+  },
+
+  isTabRefreshing(tab) {
+    return Boolean(this._refreshingTabs && this._refreshingTabs[this.scrollTab(tab)])
+  },
+
+  refreshCurrent(options, tab) {
+    const requested = tab || this.data.activeTab
+    const target = requested === 'community' || requested === 'books' ? requested : 'recordings'
+    if (target === 'community') return this.loadCommunity(options)
+    if (target === 'books') return this.loadBooks(options)
     return this.load(options)
   },
 
@@ -490,13 +534,17 @@ Page({
   },
 
   refreshFromUser() {
-    if (this._refreshPromise) return this._refreshPromise
-    const refreshingBooks = this.data.activeTab === 'books'
+    const tab = this.scrollTab(this.data.activeTab)
+    const refreshPromises = this._refreshPromises || (this._refreshPromises = Object.create(null))
+    if (refreshPromises[tab]) return refreshPromises[tab]
+    const refreshingTabs = this._refreshingTabs || (this._refreshingTabs = Object.create(null))
+    const refreshingBooks = tab === 'books'
     const options = { silent: true, keepDataOnError: true }
     if (refreshingBooks) options.forceRefresh = true
-    this.setData({ refreshing: true })
-    this._refreshPromise = Promise.all([
-      Promise.resolve(this.refreshCurrent(options)),
+    refreshingTabs[tab] = true
+    if (this.scrollTab(this.data.activeTab) === tab) this.setData({ refreshing: true })
+    const refreshPromise = Promise.all([
+      Promise.resolve(this.refreshCurrent(options, tab)),
       refreshingBooks ? wait(MIN_BOOK_REFRESH_FEEDBACK_MS) : Promise.resolve()
     ])
       .then(([ok]) => {
@@ -508,10 +556,14 @@ Page({
         return false
       })
       .finally(() => {
-        this._refreshPromise = null
-        if (!this._pageUnloaded) this.setData({ refreshing: false })
+        if (refreshPromises[tab] === refreshPromise) delete refreshPromises[tab]
+        refreshingTabs[tab] = false
+        if (!this._pageUnloaded && this.scrollTab(this.data.activeTab) === tab) {
+          this.setData({ refreshing: false })
+        }
       })
-    return this._refreshPromise
+    refreshPromises[tab] = refreshPromise
+    return refreshPromise
   },
 
   bindRecorder() {

@@ -397,9 +397,125 @@ test('recordings scroll view enables pull refresh for both home tabs', () => {
   assert.match(wxml, /<scroll-view[^>]*refresher-default-style="none"/)
   assert.match(wxml, /<scroll-view[^>]*refresher-threshold="72"/)
   assert.match(wxml, /<scroll-view[^>]*bindrefresherrefresh="onRefresherRefresh"/)
+  assert.match(wxml, /<scroll-view[^>]*scroll-top="\{\{scrollTop\}\}"/)
+  assert.match(wxml, /<scroll-view[^>]*bindscroll="onScroll"/)
   assert.match(wxml, /<view slot="refresher" class="pull-refresh-indicator">\s*<view class="loading-spinner pull-refresh-spinner" aria-hidden="true"><\/view>\s*<\/view>/)
   assert.match(css, /\.pull-refresh-indicator\s*\{[^}]*display:\s*flex;[^}]*width:\s*100%;[^}]*height:\s*72px;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s)
   assert.match(css, /\.pull-refresh-spinner\s*\{[^}]*box-sizing:\s*border-box;[^}]*width:\s*30px;[^}]*height:\s*30px;[^}]*flex:\s*0 0 30px;[^}]*position:\s*relative;[^}]*top:\s*8px;/s)
+})
+
+test('home tabs restore independent scroll positions', () => {
+  const { page } = freshRecordingsPage()
+  const ctx = Object.assign({}, page, {
+    data: Object.assign({}, page.data, {
+      activeTab: 'recordings',
+      currentHomeTab: 'recordings',
+      scrollTop: 0,
+      allRecords: [],
+      records: []
+    }),
+    setData(update) { Object.assign(this.data, update) },
+    loadCommunity() {},
+    restoreCachedCommunityFeed() { return true },
+    loadBookProfileAuthor() {},
+    loadBooks() {},
+    restoreCachedBooks() { return true },
+    currentCommandRefs() { return [] }
+  })
+
+  page.onScroll.call(ctx, { detail: { scrollTop: 320 } })
+  page.switchHomeTab.call(ctx, { detail: { key: 'community' } })
+  assert.equal(ctx.data.scrollTop, 0)
+
+  page.onScroll.call(ctx, { detail: { scrollTop: 145 } })
+  page.switchHomeTab.call(ctx, { detail: { key: 'books' } })
+  assert.equal(ctx.data.scrollTop, 0)
+
+  page.onScroll.call(ctx, { detail: { scrollTop: 88 } })
+  page.switchHomeTab.call(ctx, { detail: { key: 'recordings' } })
+  assert.equal(ctx.data.scrollTop, 320)
+
+  page.switchHomeTab.call(ctx, { detail: { key: 'community' } })
+  assert.equal(ctx.data.scrollTop, 145)
+
+  ctx.data.homeTags = ['工作']
+  page.switchHomeTab.call(ctx, { detail: { key: 'tag:工作', tab: { tag: '工作' } } })
+  assert.equal(ctx.data.scrollTop, 320)
+
+  page.switchHomeTab.call(ctx, { detail: { key: 'books' } })
+  assert.equal(ctx.data.scrollTop, 88)
+})
+
+test('pull refresh rebound does not overwrite tab scroll positions or leak its indicator', async () => {
+  let releaseRefresh
+  const { page } = freshRecordingsPage()
+  const ctx = Object.assign({}, page, {
+    data: Object.assign({}, page.data, {
+      activeTab: 'recordings',
+      currentHomeTab: 'recordings',
+      scrollTop: 240,
+      refreshing: false,
+      allRecords: [],
+      records: []
+    }),
+    _scrollPositions: { recordings: 240, community: 90, books: 30 },
+    setData(update) { Object.assign(this.data, update) },
+    refreshCurrent(options, tab) {
+      assert.equal(tab, 'recordings')
+      return new Promise((resolve) => { releaseRefresh = resolve })
+    },
+    loadCommunity() {},
+    restoreCachedCommunityFeed() { return true },
+    currentCommandRefs() { return [] }
+  })
+
+  const pending = page.onRefresherRefresh.call(ctx)
+  assert.equal(ctx.data.refreshing, true)
+  page.onScroll.call(ctx, { detail: { scrollTop: 0 } })
+
+  page.switchHomeTab.call(ctx, { detail: { key: 'community' } })
+  assert.equal(ctx.data.scrollTop, 90)
+  assert.equal(ctx.data.refreshing, false)
+
+  releaseRefresh(true)
+  await pending
+  assert.equal(ctx.data.activeTab, 'community')
+  assert.equal(ctx.data.refreshing, false)
+
+  page.switchHomeTab.call(ctx, { detail: { key: 'recordings' } })
+  assert.equal(ctx.data.scrollTop, 240)
+})
+
+test('voice-command list refresh leaves the recordings scroll position untouched', () => {
+  const libraryCommand = require('../services/library-command')
+  const library = require('../services/library')
+  const originalCreateSession = libraryCommand.createSession
+  const originalInvalidateArticleCaches = library.invalidateArticleCaches
+  let callbacks
+  library.invalidateArticleCaches = () => {}
+  libraryCommand.createSession = (options) => {
+    callbacks = options
+    return { connect() {}, close() {}, setRefs() {} }
+  }
+  try {
+    const { page } = freshRecordingsPage()
+    const loads = []
+    const ctx = Object.assign({}, page, {
+      data: Object.assign({}, page.data, { activeTab: 'recordings', scrollTop: 275 }),
+      _scrollPositions: { recordings: 275, community: 0, books: 0 },
+      load(options) { loads.push(options) }
+    })
+
+    page.createCommandSession.call(ctx)
+    callbacks.onUpdate(['VoiceDrop-example'])
+
+    assert.deepEqual(loads, [{ silent: true, keepDataOnError: true }])
+    assert.equal(ctx.data.scrollTop, 275)
+    assert.equal(ctx._scrollPositions.recordings, 275)
+  } finally {
+    libraryCommand.createSession = originalCreateSession
+    library.invalidateArticleCaches = originalInvalidateArticleCaches
+  }
 })
 
 test('recording rows keep the square waveform until the dedicated article cover renders', async () => {
