@@ -317,7 +317,7 @@ test('community detail has custom actions and loading markup', () => {
   assert.match(wxml, /class="more-menu-row more-menu-share-row"/)
   assert.match(wxml, /class="more-menu-share-button"/)
   assert.match(wxml, /open-type="share"/)
-  assert.match(wxml, /bindtap="shareLink"/)
+  assert.match(wxml, /bindtap="closeMoreMenu"/)
   assert.match(wxml, /data-action="report"/)
   assert.match(wxml, /data-action="blockAuthor"/)
   assert.match(wxml, /aria-label="投币"/)
@@ -702,7 +702,7 @@ test('community detail opens custom more menu and routes actions', async () => {
   assert.equal(ctx.data.moreMenuOpen, false)
 })
 
-test('community detail share action prepares Android web share URL', () => {
+test('community detail share action only opens the Mini Program share panel', () => {
   const page = freshCommunityDetailPage([], null)
   const clipboard = []
   global.wx.setClipboardData = (options) => clipboard.push(options)
@@ -716,9 +716,11 @@ test('community detail share action prepares Android web share URL', () => {
     }
   }
 
-  page.shareLink.call(ctx)
+  page.closeMoreMenu.call(ctx)
 
-  assert.deepEqual(clipboard, [{ data: 'https://voicedrop.cn/share-1' }])
+  const wxml = fs.readFileSync(path.join(__dirname, '..', 'pages/community-detail/index.wxml'), 'utf8')
+  assert.match(wxml, /<button class="more-menu-share-button" open-type="share" bindtap="closeMoreMenu"/)
+  assert.deepEqual(clipboard, [])
   assert.equal(ctx.data.moreMenuOpen, false)
 })
 

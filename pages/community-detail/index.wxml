@@ -130,7 +130,7 @@
       <view class="more-menu-row more-menu-share-row">
         <text class="more-menu-label">分享</text>
         <text class="more-menu-icon ri-share-box-line"></text>
-        <button class="more-menu-share-button" open-type="share" bindtap="shareLink" aria-label="分享"></button>
+        <button class="more-menu-share-button" open-type="share" bindtap="closeMoreMenu" aria-label="分享"></button>
       </view>
       <view class="more-menu-row is-danger" data-action="report" bindtap="runMoreMenuAction">
         <text class="more-menu-label">举报</text>

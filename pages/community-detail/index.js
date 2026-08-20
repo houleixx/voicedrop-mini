@@ -7,7 +7,6 @@ const communityReply = require('../../utils/community-reply')
 const pendingReplies = require('../../utils/pending-replies')
 const recordingQuality = require('../../utils/recording-quality')
 const prefs = require('../../utils/prefs')
-const api = require('../../services/api')
 const audioConsentFlow = require('../../utils/audio-consent-flow')
 const recordPermission = require('../../utils/record-permission')
 const capsuleLayout = require('../../utils/capsule-layout')
@@ -654,11 +653,6 @@ Page({
         else applyBlock()
       }
     })
-  },
-
-  shareLink() {
-    if (this.setData) this.setData({ moreMenuOpen: false })
-    wx.setClipboardData({ data: api.sharePage(this.data.shareId) })
   },
 
   openReply(event) {
