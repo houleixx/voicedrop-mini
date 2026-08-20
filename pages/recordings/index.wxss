@@ -15,6 +15,102 @@
   background: #faf6ef;
 }
 
+.device-link-layer {
+  position: fixed;
+  z-index: 1001;
+  inset: 0;
+  display: flex;
+  padding: 48rpx;
+  align-items: center;
+  justify-content: center;
+  background: rgba(42, 37, 33, 0.58);
+}
+
+.device-link-dialog {
+  width: 100%;
+  max-width: 620rpx;
+  overflow: hidden;
+  border-radius: 32rpx;
+  background: #fffaf3;
+  box-shadow: 0 24rpx 80rpx rgba(42, 37, 33, 0.28);
+}
+
+.device-link-title,
+.device-link-summary,
+.device-link-note {
+  display: block;
+}
+
+.device-link-title {
+  padding: 44rpx 40rpx 0;
+  color: #2a2521;
+  font-size: 40rpx;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.device-link-summary {
+  margin-top: 20rpx;
+  padding: 0 44rpx;
+  color: #5d574f;
+  font-size: 28rpx;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.device-link-code {
+  display: block;
+  margin-top: 30rpx;
+  color: #2a2521;
+  font-family: "SFMono-Regular", "Roboto Mono", monospace;
+  font-size: 84rpx;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: 16rpx;
+  line-height: 1.2;
+  text-align: center;
+  text-indent: 16rpx;
+}
+
+.device-link-note {
+  margin-top: 24rpx;
+  padding: 0 40rpx;
+  color: #8a8175;
+  font-size: 24rpx;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.device-link-actions {
+  display: flex;
+  padding: 36rpx 32rpx 32rpx;
+  gap: 20rpx;
+}
+
+.device-link-button {
+  display: flex;
+  min-height: 92rpx;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 92rpx;
+}
+
+.device-link-reject {
+  border: 1rpx solid #e1d3c4;
+  color: #5d574f;
+  background: #ffffff;
+}
+
+.device-link-confirm {
+  color: #ffffff;
+  background: #d8593b;
+}
+
 .scroll-content {
   position: absolute;
   bottom: 0;

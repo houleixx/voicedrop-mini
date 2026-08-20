@@ -25,6 +25,7 @@ Page({
 
   async refresh() {
     const token = auth.anonymousBearer()
+    const bearer = auth.bearer()
     const wechatAuthed = auth.isWechatAuthenticated()
     this.setData({
       accountId: '',
@@ -36,14 +37,16 @@ Page({
     })
     try {
       const scope = await library.ownerScope({ anonymous: true })
-      if (auth.anonymousBearer() !== token) return
+      if (auth.anonymousBearer() !== token || auth.bearer() !== bearer) return
       const accountId = accountIdFromScope(scope)
       this.setData({
         accountId,
         accountIdDisplay: accountId
       })
     } catch (error) {
-      if (auth.anonymousBearer() === token) this.setData({ accountId: '', accountIdDisplay: '' })
+      if (auth.anonymousBearer() === token && auth.bearer() === bearer) {
+        this.setData({ accountId: '', accountIdDisplay: '' })
+      }
     }
   },
 

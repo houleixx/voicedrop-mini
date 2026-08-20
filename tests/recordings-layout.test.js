@@ -859,6 +859,38 @@ test('books load forwards force refresh and ignores an older response', async ()
   }
 })
 
+test('books first uncached load keeps its exclusive loading state while the request is pending', async () => {
+  const books = require('../services/books')
+  const originalShelf = books.shelf
+  let resolveShelf
+  books.shelf = () => new Promise((resolve) => { resolveShelf = resolve })
+
+  try {
+    const { page } = freshRecordingsPage()
+    const ctx = Object.assign({}, page, {
+      data: Object.assign({}, page.data, { bookItems: [], booksLoaded: false }),
+      setData(update) { Object.assign(this.data, update) },
+      prepareBookItems(items) { return items },
+      _bookCoverSession: { load() {} }
+    })
+
+    const pending = page.loadBooks.call(ctx)
+    await new Promise((resolve) => queueMicrotask(resolve))
+
+    assert.equal(ctx.data.booksLoading, true)
+    assert.equal(ctx.data.booksLoaded, false)
+
+    resolveShelf([{ slug: 'first-book' }])
+    await pending
+
+    assert.equal(ctx.data.booksLoading, false)
+    assert.equal(ctx.data.booksLoaded, true)
+    assert.equal(ctx.data.bookItems[0].slug, 'first-book')
+  } finally {
+    books.shelf = originalShelf
+  }
+})
+
 test('successful silent recording refresh clears a previous list error', async () => {
   const library = require('../services/library')
   const originalList = library.list
@@ -957,6 +989,13 @@ test('books supports direct home-tab entry and renders inside the recordings pag
     ['write', 'one'],
     ['two', 'three']
   ])
+})
+
+test('books first load shows only the loading state before the shelf is ready', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
+
+  assert.match(wxml, /<view wx:elif="\{\{!booksLoaded && !bookItems\.length\}\}" class="shelf-state loading-notice">[\s\S]*正在整理书架…[\s\S]*<\/view>/)
+  assert.match(wxml, /<view wx:else class="shelf-rows books-shelf-inner">/)
 })
 
 test('books keep edit buttons visible while refreshing the same account profile', async () => {

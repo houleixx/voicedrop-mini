@@ -5,6 +5,7 @@ const audio = require('../../services/audio')
 const recordingUploads = require('../../services/recording-upload-queue')
 const photoMarkerRepair = require('../../services/photo-marker-repair')
 const statusSession = require('../../services/status-session')
+const deviceLinkApproval = require('../../services/device-link-approval')
 const libraryCommand = require('../../services/library-command')
 const asrDictation = require('../../services/asr-dictation')
 const community = require('../../services/community')
@@ -122,6 +123,7 @@ Page({
     this.bindRecorder()
     this._socketBearer = auth.bearer()
     this.createStatusSession()
+    this.deviceLinkApproval = this.createDeviceLinkApproval()
     this.createCommandSession()
     const restored = this.restoreCachedRecordings()
     this.load(restored ? { silent: true, keepDataOnError: true } : undefined)
@@ -169,6 +171,7 @@ Page({
     this.drainPendingRecordingUploads()
     this.resetAccountSessionsIfNeeded()
     if (this.statusSession) this.statusSession.connect()
+    if (this.deviceLinkApproval) this.deviceLinkApproval.recover()
     if (this.commandSession) {
       this.commandSession.setRefs(this.currentCommandRefs())
       this.commandSession.connect()
@@ -1086,16 +1089,35 @@ Page({
         }
       },
       onLinkRequest: (request) => {
-        this.setData({ linkRequest: request })
-        wx.showModal({
-          title: '设备登录请求',
-          content: `有新设备想登录当前账号。\n\n验证码：${request.code}\n\n如果不是你本人操作，请忽略。`,
-          showCancel: false
-        })
+        if (this.deviceLinkApproval) this.deviceLinkApproval.present(request)
       },
-      onLinkRelease: () => this.setData({ linkRequest: null })
+      onLinkRelease: (release) => {
+        this.setData({ linkRequest: null })
+        if (this.deviceLinkApproval) this.deviceLinkApproval.release(release)
+      }
     })
   },
+
+  createDeviceLinkApproval() {
+    return deviceLinkApproval.createApproval({
+      onPresent: (request) => {
+        if (this._pageUnloaded) return
+        this.setData({ linkRequest: request })
+      }
+    })
+  },
+
+  acknowledgeDeviceLink() {
+    this.setData({ linkRequest: null })
+  },
+
+  rejectDeviceLink() {
+    const pairingId = this.data.linkRequest && this.data.linkRequest.pairingId
+    this.setData({ linkRequest: null })
+    if (pairingId && this.deviceLinkApproval) this.deviceLinkApproval.reject(pairingId)
+  },
+
+  preventDeviceLinkTouchMove() {},
 
   createCommandSession() {
     this.commandSession = libraryCommand.createSession({
@@ -1139,6 +1161,7 @@ Page({
       commandState: ''
     })
     this.createStatusSession()
+    this.deviceLinkApproval = this.createDeviceLinkApproval()
     this.createCommandSession()
     return true
   },

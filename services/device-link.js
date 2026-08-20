@@ -19,6 +19,12 @@ async function complete(pairingId, blob) {
   return res.statusCode >= 200 && res.statusCode < 300
 }
 
+async function pending() {
+  const res = await http.get(`${api.agentBase()}/link/pending`, auth.bearer())
+  if (res.statusCode < 200 || res.statusCode >= 300) throw new Error(`link pending HTTP ${res.statusCode}`)
+  return res.data || {}
+}
+
 async function cancel(pairingId) {
   await http.postJson(`${api.agentBase()}/link/cancel`, auth.bearer(), { pairingId })
 }
@@ -27,5 +33,6 @@ module.exports = {
   start,
   verify,
   complete,
+  pending,
   cancel
 }

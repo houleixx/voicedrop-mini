@@ -55,7 +55,7 @@ test('bundled manual describes mini-program account and platform behavior', () =
 
   assert.match(markdown, /匿名身份保存在当前微信的小程序本地存储中/)
   assert.match(markdown, /登录微信账号/)
-  assert.match(markdown, /账户短码，主要用于电脑端设备配对；它不一定等于邀请码/)
+  assert.match(markdown, /未登录微信时，设置页「账户」右边显示匿名 ID 的前 6 位账户短码，仅用于电脑 MCP 设备配对；微信登录后隐藏/)
   assert.doesNotMatch(markdown, /ID 已随 iCloud 钥匙串备份/)
   assert.doesNotMatch(markdown, /用 Apple 登录（同步设备 · 参与社区）/)
   assert.doesNotMatch(markdown, /iOS 自己的分享面板/)

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "build:device-link-crypto": "esbuild scripts/device-link-primitives-entry.js --bundle --platform=browser --format=cjs --target=es2018 --minify --legal-comments=linked --outfile=utils/device-link-primitives.js",
     "test": "node --test tests/*.test.js",
     "validate:miniapp": "node scripts/validate-miniapp.js"
   },
@@ -10,5 +11,11 @@
     "pako": "^3.0.1",
     "remixicon-weapp": "^2.5.0",
     "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@noble/ciphers": "^1.2.1",
+    "@noble/hashes": "^1.7.1",
+    "esbuild": "^0.25.9",
+    "tweetnacl": "^1.0.3"
   }
 }

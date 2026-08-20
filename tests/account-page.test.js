@@ -14,7 +14,7 @@ function freshAccountPage(options) {
     anonymousBearer: () => config.anonymousBearer || 'anon-token',
     anonId: () => 'anon-current',
     adoptToken: (credential) => { calls.push(['adoptToken', credential]); return true },
-    isWechatAuthenticated: () => false,
+    isWechatAuthenticated: () => Boolean(config.wechatAuthenticated),
     storeSession: (session) => { calls.push(['storeSession', session]); return true },
     switchToWechatAccount: (session) => { calls.push(['switchToWechatAccount', session]); return true },
     signOutWechat() {},
@@ -91,8 +91,8 @@ test('account page does not expose device pairing login', () => {
   const accountJs = fs.readFileSync(path.join(root, 'pages/account/index.js'), 'utf8')
   const accountWxml = fs.readFileSync(path.join(root, 'pages/account/index.wxml'), 'utf8')
 
-  assert.doesNotMatch(accountWxml, /转移与登录|设备配对登录|startDeviceLink|pairing/)
-  assert.doesNotMatch(accountJs, /device-link|startDeviceLink|verifyDeviceLink|cancelDeviceLink|pairingCode/)
+  assert.doesNotMatch(accountWxml, /六位登录码|转移与登录|设备配对登录|startDeviceLink|pairing/)
+  assert.doesNotMatch(accountJs, /loginCode|copyLoginCode|device-link|startDeviceLink|verifyDeviceLink|cancelDeviceLink|pairingCode/)
 })
 
 test('token import dialog keeps the native input inside a styled field shell', () => {

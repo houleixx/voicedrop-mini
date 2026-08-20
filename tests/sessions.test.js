@@ -209,9 +209,9 @@ test('parses status and device link messages', () => {
     stem: 'VoiceDrop-a',
     status: 'mining'
   })
-  assert.deepEqual(agentMessage.linkRequest('{"type":"link_request","pairingId":"p1","code":"123456","pubkey":"pk"}'), {
+  assert.deepEqual(agentMessage.linkRequest('{"type":"link_request","pairingId":"p1","code":"1234","pubkey":"pk"}'), {
     pairingId: 'p1',
-    code: '123456',
+    code: '1234',
     pubkey: 'pk'
   })
   assert.deepEqual(agentMessage.linkRelease('{"type":"link_release","pairingId":"p1"}'), { pairingId: 'p1' })

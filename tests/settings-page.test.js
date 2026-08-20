@@ -250,7 +250,7 @@ test('settings page shows the backend account prefix and anonymous local-storage
   assert.equal(ctx.data.accountSubtitle, '匿名 ID 保存在本机')
 })
 
-test('settings page shows signed-in status for a WeChat session', async () => {
+test('settings page hides the MCP pairing code for a WeChat session', async () => {
   const page = freshSettingsPage({ wechatAuthenticated: true })
   const ctx = pageContext(page)
 

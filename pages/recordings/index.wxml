@@ -154,11 +154,11 @@
 
     <block wx:elif="{{activeTab === 'books'}}">
       <view wx:if="{{booksError && !bookItems.length}}" class="shelf-state">{{booksError}}</view>
-      <view wx:elif="{{booksLoading && !bookItems.length}}" class="shelf-state loading-notice">
+      <view wx:elif="{{!booksLoaded && !bookItems.length}}" class="shelf-state loading-notice">
         <view class="loading-spinner" aria-hidden="true"></view>
         <text>正在整理书架…</text>
       </view>
-      <view class="shelf-rows books-shelf-inner">
+      <view wx:else class="shelf-rows books-shelf-inner">
         <view class="shelf-row-group" wx:for="{{bookRows}}" wx:key="index" wx:for-item="row">
           <view class="shelf-row">
             <block wx:for="{{row}}" wx:key="key" wx:for-item="cell">
@@ -214,4 +214,20 @@
     bind:decline="onAudioConsentDecline"
     bind:viewagreement="onAudioConsentViewAgreement"
   />
+
+  <view wx:if="{{linkRequest}}" class="device-link-layer" catchtouchmove="preventDeviceLinkTouchMove">
+    <view class="device-link-dialog" role="dialog" aria-label="设备登录请求">
+      <text class="device-link-title">有新设备想登录你的账号</text>
+      <text class="device-link-summary">在新设备上输入下面的验证码</text>
+
+      <text class="device-link-code" aria-label="验证码 {{linkRequest.code}}">{{linkRequest.code}}</text>
+
+      <text class="device-link-note">不是你本人操作？点「不是我」。</text>
+
+      <view class="device-link-actions">
+        <button class="device-link-button device-link-reject" bindtap="rejectDeviceLink">不是我</button>
+        <button class="device-link-button device-link-confirm" bindtap="acknowledgeDeviceLink">这是我</button>
+      </view>
+    </view>
+  </view>
 </view>
