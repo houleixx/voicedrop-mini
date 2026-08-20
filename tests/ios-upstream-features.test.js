@@ -147,7 +147,7 @@ test('public shelf follows current iOS with a native shelf and in-app reader', (
   assert.match(readerMarkup, /bindload="onWebLoad"[^>]*binderror="onWebError"[\s\S]*class="reader-loading"/)
   assert.match(readerSource, /onLoad\(options\)[\s\S]*this\.bookUrl = books\.readerPageUrl\(book, decoded\(options\.page\)\)[\s\S]*onReady\(\)/)
   assert.doesNotMatch(readerSource, /wx\.(?:show|hide)Loading/)
-  assert.match(readerSource, /this\.setData\(\{ url: this\.bookUrl, loading: true \}\)/)
+  assert.match(readerSource, /this\.setData\(\{ url: this\.bookUrl,[^}]*\}\)[\s\S]*onReady\(\)[\s\S]*LOADING_LAYOUT_DELAY_MS/)
   assert.match(readerSource, /onWebLoad\(event\)[\s\S]*this\.bookUrl = books\.readerPageUrl\(this\.book, source \|\| this\.bookUrl\)[\s\S]*this\.finishLoading\(\)/)
   assert.match(readerSource, /wx\.showToast\(\{ title: '书籍加载失败', icon: 'none' \}\)/)
   const shelf = fs.readFileSync(path.join(root, 'pages/book-shelf/index.wxml'), 'utf8')

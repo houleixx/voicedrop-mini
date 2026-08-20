@@ -48,24 +48,39 @@ function loadShelfPage(items) {
   return { page, calls }
 }
 
-test('book reader shows page-local loading only after opening and clears it on web load', () => {
+test('book reader lets the native web-view viewport settle before showing its centered loading overlay', async () => {
   const { page, calls } = loadReaderPage()
   page.onLoad({ slug: 'sample-book' })
   assert.equal(calls.some(([name]) => name === 'showLoading'), false)
+  assert.equal(page.data.url, 'https://voicedrop.cn/books/sample-book/')
+  assert.equal(page.data.loading, false)
 
   page.onReady()
   assert.equal(calls.some(([name]) => name === 'showLoading'), false)
+  assert.equal(page.data.loading, false)
+
+  await new Promise((resolve) => setTimeout(resolve, 120))
   assert.equal(page.data.loading, true)
-  assert.equal(page.data.url, 'https://voicedrop.cn/books/sample-book/')
 
   page.onWebLoad()
+  assert.equal(page.data.loading, false)
+})
+
+test('book reader does not reopen loading when the web-view finishes before page ready', async () => {
+  const { page } = loadReaderPage()
+  page.onLoad({ slug: 'sample-book' })
+
+  page.onWebLoad()
+  page.onReady()
+  await new Promise((resolve) => setTimeout(resolve, 120))
+
   assert.equal(page.data.loading, false)
 })
 
 test('book reader loading matches the system dark toast treatment', () => {
   const css = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxss'), 'utf8')
   assert.match(css, /\.reader-loading\s*\{[^}]*background:\s*#fcf6eb;/s)
-  assert.match(css, /\.reader-loading-card\s*\{[^}]*width:\s*220rpx;[^}]*height:\s*220rpx;[^}]*flex-direction:\s*column;[^}]*background:\s*rgba\(0, 0, 0, 0\.68\);/s)
+  assert.match(css, /\.reader-loading-card\s*\{[^}]*position:\s*fixed;[^}]*top:\s*42%;[^}]*left:\s*50%;[^}]*width:\s*220rpx;[^}]*height:\s*220rpx;[^}]*transform:\s*translate\(-50%, -50%\);[^}]*flex-direction:\s*column;[^}]*background:\s*rgba\(0, 0, 0, 0\.68\);/s)
   assert.match(css, /\.reader-loading-spinner\s*\{[^}]*border-top-color:\s*#ffffff;/s)
   assert.match(css, /\.reader-loading-copy\s*\{[^}]*color:\s*#ffffff;[^}]*font-weight:\s*400;/s)
 })

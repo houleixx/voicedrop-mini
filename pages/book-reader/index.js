@@ -1,5 +1,7 @@
 const books = require('../../services/books')
 
+const LOADING_LAYOUT_DELAY_MS = 100
+
 function decoded(value) {
   try { return decodeURIComponent(String(value || '')) } catch (_) { return String(value || '') }
 }
@@ -18,13 +20,26 @@ Page({
     }
     this.book = book
     this.bookUrl = books.readerPageUrl(book, decoded(options.page))
-    this.setData({ title: book.main, author: book.author, cover: book.cover })
+    this._webFinished = false
+    this.setData({ url: this.bookUrl, title: book.main, author: book.author, cover: book.cover })
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
   },
   onReady() {
-    this.setData({ url: this.bookUrl, loading: true })
+    if (this._webFinished) return
+    this.cancelLoadingTimer()
+    this._loadingTimer = setTimeout(() => {
+      this._loadingTimer = null
+      if (!this._webFinished) this.setData({ loading: true })
+    }, LOADING_LAYOUT_DELAY_MS)
+  },
+  cancelLoadingTimer() {
+    if (!this._loadingTimer) return
+    clearTimeout(this._loadingTimer)
+    this._loadingTimer = null
   },
   finishLoading() {
+    this._webFinished = true
+    this.cancelLoadingTimer()
     if (!this.data.loading) return
     this.setData({ loading: false })
   },
@@ -54,6 +69,8 @@ Page({
     return { title: payload.title, query: payload.path.split('?')[1] || '', imageUrl: payload.imageUrl }
   },
   onUnload() {
+    this._webFinished = true
+    this.cancelLoadingTimer()
     this.bookUrl = ''
     this.book = null
   }
