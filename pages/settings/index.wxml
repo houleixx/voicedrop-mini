@@ -120,6 +120,20 @@
     <!-- 其他 -->
     <view class="section-header">其他</view>
     <view class="card menu-card">
+      <!-- 加入社群 -->
+      <view class="menu-item" bindtap="openJoinCommunity">
+        <view class="menu-icon icon-green">
+          <text class="menu-icon-text ri-group-line"></text>
+        </view>
+        <view class="menu-content">
+          <text class="menu-title">加入社群</text>
+          <text class="menu-subtitle">和 VoiceDrop 用户一起交流</text>
+        </view>
+        <view class="menu-right">
+          <text class="menu-arrow ri-arrow-right-s-line"></text>
+        </view>
+      </view>
+
       <!-- 清除缓存 -->
       <view class="menu-item" bindtap="clearCache">
         <view class="menu-icon icon-pink">
@@ -131,6 +145,7 @@
         </view>
         <view class="menu-right">
           <text class="menu-status">{{cacheSizeText}}</text>
+          <text class="menu-arrow ri-arrow-right-s-line"></text>
         </view>
       </view>
 
@@ -145,6 +160,23 @@
         </view>
         <view class="menu-right">
           <text class="menu-arrow ri-arrow-right-s-line"></text>
+        </view>
+      </view>
+    </view>
+
+    <view class="dialog-overlay community-dialog-overlay" wx:if="{{joinCommunityOpen}}" bindtap="closeJoinCommunity">
+      <view class="community-dialog" catchtap="preventJoinCommunityClose">
+        <view class="community-dialog-dismiss" role="button" aria-label="关闭" bindtap="closeJoinCommunity">
+          <text class="ri-close-line"></text>
+        </view>
+        <text class="dialog-title community-dialog-title">加入 VoiceDrop 社群</text>
+        <text class="community-dialog-hint">点击“加入社群”，即可进入对应社群。</text>
+        <view class="community-join-action">
+          <view class="community-join-button" role="button" aria-label="加入 VoiceDrop 社群">
+            <text class="community-join-icon ri-group-line"></text>
+            <text class="community-join-label">加入社群</text>
+          </view>
+          <cell class="community-plugin-trigger" url="{{joinCommunityUrl}}" paddingStyle="20" iconBorderRadius="8" contactText="加入社群" contactTextBlod="{{true}}" style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; opacity: 0;" bind:completemessage="onJoinCommunityComplete" />
         </view>
       </view>
     </view>

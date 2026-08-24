@@ -119,6 +119,9 @@ function validateRequires(file, text) {
 function validateUsingComponents(configPath) {
   const config = JSON.parse(fs.readFileSync(path.join(root, configPath), 'utf8'))
   for (const [name, spec] of Object.entries(config.usingComponents || {})) {
+    // Third-party mini-program plugins are resolved by WeChat at build time,
+    // so they do not have local component files to validate.
+    if (spec.startsWith('plugin://')) continue
     const base = spec.startsWith('/')
       ? path.join(root, spec.slice(1))
       : path.resolve(path.dirname(path.join(root, configPath)), spec)
