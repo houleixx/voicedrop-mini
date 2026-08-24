@@ -22,6 +22,20 @@ function indexUrl() {
   return `${routedShelfBase()}?format=json`
 }
 
+function cacheIdentity() {
+  return String(auth.libraryCacheIdentity ? auth.libraryCacheIdentity() : '')
+}
+
+function cacheKeyFor(identity) {
+  const value = String(identity || '')
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `${CACHE_KEY}.${(hash >>> 0).toString(16).padStart(8, '0')}`
+}
+
 async function start(seed) {
   return http.postJson(API, auth.bearer(), { seed: String(seed || '').trim().slice(0, 20000) }, { timeout: 30000 })
 }
@@ -94,7 +108,8 @@ function normalizeBook(item) {
     c: String(book.c || '#8b6652'), c2: String(book.c2 || '#4b342c'),
     cover: Boolean(book.cover), coverAt: Math.max(0, Number(book.coverAt) || 0),
     chapters: Math.max(0, Number(book.chapters) || 0),
-    author: String(book.author || ''), createdAt: Math.max(0, Number(book.createdAt) || 0)
+    author: String(book.author || ''), createdAt: Math.max(0, Number(book.createdAt) || 0),
+    hidden: book.hidden === true
   }
   normalized.coverUrl = normalized.cover ? coverUrl(normalized) : ''
   return normalized
@@ -169,7 +184,16 @@ function markEditableByAuthor(items, author) {
 }
 
 function cachedShelf() {
-  try { return normalizeIndex(wx.getStorageSync(CACHE_KEY)) } catch (_) { return [] }
+  const identity = cacheIdentity()
+  const key = cacheKeyFor(identity)
+  try {
+    const cached = wx.getStorageSync(key)
+    if (!cached || String(cached.identity || '') !== identity) {
+      if (cached && typeof wx.removeStorageSync === 'function') wx.removeStorageSync(key)
+      return []
+    }
+    return normalizeIndex(cached)
+  } catch (_) { return [] }
 }
 
 function shelfRequestUrl(options) {
@@ -182,12 +206,15 @@ function shelfRequestUrl(options) {
 
 async function shelf(options) {
   const forceRefresh = Boolean(options && options.forceRefresh)
-  const res = await http.get(shelfRequestUrl(options), '', forceRefresh
+  const identity = cacheIdentity()
+  const token = auth.bearer()
+  const res = await http.get(shelfRequestUrl(options), token, forceRefresh
     ? { header: { 'Cache-Control': 'no-cache' } }
     : undefined)
   if (res.statusCode < 200 || res.statusCode >= 300) throw new Error(`books HTTP ${res.statusCode}`)
+  if (cacheIdentity() !== identity) throw new Error('books account changed')
   const list = normalizeIndex(res.data)
-  wx.setStorageSync(CACHE_KEY, { books: list })
+  wx.setStorageSync(cacheKeyFor(identity), { identity, books: list })
   return list
 }
 
@@ -250,7 +277,7 @@ function result(response) {
 
 module.exports = {
   API, HISTORY_API, REVISE_API, BOOK_SUANLI, REVISE_SUANLI,
-  shelfWebUrl, indexUrl,
+  shelfWebUrl, indexUrl, CACHE_KEY, cacheIdentity, cacheKeyFor,
   start, history, revise, shelf, shelfRequestUrl, cachedShelf, normalizeIndex, refreshCoverUrls,
   markEditableByAuthor,
   normalizeThread, formatThreadStamp, reviseMessage, readerUrl, coverUrl,

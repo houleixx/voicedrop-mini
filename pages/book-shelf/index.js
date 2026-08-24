@@ -19,6 +19,7 @@ Page({
 
   onLoad() {
     this._shelfActive = true
+    this._shelfIdentity = books.cacheIdentity()
     this.ensureBookCoverSession()
     const cached = books.cachedShelf()
     const items = this.prepareBookItems(cached, '')
@@ -29,6 +30,19 @@ Page({
   },
 
   onShow() {
+    const identity = books.cacheIdentity()
+    if (identity !== this._shelfIdentity) {
+      this._shelfIdentity = identity
+      this._shelfRequestId = (this._shelfRequestId || 0) + 1
+      this._profileAuthorRequestId = (this._profileAuthorRequestId || 0) + 1
+      const cached = books.cachedShelf()
+      const items = this.prepareBookItems(cached, '')
+      this.setData({ items, profileAuthor: '', loading: cached.length === 0, error: '' })
+      this._bookCoverSession.load(items)
+      this.loadProfileAuthor()
+      this.load({ keepData: cached.length > 0 })
+      return
+    }
     if (this._reloadAuthorAfterSettings) {
       this._reloadAuthorAfterSettings = false
       this.loadProfileAuthor()

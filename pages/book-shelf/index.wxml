@@ -12,6 +12,7 @@
         <view class="book-cover cloth" style="background: linear-gradient(145deg, {{item.c}}, {{item.c2}});">
           <text class="cover-main">{{item.main}}</text><view class="cover-rule"></view><text class="cover-sub">{{item.sub}}</text>
           <image wx:if="{{item.coverDisplayUrl}}" class="cover-image" src="{{item.coverDisplayUrl}}" mode="aspectFill" data-slug="{{item.slug}}" binderror="onBookCoverError" />
+          <text wx:if="{{item.hidden}}" class="book-hidden-badge">隐藏</text>
           <button wx:if="{{item.editableByAuthor}}" class="book-revise" hover-class="book-revise-active" data-index="{{index}}" catchtap="reviseBook" aria-label="修改{{item.main}}"><text class="ri-edit-line"></text></button>
         </view>
         <text class="book-caption">{{item.main}}</text>

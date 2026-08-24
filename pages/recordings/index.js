@@ -1150,6 +1150,10 @@ Page({
     const currentBearer = auth.bearer()
     if (!accountState.identityChanged(this._socketBearer, currentBearer)) return false
     this._socketBearer = currentBearer
+    this._bookLoadRequestId = (this._bookLoadRequestId || 0) + 1
+    this._bookProfileAuthorRequestId = (this._bookProfileAuthorRequestId || 0) + 1
+    const cachedBooks = books.cachedShelf()
+    const bookItems = this.prepareBookItems(cachedBooks, '')
     if (this.statusSession) this.statusSession.close()
     if (this.commandSession) this.commandSession.close()
     this._libraryCommandConfirms = []
@@ -1158,8 +1162,14 @@ Page({
       commandQueue: [],
       commandReply: '',
       commandReplyOk: true,
-      commandState: ''
+      commandState: '',
+      bookProfileAuthor: '',
+      bookItems,
+      bookRows: bookRowsFor(bookItems),
+      booksLoaded: cachedBooks.length > 0,
+      booksError: ''
     })
+    this._bookCoverSession.load(bookItems)
     this.createStatusSession()
     this.deviceLinkApproval = this.createDeviceLinkApproval()
     this.createCommandSession()

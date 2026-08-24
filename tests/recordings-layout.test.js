@@ -257,6 +257,9 @@ test('completed background photo repair silently reloads the repaired article on
 
 test('home recreates authenticated sockets after the account bearer changes', () => {
   const events = []
+  const books = require('../services/books')
+  const originalCachedShelf = books.cachedShelf
+  books.cachedShelf = () => [{ slug: 'current-account-book', hidden: true }]
   const { page } = freshRecordingsPage({
     getStorageSync(key) {
       return key === 'voicedrop.auth.anon' ? 'anon_new_account' : ''
@@ -265,26 +268,37 @@ test('home recreates authenticated sockets after the account bearer changes', ()
   })
   const ctx = Object.assign({}, page, {
     _socketBearer: 'anon_old_account',
-    data: Object.assign({}, page.data),
     setData(update) { Object.assign(this.data, update) },
     statusSession: { close() { events.push('close-status') } },
     commandSession: { close() { events.push('close-command') } },
     createStatusSession() { events.push('create-status') },
     createCommandSession() { events.push('create-command') },
+    prepareBookItems(items) { return items },
+    _bookCoverSession: { load(items) { events.push(`load-books:${items.length}`) } },
     _libraryCommandConfirms: [{ id: 'old' }],
-    _activeLibraryCommandConfirm: { id: 'old' }
+    _activeLibraryCommandConfirm: { id: 'old' },
+    data: Object.assign({}, page.data, {
+      bookItems: [{ slug: 'previous-account-private-book', hidden: true }],
+      booksLoaded: true
+    })
   })
 
-  assert.equal(page.resetAccountSessionsIfNeeded.call(ctx), true)
-  assert.deepEqual(events, [
-    'close-status',
-    'close-command',
-    'create-status',
-    'create-command'
-  ])
-  assert.deepEqual(ctx._libraryCommandConfirms, [])
-  assert.equal(ctx._activeLibraryCommandConfirm, null)
-  assert.equal(ctx._socketBearer, 'anon_new_account')
+  try {
+    assert.equal(page.resetAccountSessionsIfNeeded.call(ctx), true)
+    assert.deepEqual(events, [
+      'close-status',
+      'close-command',
+      'load-books:1',
+      'create-status',
+      'create-command'
+    ])
+    assert.deepEqual(ctx._libraryCommandConfirms, [])
+    assert.equal(ctx._activeLibraryCommandConfirm, null)
+    assert.equal(ctx._socketBearer, 'anon_new_account')
+    assert.deepEqual(ctx.data.bookItems, [{ slug: 'current-account-book', hidden: true }])
+  } finally {
+    books.cachedShelf = originalCachedShelf
+  }
 })
 
 test('community layout offsets follow the measured home tabs bottom', () => {

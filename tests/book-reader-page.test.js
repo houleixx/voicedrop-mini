@@ -139,6 +139,8 @@ test('book shelf owns the revise entry because web-view cannot host native overl
   assert.match(shelfMarkup, /wx:if="\{\{item\.editableByAuthor\}\}"[^>]*class="book-revise"[^>]*catchtap="reviseBook"/)
   assert.match(shelfMarkup, /class="book-revise"[^>]*>[\s\S]*?class="ri-edit-line"/)
   assert.match(recordingsMarkup, /wx:if="\{\{cell\.editableByAuthor\}\}"[^>]*class="book-revise"[^>]*catchtap="reviseBook"/)
+  assert.match(shelfMarkup, /wx:if="\{\{item\.hidden\}\}"[^>]*class="book-hidden-badge">隐藏<\/text>/)
+  assert.match(recordingsMarkup, /wx:if="\{\{cell\.hidden\}\}"[^>]*class="book-hidden-badge">隐藏<\/text>/)
 })
 
 test('opening a shelf book preserves its full title for WeChat sharing', () => {
