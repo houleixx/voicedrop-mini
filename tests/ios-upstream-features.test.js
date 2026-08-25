@@ -102,6 +102,7 @@ test('native manual uses the shared title bar and Android-style quick section na
 
 test('book writing page matches the current iOS price, seed and pipeline composition', () => {
   const markup = fs.readFileSync(path.join(root, 'pages/book-writing/index.wxml'), 'utf8')
+  const source = fs.readFileSync(path.join(root, 'pages/book-writing/index.js'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/book-writing/index.wxss'), 'utf8')
   const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/book-writing/index.json'), 'utf8'))
 
@@ -113,7 +114,8 @@ test('book writing page matches the current iOS price, seed and pipeline composi
   assert.match(markup, /还差 \{\{shortfall\}\} 算力，两条来路：/)
   assert.match(markup, /earn-icon-feed ri-flashlight-line/)
   assert.match(markup, /earn-icon-invite ri-group-line/)
-  assert.match(markup, /比如：为什么一切都在变乱？\\n或：钱不脏，是我一直躲着它。/)
+  assert.match(markup, /placeholder="\{\{seedPlaceholder\}\}"/)
+  assert.match(source, /比如：为什么一切都在变乱？\\n或：钱不脏，是我一直躲着它。/)
   assert.match(markup, /中心思想/)
   assert.match(markup, /拆大纲[\s\S]*并行写[\s\S]*独立评审[\s\S]*上你的架/)
   assert.match(markup, /开始写书 · 320 算力/)

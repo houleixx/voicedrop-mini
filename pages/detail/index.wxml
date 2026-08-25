@@ -132,6 +132,10 @@
         <text class="more-menu-label">VD社区可见</text>
         <text class="more-menu-icon ri-team-line"></text>
       </view>
+      <view class="more-menu-row" data-action="expandBook" bindtap="runMoreMenuAction">
+        <text class="more-menu-label">扩展成一本书</text>
+        <text class="more-menu-icon ri-book-open-line"></text>
+      </view>
       <view class="more-menu-row" data-action="xhs" bindtap="runMoreMenuAction">
         <text class="more-menu-label">分享到小红书</text>
         <text class="more-menu-icon ri-image-2-line"></text>
