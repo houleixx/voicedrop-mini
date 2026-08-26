@@ -1,9 +1,21 @@
 const books = require('../../services/books')
+const articleUtil = require('../../utils/article')
+
+const app = getApp()
+
+const IDEA_PLACEHOLDER = '比如：为什么一切都在变乱？\n或：钱不脏，是我一直躲着它。'
+const ARTICLE_PLACEHOLDER = '比如：写成给孩子的绘本。（可留空）'
 
 Page({
-  data: { seed: '', sending: false, submitted: false, message: '', error: false,
+  data: { seed: '', seedArticle: null, seedPlaceholder: IDEA_PLACEHOLDER, sending: false, submitted: false, message: '', error: false,
     balance: null, balanceDisplay: '', invite: {}, shortfall: 0, feedTimes: '—', invitePeople: '—', canSubmit: false },
   async onLoad() {
+    const candidate = app.globalData.bookSeedArticle
+    app.globalData.bookSeedArticle = null
+    const seedArticle = candidate && typeof candidate === 'object'
+      ? { title: String(candidate.title || '无题').trim() || '无题', body: articleUtil.stripMarkers(candidate.body) }
+      : null
+    if (seedArticle) this.setData({ seedArticle, seedPlaceholder: ARTICLE_PLACEHOLDER })
     const context = await books.writingContext()
     const balance = context.balance
     const invite = context.invite || {}
@@ -17,8 +29,12 @@ Page({
   openShelf() { wx.navigateTo({ url: `/pages/web/index?url=${encodeURIComponent(books.shelfWebUrl())}&title=${encodeURIComponent('公开书架')}` }) },
   done() { wx.navigateBack() },
   updateSubmit() {
-    this.setData({ canSubmit: Boolean(this.data.seed.trim()) && !this.data.sending && !this.data.submitted &&
+    this.setData({ canSubmit: Boolean(this.data.seed.trim() || this.data.seedArticle) && !this.data.sending && !this.data.submitted &&
       (this.data.balance == null || this.data.balance >= books.BOOK_SUANLI) })
+  },
+  submissionSeed() {
+    if (this.data.seedArticle) return articleUtil.bookSeed(this.data.seedArticle, this.data.seed)
+    return this.data.seed.trim().slice(0, 20000)
   },
   shareInvite() {
     if (!this.data.invite || !this.data.invite.url) return
@@ -34,7 +50,7 @@ Page({
     wx.hideLoading()
   },
   async start() {
-    const seed = this.data.seed.trim()
+    const seed = this.submissionSeed()
     if (!seed || this.data.sending || this.data.submitted) return
     this.setData({ sending: true, message: '', error: false }); this.updateSubmit()
     this.showSubmitLoading()

@@ -185,6 +185,20 @@ function stripMarkers(body) {
   return stripped.trim()
 }
 
+// The book worker accepts one string seed.  Keep article expansion input in a
+// single shared helper so every entry point removes presentation-only markers
+// and obeys the worker's 20,000-character limit in the same way.
+function bookSeed(article, supplemental, maxLength) {
+  const limit = Number.isFinite(Number(maxLength)) ? Math.max(0, Number(maxLength)) : 20000
+  const source = article && typeof article === 'object' ? article : {}
+  const title = String(source.title || '无题').trim() || '无题'
+  const body = stripMarkers(source.body)
+  const request = String(supplemental || '').trim()
+  const prefix = request ? `写书要求：${request}\n\n` : ''
+  const seed = `${prefix}以下这篇文章是种子素材，把它扩展成一本完整的书：\n\n《${title}》\n\n${body}`
+  return seed.slice(0, limit)
+}
+
 function styleLabel(body) {
   const matches = String(body || '').matchAll(/<!--\s*([A-Za-z][\w-]*)\s*:\s*(.*?)\s*-->/gs)
   let label = null
@@ -273,6 +287,7 @@ module.exports = {
   resolvePhotoKey,
   segments,
   stripMarkers,
+  bookSeed,
   stripOriginComment,
   styleLabel,
   styleVersion,
