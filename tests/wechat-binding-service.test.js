@@ -1,18 +1,23 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 
-function freshSettings(responses) {
+function freshSettings(responses, apiOverrides) {
   const calls = []
   const http = {
     async get(url, token) { calls.push({ method: 'GET', url, token }); return responses.shift() },
     async postJson(url, token, data) { calls.push({ method: 'POST', url, token, data }); return responses.shift() }
   }
   const auth = { bearer: () => 'Bearer test-token' }
-  for (const id of ['../services/settings', '../services/request', '../services/auth']) {
+  for (const id of ['../services/settings', '../services/request', '../services/auth', '../services/api']) {
     delete require.cache[require.resolve(id)]
   }
   require.cache[require.resolve('../services/request')] = { exports: http }
   require.cache[require.resolve('../services/auth')] = { exports: auth }
+  if (apiOverrides) {
+    require.cache[require.resolve('../services/api')] = {
+      exports: Object.assign({ filesBase: () => 'https://voicedrop.cn/files/api' }, apiOverrides)
+    }
+  }
   const settings = require('../services/settings')
   return { settings, calls }
 }
@@ -35,6 +40,17 @@ test('wechat binding service uses the third-party platform endpoints', async () 
   ])
 })
 
+test('wechat binding accepts the canonical scan URL after API route failover', async () => {
+  const scanUrl = 'https://voicedrop.cn/files/api/wechat/scan?state=payload.signature'
+  const { settings } = freshSettings([
+    { statusCode: 200, data: { scan_url: scanUrl } }
+  ], {
+    filesBase: () => 'https://jianshuo.dev/files/api'
+  })
+
+  assert.equal(await settings.createWechatAuthorization(), scanUrl)
+})
+
 test('wechat draft publishing uses the current article endpoint after bind preflight', async () => {
   const calls = []
   const http = {
@@ -43,7 +59,7 @@ test('wechat draft publishing uses the current article endpoint after bind prefl
       return { statusCode: 200, data: { ok: true, created: 1, updated: 0 } }
     }
   }
-  for (const id of ['../services/library', '../services/request', '../services/auth']) {
+  for (const id of ['../services/library', '../services/request', '../services/auth', '../services/api']) {
     delete require.cache[require.resolve(id)]
   }
   require.cache[require.resolve('../services/request')] = { exports: http }
