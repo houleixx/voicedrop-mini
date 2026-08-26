@@ -1944,6 +1944,8 @@ Page({
       await this.publishWechat()
     } else if (action === 'community') {
       await this.shareCommunity()
+    } else if (action === 'expandBook') {
+      this.expandToBook()
     } else if (action === 'xhs') {
       await this.shareToXhs()
     } else if (action === 'share') {
@@ -1951,6 +1953,19 @@ Page({
     } else if (action === 'delete') {
       await this.confirmDelete()
     }
+  },
+
+  expandToBook() {
+    const article = this.data.current
+    if (!article) {
+      wx.showToast({ title: '文章还没生成', icon: 'none' })
+      return
+    }
+    app.globalData.bookSeedArticle = {
+      title: String(article.title || '无题'),
+      body: articleUtil.stripMarkers(article.body)
+    }
+    wx.navigateTo({ url: '/pages/book-writing/index' })
   },
 
   startImageLongpress(event) {

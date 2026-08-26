@@ -19,8 +19,12 @@ async function wechatBindStatus() {
 }
 
 function isWechatAuthorizationUrl(value) {
-  const escapedBase = api.filesBase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return new RegExp(`^${escapedBase}/wechat/scan\\?state=[A-Za-z0-9._~-]+$`).test(String(value || ''))
+  const candidate = String(value || '')
+  const bases = [api.filesBase(), 'https://voicedrop.cn/files/api']
+  return bases.some((base) => {
+    const escapedBase = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return new RegExp(`^${escapedBase}/wechat/scan\\?state=[A-Za-z0-9._~-]+$`).test(candidate)
+  })
 }
 
 async function createWechatAuthorization() {

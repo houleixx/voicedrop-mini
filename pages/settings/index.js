@@ -25,6 +25,8 @@ Page({
     cacheSizeText: '计算中',
     cacheCalculating: false,
     cacheClearing: false,
+    joinCommunityUrl: 'https://work.weixin.qq.com/gm/28a6505fcd2fa4dd94b3b08f34fb2c5a',
+    joinCommunityOpen: false,
     appVersion: '开发版'
   },
 
@@ -128,6 +130,25 @@ Page({
     // Keep taps inside the dialog from closing the overlay.
   },
 
+  openJoinCommunity() {
+    this.setData({ joinCommunityOpen: true })
+  },
+
+  closeJoinCommunity() {
+    this.setData({ joinCommunityOpen: false })
+  },
+
+  preventJoinCommunityClose() {
+    // Keep taps inside the dialog from closing the overlay.
+  },
+
+  onJoinCommunityComplete(event) {
+    const result = event && event.detail || {}
+    const errcode = Number(result.errcode)
+    if (!errcode || errcode === -3006) return
+    wx.showToast({ title: joinCommunityErrorMessage(errcode), icon: 'none' })
+  },
+
   onNameInput(event) {
     this.setData({ nameInput: event.detail.value })
   },
@@ -217,4 +238,13 @@ function cacheUiActive(page, lifecycle, request) {
   if (page._settingsVisible === false) return false
   if ((page._settingsLifecycleGeneration || 0) !== lifecycle) return false
   return request == null || page._cacheSizeRequest === request
+}
+
+function joinCommunityErrorMessage(errcode) {
+  const messages = {
+    '-3009': '群聊已满员',
+    '-3010': '群聊已解散',
+    '-3011': '暂无法加入该群'
+  }
+  return messages[String(errcode)] || '加入社群失败，请重试'
 }

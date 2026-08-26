@@ -107,6 +107,7 @@ test('settings page uses Remix Icon instead of platform glyphs', () => {
     'ri-magic-line',
     'ri-wechat-line',
     'ri-team-line',
+    'ri-group-line',
     'ri-delete-bin-line',
     'ri-information-line',
     'ri-arrow-right-s-line'
@@ -117,6 +118,35 @@ test('settings page uses Remix Icon instead of platform glyphs', () => {
   assert.doesNotMatch(wxml, /ri-delete-bin-6-line/)
 })
 
+test('settings page uses the official Enterprise WeChat group plugin', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/settings/index.wxss'), 'utf8')
+  const pageConfig = JSON.parse(fs.readFileSync(path.join(root, 'pages/settings/index.json'), 'utf8'))
+  const appConfig = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
+
+  assert.match(wxml, /bindtap="openJoinCommunity"[\s\S]*?>加入社群</)
+  assert.match(wxml, /wx:if="\{\{joinCommunityOpen\}\}"/)
+  assert.match(wxml, /class="community-join-button"[^>]+aria-label="加入 VoiceDrop 社群"/)
+  assert.match(wxml, /<cell class="community-plugin-trigger" url="\{\{joinCommunityUrl\}\}" paddingStyle="20" iconBorderRadius="8" contactText="加入社群" contactTextBlod="\{\{true\}\}" style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; opacity: 0;" bind:completemessage="onJoinCommunityComplete"/)
+  assert.match(wxml, /class="community-dialog-dismiss"[^>]+aria-label="关闭"/)
+  assert.equal(pageConfig.usingComponents.cell, 'plugin://materialPlugin/cell')
+  assert.equal(appConfig.plugins.materialPlugin.provider, 'wx4d2deeab3aed6e5a')
+  assert.equal(appConfig.plugins.materialPlugin.version, '1.0.13')
+  assert.match(css, /\.community-dialog\s*\{[^}]*border-radius:\s*28rpx;/s)
+})
+
+test('settings page keeps Enterprise WeChat group error messages actionable', () => {
+  const page = freshSettingsPage()
+  const toasts = []
+  const ctx = pageContext(page)
+  global.wx.showToast = (options) => toasts.push(options)
+
+  page.onJoinCommunityComplete.call(ctx, { detail: { errcode: -3009 } })
+  page.onJoinCommunityComplete.call(ctx, { detail: { errcode: 0 } })
+
+  assert.deepEqual(toasts, [{ title: '群聊已满员', icon: 'none' }])
+})
+
 test('settings page presents rebuildable cache size with the Remix 2.5 delete icon', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
   const icons = fs.readFileSync(path.join(root, 'styles/remixicon.wxss'), 'utf8')
@@ -125,6 +155,7 @@ test('settings page presents rebuildable cache size with the Remix 2.5 delete ic
   assert.match(wxml, />清除缓存</)
   assert.match(wxml, />文章与图片缓存</)
   assert.match(wxml, /\{\{cacheSizeText\}\}/)
+  assert.match(wxml, /\{\{cacheSizeText\}\}[\s\S]*?ri-arrow-right-s-line/)
   assert.match(icons, /\.ri-delete-bin-line:before\s*\{\s*content:\s*"\\ec2a"/)
 })
 

@@ -311,3 +311,82 @@
   color: #ffffff;
   background: #c7432f;
 }
+
+.community-dialog-overlay {
+  align-items: center;
+  padding: 48rpx;
+}
+
+.community-dialog {
+  position: relative;
+  width: 100%;
+  padding: 40rpx 32rpx 32rpx;
+  border-radius: 28rpx;
+  background: #fffdf9;
+  box-shadow: 0 24rpx 70rpx rgba(42, 37, 33, 0.2);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.community-dialog-dismiss {
+  position: absolute;
+  top: 14rpx;
+  right: 14rpx;
+  display: flex;
+  width: 64rpx;
+  height: 64rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #8f8578;
+  font-size: 38rpx;
+  line-height: 1;
+}
+
+.community-dialog-title {
+  padding-right: 52rpx;
+  font-size: 38rpx;
+  letter-spacing: -0.02em;
+}
+
+.community-dialog-hint {
+  display: block;
+  margin-top: 14rpx;
+  color: #847b70;
+  font-size: 25rpx;
+  line-height: 1.5;
+}
+
+.community-join-action {
+  position: relative;
+  margin-top: 26rpx;
+}
+
+.community-join-button {
+  display: flex;
+  height: 88rpx;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  border-radius: 20rpx;
+  color: #ffffff;
+  background: #c7432f;
+  box-sizing: border-box;
+}
+
+.community-join-icon {
+  width: 32rpx;
+  height: 32rpx;
+  font-size: 32rpx;
+  line-height: 32rpx;
+}
+
+.community-join-label {
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.community-plugin-trigger {
+  display: block;
+}

@@ -15,6 +15,15 @@ test('resolves photo markers, strips comments, and builds share text', () => {
   assert.equal(article.shareText([{ title: '标题', body }]), '标题\n\n第一段\n\n第二段')
 })
 
+test('book seed removes article photo markers and preserves the optional request', () => {
+  const seed = article.bookSeed({ title: '标题', body: '开头\n[[photo:photos/a.jpg]]\n结尾' }, '写成科普书')
+  assert.match(seed, /^写书要求：写成科普书/)
+  assert.match(seed, /《标题》/)
+  assert.match(seed, /开头/)
+  assert.match(seed, /结尾/)
+  assert.doesNotMatch(seed, /\[\[photo:/)
+})
+
 test('builds Android-compatible share payload text with public link', () => {
   const text = '标题\n\n正文'
   const url = 'https://jianshuo.dev/voicedrop/abc?s=1'

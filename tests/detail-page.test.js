@@ -2151,6 +2151,18 @@ test('detail page opens custom more menu and routes actions', async () => {
   assert.equal(ctx.data.moreMenuOpen, false)
 })
 
+test('detail page sends a marker-free article seed to book writing', () => {
+  const page = freshDetailPage()
+  const ctx = {
+    data: { current: { title: '从文章长成书', body: '正文\n\n[[photo:photos/a.jpg]]\n\n结尾' } }
+  }
+
+  page.expandToBook.call(ctx)
+
+  assert.equal(page.__app.navigatedTo, '/pages/book-writing/index')
+  assert.deepEqual(page.__app.globalData.bookSeedArticle, { title: '从文章长成书', body: '正文\n\n结尾' })
+})
+
 test('detail page opens community terms with a Mini Program compatible action label', async () => {
   const storage = { 'voicedrop.auth.session': 'aaaaaaaa.bbbbbbbb.cccccccc' }
   let modal

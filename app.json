@@ -32,6 +32,12 @@
     "navigationBarTextStyle": "black",
     "backgroundColor": "#faf6ef"
   },
+  "plugins": {
+    "materialPlugin": {
+      "version": "1.0.13",
+      "provider": "wx4d2deeab3aed6e5a"
+    }
+  },
   "style": "v2",
   "sitemapLocation": "sitemap.json"
 }
