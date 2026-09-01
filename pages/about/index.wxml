@@ -1,6 +1,6 @@
-<view class="screen settings-screen about-page">
+<view class="screen settings-screen about-page" style="height: 100vh; padding: 0; overflow: hidden;">
   <page-header language-revision="{{languageRevision}}" title="关于" />
-  <view class="page-body">
+  <scroll-view class="settings-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}"><view class="settings-scroll-content"><view class="page-body">
     <view class="about-card card">
       <text class="logo">{{i18n["VoiceDrop 口述"]}}</text>
       <text class="desc">{{i18n["把口述录音自动变成文章的小程序客户端。"]}}</text>
@@ -64,5 +64,5 @@
         <text class="about-arrow ri-arrow-right-s-line" aria-hidden="true"></text>
       </view>
     </view>
-  </view>
+  </view></view></scroll-view>
 </view>

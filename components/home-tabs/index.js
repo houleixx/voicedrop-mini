@@ -81,7 +81,12 @@ Component({
             const viewport = rects && rects[0]
             const tab = rects && rects[1]
             if (!viewport || !tab) return
-            const currentLeft = Number(this.data.scrollLeft) || 0
+            // The tab rect is relative to the visible scroll viewport, so convert
+            // it back to content coordinates before setting an absolute scroll-left.
+            const actualScrollLeft = Number(this._actualScrollLeft)
+            const currentLeft = Number.isFinite(actualScrollLeft)
+              ? actualScrollLeft
+              : (Number(this.data.scrollLeft) || 0)
             const target = currentLeft + tab.left - viewport.left + tab.width / 2 - viewport.width / 2
             this.setData({
               scrollLeft: Math.max(0, target),
@@ -90,6 +95,10 @@ Component({
           })
       })
     },
+    onTabsScroll(event) {
+      const left = Number(event && event.detail && event.detail.scrollLeft)
+      if (Number.isFinite(left)) this._actualScrollLeft = Math.max(0, left)
+    },
     openSettings() {
       this.triggerEvent('settings')
     },
@@ -97,8 +106,9 @@ Component({
     selectTab(event) {
       const tab = this.data.tabs.find((item) => item.key === event.currentTarget.dataset.tab)
       if (!tab || tab.key === this.data.current) return
-      // Start centering immediately; page switching can otherwise delay the visual response.
-      this.centerTab(tab.key, true, () => this.triggerEvent('change', { key: tab.key, tab }))
+      // The active tab has a different font weight. Let the parent update `current`
+      // first so its observer measures and centers the final layout only once.
+      this.triggerEvent('change', { key: tab.key, tab })
     }
   }
 })

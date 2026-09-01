@@ -1,6 +1,6 @@
-<view class="screen settings-screen">
+<view class="screen settings-screen" style="height: 100vh; padding: 0; overflow: hidden;">
   <page-header language-revision="{{languageRevision}}" title="{{pageTitle}}" />
-  <view class="prompt-new-page settings-content">
+  <scroll-view class="settings-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}"><view class="settings-scroll-content"><view class="prompt-new-page settings-content">
     <text class="error" wx:if="{{error}}">{{error}}</text>
     <text class="field-label">{{type === 'group' ? i18n['分组名字'] : i18n['菜单里的名字']}}</text>
     <input class="field" maxlength="40" value="{{label}}" bindinput="onLabel" />
@@ -14,5 +14,5 @@
       </view>
     </block>
     <button class="bottom-save {{saving ? 'disabled' : ''}}" loading="{{saving}}" disabled="{{saving}}" bindtap="save">{{saving ? i18n['保存中'] : i18n['保存']}}</button>
-  </view>
+  </view></view></scroll-view>
 </view>

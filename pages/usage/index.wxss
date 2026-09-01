@@ -221,3 +221,4 @@
   font-size: 26rpx;
   font-weight: 700;
 }
+@import '../../styles/settings-scroll.wxss';

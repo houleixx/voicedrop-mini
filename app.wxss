@@ -49,7 +49,8 @@ button::after {
 
 .settings-screen {
   padding: 0 32rpx;
-  --settings-content-top: 210rpx;
+  /* Keep every settings page's first content block aligned below page-header. */
+  --settings-content-top: 198rpx;
 }
 
 .settings-screen > .page-body,

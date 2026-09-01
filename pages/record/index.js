@@ -17,6 +17,15 @@ function interruptedRecordingError() {
   return error
 }
 
+function refreshRecordingUploadQueue() {
+  if (typeof getCurrentPages !== 'function') return
+  const pages = getCurrentPages()
+  const page = pages[pages.length - 1]
+  if (!page || page.route !== 'pages/recordings/index') return
+  if (typeof page.showPendingRecordingUploads === 'function') page.showPendingRecordingUploads()
+  if (typeof page.drainPendingRecordingUploads === 'function') page.drainPendingRecordingUploads()
+}
+
 Page({
   data: {
     timerDisplay: '00:00',
@@ -260,10 +269,13 @@ Page({
 
       const name = audio.nameForSession(new Date(startedAt), elapsed)
 
-      // Show uploading toast
+      // The recorder has stopped and its temporary file is now safe to process.
+      // Return at this point so slow local WAV encoding never keeps the user on
+      // the recording page. The recordings page will show and drain the durable
+      // upload plan once the background work below finishes.
       if (this._alive) {
-        wx.showLoading({ title: '上传中' })
-        this._loadingShown = true
+        this.setData({ capturedPhotos: [] })
+        wx.navigateBack()
       }
 
       // Wrap raw PCM as WAV while retaining the Android-compatible .m4a object key.
@@ -281,35 +293,23 @@ Page({
         .then((item) => {
           app.globalData.pendingRecordTag = ''
           app.globalData.pendingReplyTo = null
-          if (!this._alive) return
-          wx.hideLoading()
-          this._loadingShown = false
-          this.setData({ capturedPhotos: [] })
-          // The upload plan is durable now. Return immediately; the recordings page
-          // displays this item as uploading and drains the queue in the foreground.
-          wx.navigateBack()
+          refreshRecordingUploadQueue()
         })
         .catch((error) => {
-          if (!this._alive) return
-          wx.hideLoading()
-          this._loadingShown = false
           if (error && error.emptyAudio) {
-            wx.showModal({
-              title: '录音已中断',
-              content: '没有录到有效声音，请重新录制。打开相册或相机后，录音会自动恢复。',
-              showCancel: false,
-              confirmText: '知道了'
+            wx.showToast({
+              title: '录音未保存：没有录到有效声音',
+              icon: 'none'
             })
             return
           }
           if (error && error.photoUpload) {
             wx.showToast({ title: '照片暂未保存，录音已保留', icon: 'none' })
-            wx.navigateBack()
             return
           }
           wx.showToast({
-            title: '上传失败',
-            icon: 'error'
+            title: '录音保存失败',
+            icon: 'none'
           })
         })
     }
@@ -500,7 +500,15 @@ Page({
       manager.pause()
       return true
     } catch (_) {
-      return this.openPhotoPickerAfterPause()
+      this.clearPhotoPickerPauseTimer()
+      this._pendingPhotoPickerOpen = null
+      this._photoSelecting = false
+      this._photoPickerRecoveryPending = false
+      this._photoPickerCompleted = false
+      this._photoPickerDidHide = false
+      this.markRecordingResumed()
+      if (this._alive) wx.showToast({ title: '无法暂停录音，请停止后再拍照', icon: 'none' })
+      return false
     }
   },
 

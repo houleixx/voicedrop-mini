@@ -1,6 +1,6 @@
-<view class="screen settings-screen blocked-users-page">
+<view class="screen settings-screen blocked-users-page" style="height: 100vh; padding: 0; overflow: hidden;">
   <page-header language-revision="{{languageRevision}}" title="社区屏蔽管理" />
-  <view class="page-body">
+  <scroll-view class="settings-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}"><view class="settings-scroll-content"><view class="page-body">
     <view wx:if="{{blockedAuthors.length === 0}}" class="card blocked-empty">
       <text class="empty-title">{{i18n["没有已屏蔽的作者"]}}</text>
     </view>
@@ -13,5 +13,5 @@
         </view>
       </view>
     </view>
-  </view>
+  </view></view></scroll-view>
 </view>

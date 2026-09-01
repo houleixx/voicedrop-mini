@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "提示词",
   "navigationStyle": "custom",
+  "disableScroll": true,
   "usingComponents": { "page-header": "../../components/page-header/index" }
 }

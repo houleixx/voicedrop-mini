@@ -1,4 +1,5 @@
 @import '../../styles/remixicon.wxss';
+@import '../../styles/settings-scroll.wxss';
 
 .screen {
   min-height: 100vh;

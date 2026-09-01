@@ -1,6 +1,6 @@
-<view class="screen settings-screen">
+<view class="screen settings-screen" style="height: 100vh; padding: 0; overflow: hidden;">
   <page-header language-revision="{{languageRevision}}" title="{{pageTitle}}" />
-  <view class="edit-page settings-content" wx:if="{{!loading && item}}">
+  <scroll-view class="settings-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}"><view class="settings-scroll-content"><view class="edit-page settings-content" wx:if="{{!loading && item}}">
     <text class="error" wx:if="{{error}}">{{error}}</text>
     <text class="field-label">{{i18n["菜单里的名字"]}}</text><input class="field" maxlength="40" value="{{nameDraft}}" bindinput="onNameInput" />
     <block wx:if="{{item.type === 'action'}}">
@@ -34,4 +34,5 @@
     <button class="bottom-save {{dirty && !saving ? '' : 'disabled'}}" disabled="{{!dirty || saving}}" loading="{{saving}}" bindtap="save">{{saving ? i18n['保存中'] : i18n['保存']}}</button>
   </view>
   <view class="loading" wx:else>{{error || i18n['加载中...']}}</view>
+  </view></scroll-view>
 </view>

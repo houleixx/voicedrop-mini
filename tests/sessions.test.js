@@ -277,7 +277,16 @@ test('normalizes the unified community feed with Android-compatible tabs and cou
   assert.equal(feed.unified, true)
 })
 
-test('community recommendation requests keep using the anonymous token after WeChat sign-in', () => {
+test('recognizes only valid book feed entries as books', () => {
+  assert.equal(community.isBookPost({ kind: 'book', shareId: 'book-a_valid-slug' }), true)
+  assert.equal(community.isBookPost({ kind: 'article', shareId: 'book-a_valid-slug' }), false)
+  assert.equal(community.isBookPost({ kind: 'book', shareId: 'book-' }), false)
+  assert.equal(community.cardPosts(community.normalizeUnifiedFeed({
+    posts: [{ kind: 'book', shareId: 'book-read-me', firstSharedAt: 1 }]
+  }), 'latest')[0].isBook, true)
+})
+
+test('community recommendation requests use the current session after WeChat sign-in', () => {
   const originalWx = global.wx
   const values = {
     'voicedrop.auth.anon': 'anon_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',

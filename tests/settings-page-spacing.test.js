@@ -12,12 +12,19 @@ function read(file) {
 test('settings entry pages use the shared content start below the custom header', () => {
   const shared = read('app.wxss')
   assert.match(shared, /\.settings-screen\s*\{[^}]*padding:\s*0\s+32rpx/s)
-  assert.match(shared, /--settings-content-top:\s*\d+rpx;/)
+  assert.match(shared, /--settings-content-top:\s*198rpx;/)
   assert.match(shared, /\.settings-screen\s*>\s*\.page-body,[\s\S]*\.settings-screen\s*>\s*\.settings-content\s*\{[^}]*padding-top:\s*var\(--settings-content-top\)\s*!important/s)
 
-  for (const page of ['settings', 'account', 'usage', 'wechat-settings', 'about', 'blocked-users', 'audio-consent']) {
+  for (const page of [
+    'settings', 'account', 'usage', 'style-settings', 'instruction-settings',
+    'instruction-edit', 'prompt-new', 'prompt-import', 'wechat-settings',
+    'language-settings', 'about', 'blocked-users', 'audio-consent', 'feedback'
+  ]) {
     assert.match(read(`pages/${page}/index.wxml`), /class="screen[^\"]*settings-screen/)
   }
+
+  const manualStyles = read('pages/manual/index.wxss')
+  assert.match(manualStyles, /\.manual-shell\s*\{[^}]*top:\s*198rpx;/s)
 
   assert.match(read('pages/settings/index.wxml'), /<view class="screen settings-screen settings-page">/)
   assert.doesNotMatch(read('pages/settings/index.wxml'), /<view class="screen[^\"]*page-body/)
@@ -68,7 +75,7 @@ test('settings card dividers start at the menu text column', () => {
 test('settings landing page keeps compact groups and readable secondary text', () => {
   const styles = read('pages/settings/index.wxss')
 
-  assert.match(styles, /\.settings-page\s*\{[^}]*--settings-content-top:\s*198rpx;/s)
+  assert.doesNotMatch(styles, /--settings-content-top:/)
   assert.match(styles, /\.menu-card\s*\{[^}]*margin-top:\s*12rpx;/s)
   assert.match(styles, /\.section-header\s*\{[^}]*margin-top:\s*36rpx;[^}]*margin-bottom:\s*12rpx;[^}]*color:\s*#756f66;[^}]*font-size:\s*26rpx;[^}]*line-height:\s*36rpx;/s)
   assert.match(styles, /\.menu-item\s*\{[^}]*min-height:\s*120rpx;[^}]*padding:\s*20rpx 28rpx;/s)

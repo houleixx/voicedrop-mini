@@ -11,8 +11,8 @@ const detailMemoryCache = new Map()
 const detailFetches = new Map()
 let detailCacheGeneration = 0
 
-// The standalone reco Worker intentionally has no SESSION_SECRET and therefore
-// accepts the stable anon capability token, not a WeChat session JWT.
+// Match iOS: community feed/recommendation calls always use the stable
+// anonymous capability. A WeChat session is only for accountable writes.
 function recoBearer() {
   return auth.anonymousBearer()
 }
@@ -166,10 +166,18 @@ function cardPosts(feed, tab) {
       coverPhotoOriginalUrl: post.coverPhotoKey ? api.photoUrl(post.coverPhotoKey) : '',
       isReply: Boolean(post.replyTo),
       isPrompt: Boolean(post.isPrompt),
+      // Books are first-class entries in the unified recommendation feed.  They
+      // retain the normal masonry-card presentation, but never have a community
+      // article snapshot to open.
+      isBook: isBookPost(post),
       likeCount: Number(feed && feed.likes && feed.likes[post.shareId]) || 0,
       replyCount: Number(feed && feed.replies && feed.replies[post.shareId]) || 0
     })
   })
+}
+
+function isBookPost(post) {
+  return Boolean(post && post.kind === 'book' && /^book-[A-Za-z0-9_-]+$/.test(post.shareId || ''))
 }
 
 function searchPosts(posts, query) {
@@ -386,6 +394,7 @@ function normalizePost(raw) {
   // The unified /reco/feed only carries the lightweight `kind` field.
   // promptCode is loaded from /community/get/<shareId> when opening detail.
   post.isPrompt = post.kind === 'prompt'
+  post.isBook = isBookPost(post)
   post.updatedAt = post.updatedAt != null ? post.updatedAt : post.firstSharedAt
   post.count = Number(post.count) || 0
   post.mine = Boolean(post.mine)
@@ -505,6 +514,7 @@ module.exports = {
   postsForTab,
   filterFeed,
   cardPosts,
+  isBookPost,
   searchPosts,
   masonryColumns,
   paletteIndex,

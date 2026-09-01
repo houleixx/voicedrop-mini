@@ -1006,7 +1006,7 @@ Page({
   warmCommunityDetails(posts) {
     if (!community.get) return
     const candidates = (posts || []).slice(0, 4).filter((post) =>
-      post && post.shareId && !(community.cachedPost && community.cachedPost(post.shareId)))
+      post && post.shareId && !community.isBookPost(post) && !(community.cachedPost && community.cachedPost(post.shareId)))
     if (!candidates.length) return
     const generation = (this._communityWarmGeneration || 0) + 1
     this._communityWarmGeneration = generation
@@ -1564,6 +1564,17 @@ Page({
       this._longPressedCommunityPost = ''
       return
     }
+    if (community.isBookPost(post)) {
+      // `/reco/feed` book entries carry only display metadata; matching iOS,
+      // use its stable `book-<slug>` id to open the shared book reader instead
+      // of requesting a non-existent community article snapshot.
+      const slug = post.shareId.slice('book-'.length)
+      community.engage(post.shareId, 'view')
+      wx.navigateTo({
+        url: `/pages/book-reader/index?slug=${encodeURIComponent(slug)}&title=${encodeURIComponent(post.title || slug)}&main=${encodeURIComponent(post.title || slug)}&author=${encodeURIComponent(post.author || post.authorName || '')}&cover=${post.coverPhotoKey ? '1' : '0'}&coverAt=0`
+      })
+      return
+    }
     app.globalData.currentCommunityPost = post
     wx.navigateTo({ url: `/pages/community-detail/index?shareId=${encodeURIComponent(post.shareId)}` })
   },
@@ -1574,7 +1585,7 @@ Page({
     const post = shareId
       ? this.data.communityPosts.find((item) => item.shareId === shareId)
       : this.data.communityPosts[index]
-    if (!post || !post.mine) return
+    if (!post || !post.mine || community.isBookPost(post)) return
     this._longPressedCommunityPost = post.shareId
     wx.showModal({
       title: '从 VD社区隐藏？',

@@ -120,7 +120,7 @@ function loadPage(overrides = {}) {
   let definition
   global.getApp = () => app
   global.Page = (value) => { definition = value }
-  global.getCurrentPages = () => [{ load() { calls.refreshes += 1 } }]
+  global.getCurrentPages = () => overrides.currentPages || [{ load() { calls.refreshes += 1 } }]
   global.wx = {
     env: { USER_DATA_PATH: '/user' },
     getStorageSync(key) { return storage[key] },
@@ -381,6 +381,23 @@ test('the recorder is paused before opening a system picker so its PCM remains u
   assert.equal(h.calls.navigations, 1)
 })
 
+test('a recorder pause failure keeps recording active and does not open the photo picker', () => {
+  let pickerOpened = false
+  const recorder = createRecorder()
+  recorder.pause = () => { throw new Error('RecorderManager.pause:fail could not complete') }
+  const h = loadPage({
+    recorder,
+    chooseMedia() { pickerOpened = true }
+  })
+
+  h.page.takePhoto()
+
+  assert.equal(pickerOpened, false)
+  assert.equal(h.page._recordingPausedAt, 0)
+  assert.equal(h.calls.toasts.at(-1).title, '无法暂停录音，请停止后再拍照')
+  h.page.onUnload()
+})
+
 test('returning before the picker complete callback still resumes recording exactly once', () => {
   let request
   const h = loadPage({
@@ -431,8 +448,8 @@ test('an empty PCM file after a recorder interruption is never uploaded', async 
 
   assert.equal(h.calls.uploads.length, 0)
   assert.equal(h.calls.photoUploads.length, 0)
-  assert.equal(h.calls.modals.at(-1).title, '录音已中断')
-  assert.match(h.calls.modals.at(-1).content, /没有录到有效声音/)
+  assert.equal(h.calls.navigations, 1)
+  assert.equal(h.calls.toasts.at(-1).title, '录音未保存：没有录到有效声音')
 })
 
 test('record page owns named recorder callbacks and releases them after the session', () => {
@@ -522,7 +539,7 @@ test('a new page cannot replace an unloading recorder owner until the old stop a
   next.page.onUnload()
 })
 
-test('staging after unload keeps the durable plan but performs no UI side effects', async () => {
+test('staging after unload keeps the durable plan after returning to the recordings list', async () => {
   const h = loadPage({
     globalData: { pendingRecordTag: 'work', pendingReplyTo: null }
   })
@@ -531,8 +548,40 @@ test('staging after unload keeps the durable plan but performs no UI side effect
   await flush()
 
   assert.equal(pendingItems(h)[0].tag, 'work')
-  assert.equal(h.calls.navigations, 0)
+  assert.equal(h.calls.navigations, 1)
   assert.deepEqual(h.calls.toasts, [])
+})
+
+test('record page returns to the recordings list before slow WAV finalization completes', () => {
+  let finishRead
+  const fsManager = {
+    readFile(options) { finishRead = () => options.success({ data: new ArrayBuffer(3200) }) },
+    writeFile(options) { options.success() },
+    unlink(options) { options.success() }
+  }
+  const h = loadPage({ fsManager })
+
+  h.recorder.emitStop({ tempFilePath: '/tmp/slow-finalize.pcm' })
+
+  assert.equal(typeof finishRead, 'function')
+  assert.equal(h.calls.navigations, 1)
+})
+
+test('background staging refreshes the visible recordings upload queue', async () => {
+  const refreshes = { pending: 0, drain: 0 }
+  const recordingsPage = {
+    route: 'pages/recordings/index',
+    showPendingRecordingUploads() { refreshes.pending += 1 },
+    drainPendingRecordingUploads() { refreshes.drain += 1 }
+  }
+  const h = loadPage({ currentPages: [recordingsPage] })
+
+  h.recorder.emitStop({ tempFilePath: '/tmp/queued.pcm' })
+  await flush()
+  await flush()
+
+  assert.equal(refreshes.pending, 1)
+  assert.equal(refreshes.drain, 1)
 })
 
 test('WAV finalization uses the captured session id even if the page id later changes', async () => {

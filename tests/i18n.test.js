@@ -87,7 +87,9 @@ test('language settings page presents exactly the three iOS-equivalent choices',
   assert.match(wxml, /value="en"/)
   assert.match(wxml, /<button class="language-done" bindtap="applyLanguage">/)
   assert.doesNotMatch(wxml, /section-header/)
+  assert.match(wxml, /class="language-hint">\{\{labels\.hint\}\}<\/text>\s*<view class="card language-card">/)
   assert.match(wxss, /--settings-content-top:\s*198rpx/)
+  assert.match(wxss, /\.language-hint\s*\{[^}]*margin:\s*0 12rpx 20rpx;/s)
 })
 
 test('home tabs recomputes its brand and accessibility copy after a language change', () => {
@@ -103,7 +105,13 @@ test('home tabs recomputes its brand and accessibility copy after a language cha
   require('../components/home-tabs/index')
   const ctx = {
     data: Object.assign({}, component.data),
-    properties: { tabs: [{ key: 'recordings', label: '我的录音' }] },
+    properties: {
+      tabs: [
+        { key: 'recordings', label: '我的录音' },
+        { key: 'community', label: 'VD社区' },
+        { key: 'books', label: '写书' }
+      ]
+    },
     setData(update) { Object.assign(this.data, update) }
   }
 
@@ -111,7 +119,7 @@ test('home tabs recomputes its brand and accessibility copy after a language cha
 
   assert.equal(ctx.data.brandName, 'VoiceDrop Dictation')
   assert.equal(ctx.data.settingsLabel, 'Settings')
-  assert.equal(ctx.data.displayTabs[0].label, 'Recordings')
+  assert.deepEqual(ctx.data.displayTabs.map((tab) => tab.label), ['My recordings', 'VD Community', 'Write a book'])
   global.Component = previousComponent
   global.wx = previousWx
 })

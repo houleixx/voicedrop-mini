@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "算力",
   "navigationStyle": "custom",
+  "disableScroll": true,
   "usingComponents": {
     "page-header": "../../components/page-header/index"
   }

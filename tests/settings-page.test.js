@@ -92,6 +92,26 @@ test('settings content scrolls independently from the fixed back header', () => 
   assert.equal(pageConfig.disableScroll, true)
 })
 
+test('all secondary settings pages use the same independent rebound structure', () => {
+  const pages = [
+    'account', 'usage', 'style-settings', 'instruction-settings', 'instruction-edit',
+    'prompt-new', 'prompt-import', 'wechat-settings', 'language-settings', 'about',
+    'blocked-users', 'audio-consent', 'feedback'
+  ]
+
+  pages.forEach((page) => {
+    const directory = path.join(root, 'pages', page)
+    const wxml = fs.readFileSync(path.join(directory, 'index.wxml'), 'utf8')
+    const config = JSON.parse(fs.readFileSync(path.join(directory, 'index.json'), 'utf8'))
+    const css = fs.readFileSync(path.join(directory, 'index.wxss'), 'utf8')
+
+    assert.match(wxml, /<page-header[\s\S]*?<scroll-view class="settings-scroll"[^>]*scroll-y[^>]*enhanced[^>]*bounces="\{\{true\}\}"/, page)
+    assert.match(wxml, /class="settings-scroll-content"/, page)
+    assert.match(css, /@import '\.\.\/\.\.\/styles\/settings-scroll\.wxss';/, page)
+    assert.equal(config.disableScroll, true, page)
+  })
+})
+
 test('settings page exposes Android-style profile name editor', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
 

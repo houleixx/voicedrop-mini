@@ -1,6 +1,6 @@
-<view class="screen settings-screen agreement-page">
+<view class="screen settings-screen agreement-page" style="height: 100vh; padding: 0; overflow: hidden;">
   <page-header language-revision="{{languageRevision}}" title="{{title}}" />
-  <view class="page-body agreement-body">
+  <scroll-view class="settings-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}"><view class="settings-scroll-content"><view class="page-body agreement-body">
     <view class="agreement-card card">
       <text class="agreement-summary">{{summary}}</text>
       <view class="agreement-section" wx:for="{{sections}}" wx:key="title">
@@ -9,5 +9,5 @@
       </view>
       <text class="agreement-meta">版本 {{version}} · 生效日期 {{effectiveDate}}</text>
     </view>
-  </view>
+  </view></view></scroll-view>
 </view>

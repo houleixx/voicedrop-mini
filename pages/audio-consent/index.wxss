@@ -50,3 +50,4 @@
   line-height: 1.4;
   text-align: center;
 }
+@import '../../styles/settings-scroll.wxss';

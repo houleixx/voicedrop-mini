@@ -773,6 +773,30 @@ test('community feed mirrors Android masonry tabs and keeps filters above pull r
   assert.match(js, /selectCommunityFeed\(event\)/)
 })
 
+test('community book cards open the book reader instead of an article detail', () => {
+  const navigations = []
+  const { page, app } = freshRecordingsPage({ navigateTo({ url }) { navigations.push(url) } })
+  const post = { shareId: 'book-read-me', kind: 'book', isBook: true, title: 'Read me', author: 'Alice' }
+  const ctx = Object.assign({}, page, {
+    data: Object.assign({}, page.data, { communityPosts: [post] })
+  })
+
+  page.openPost.call(ctx, { currentTarget: { dataset: { shareId: post.shareId } } })
+
+  assert.match(navigations[0], /^\/pages\/book-reader\/index\?slug=read-me/)
+  assert.match(navigations[0], /main=Read%20me/)
+  assert.equal(app.globalData.currentCommunityPost, undefined)
+})
+
+test('community does not prefetch or expose unshare for book cards', () => {
+  const source = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
+  const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
+
+  assert.match(source, /!community\.isBookPost\(post\) && !\(community\.cachedPost/)
+  assert.match(source, /!post \|\| !post\.mine \|\| community\.isBookPost\(post\)\) return/)
+  assert.match(wxml, /wx:if="\{\{item\.isBook\}\}" class="community-book-badge"/)
+})
+
 test('pull refresh keeps current content visible and forwards silent options to each tab', async () => {
   const toasts = []
   const { page } = freshRecordingsPage({ showToast(options) { toasts.push(options) } })

@@ -24,3 +24,4 @@
 .method-option { padding: 18rpx 20rpx; border-radius: 16rpx; background: #faf7f3; }
 .method-option-title { display: block; color: #5f574f; font-size: 25rpx; font-weight: 800; }
 .method-option-detail { display: block; margin-top: 6rpx; color: #8a8175; font-size: 24rpx; line-height: 1.5; }
+@import '../../styles/settings-scroll.wxss';

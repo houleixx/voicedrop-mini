@@ -1,6 +1,6 @@
-<view class="screen settings-screen">
+<view class="screen settings-screen" style="height: 100vh; padding: 0; overflow: hidden;">
   <page-header language-revision="{{languageRevision}}" title="算力" />
-  <view class="page-body usage-body">
+  <scroll-view class="settings-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}"><view class="settings-scroll-content"><view class="page-body usage-body">
     <!-- Loading state -->
     <view wx:if="{{loading}}" class="loading-container">
       <view class="loading-spinner"></view>
@@ -61,5 +61,5 @@
         </view>
       </view>
     </view>
-  </view>
+  </view></view></scroll-view>
 </view>

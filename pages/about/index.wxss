@@ -140,3 +140,4 @@
 
 .section-label { display: block; margin: 28rpx 8rpx 10rpx; color: #756f66; font-size: 24rpx; font-weight: 700; }
 .experimental-menu { margin-top: 0; }
+@import '../../styles/settings-scroll.wxss';

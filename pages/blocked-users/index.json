@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "社区屏蔽管理",
   "navigationStyle": "custom",
+  "disableScroll": true,
   "usingComponents": {
     "page-header": "../../components/page-header/index"
   }

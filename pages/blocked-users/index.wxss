@@ -77,3 +77,4 @@
   line-height: 1.5;
   text-align: center;
 }
+@import '../../styles/settings-scroll.wxss';

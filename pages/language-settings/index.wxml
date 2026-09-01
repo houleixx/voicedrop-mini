@@ -1,8 +1,8 @@
-<view class="screen settings-screen language-settings-page">
+<view class="screen settings-screen language-settings-page" style="height: 100vh; padding: 0; overflow: hidden;">
   <page-header language-revision="{{languageRevision}}" title="{{labels.title}}" />
-  <view class="page-body">
+  <scroll-view class="settings-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}"><view class="settings-scroll-content"><view class="page-body">
+    <text class="language-hint">{{labels.hint}}</text>
     <view class="card language-card">
-      <text class="language-hint">{{labels.hint}}</text>
       <radio-group bindchange="selectLanguage">
         <label class="language-option">
           <text class="language-option-copy">{{labels.followSystem}}</text>
@@ -19,5 +19,5 @@
       </radio-group>
     </view>
     <button class="language-done" bindtap="applyLanguage">{{labels.done}}</button>
-  </view>
+  </view></view></scroll-view>
 </view>

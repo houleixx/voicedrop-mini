@@ -1,10 +1,10 @@
-<view class="screen settings-screen">
+<view class="screen settings-screen" style="height: 100vh; padding: 0; overflow: hidden;">
   <page-header language-revision="{{languageRevision}}" title="{{reordering ? '' : '提示词'}}" hideBack="{{reordering}}" safeRightAction>
     <view slot="left" wx:if="{{reordering}}" class="cancel-sort-header" bindtap="cancelReorder">{{i18n["取消"]}}</view>
     <view slot="right" wx:if="{{reordering}}" class="done-button" bindtap="finishReorder">{{i18n["完成"]}}</view>
     <view slot="right" wx:else class="add-button" bindtap="openNewMenu" aria-label="{{i18n['新建']}}"><text class="add-symbol">+</text></view>
   </page-header>
-  <view class="prompt-page settings-content">
+  <scroll-view class="settings-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}"><view class="settings-scroll-content"><view class="prompt-page settings-content">
     <text class="prompt-intro" wx:if="{{!reordering}}">{{i18n["一套指令，长按文字或图片时按『适用于』自动筛选。改过的系统项标『已自定义』，自己建的标『自建』，收下别人分享的标『导入』。"]}}</text>
     <text class="prompt-intro" wx:else>{{i18n["长按提示词并拖动排序；拖到分组行可收进该组。"]}}</text>
     <view class="prompt-error" wx:if="{{error}}">{{error}}</view>
@@ -44,7 +44,7 @@
       <text class="import-note">{{i18n["也可以在录音时直接对 VoiceDrop 说出数字，或点开 voicedrop.cn 链接自动跳转到这里。"]}}</text>
       <button class="restore-button" bindtap="restoreDefaults" disabled="{{mutating}}">{{i18n["恢复默认提示词"]}}</button>
     </view>
-  </view>
+  </view></view></scroll-view>
 
   <view class="sheet-mask {{newMenuClosing ? 'sheet-closing' : ''}}" wx:if="{{newMenuVisible}}" bindtap="closeNewMenu">
     <view class="new-sheet" catchtap="noop"><view class="sheet-handle"></view><text class="sheet-title">{{i18n["新建"]}}</text>

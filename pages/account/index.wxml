@@ -1,6 +1,6 @@
-<view class="screen settings-screen account-screen">
+<view class="screen settings-screen account-screen" style="height: 100vh; padding: 0; overflow: hidden;">
   <page-header language-revision="{{languageRevision}}" title="账户" />
-  <view class="page-body account-body">
+  <scroll-view class="settings-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}"><view class="settings-scroll-content"><view class="page-body account-body">
     <view class="account-card">
       <view class="account-intro">
         <view class="account-badge">
@@ -62,6 +62,8 @@
     </view>
     <text class="section-note">{{i18n["永久删除云端与本机的全部数据（录音、文章、照片、设置、社区分享、登录绑定），不可恢复。"]}}</text>
 
+  </view></view></scroll-view>
+
     <!-- Token import modal dialog -->
     <view class="dialog-overlay" wx:if="{{showImportDialog}}" bindtap="cancelImport">
       <view class="dialog-card" catchtap="preventClose">
@@ -82,5 +84,4 @@
         </view>
       </view>
     </view>
-  </view>
 </view>

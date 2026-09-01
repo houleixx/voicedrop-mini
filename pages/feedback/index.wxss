@@ -91,3 +91,4 @@
 @keyframes feedback-spin {
   to { transform: rotate(360deg); }
 }
+@import '../../styles/settings-scroll.wxss';

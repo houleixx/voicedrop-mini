@@ -1,6 +1,6 @@
-<view class="screen settings-screen">
+<view class="screen settings-screen" style="height: 100vh; padding: 0; overflow: hidden;">
   <page-header language-revision="{{languageRevision}}" title="微信公众号" />
-  <view class="page-body">
+  <scroll-view class="settings-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}"><view class="settings-scroll-content"><view class="page-body">
     <view wx:if="{{loading}}" class="status-loading">
       <view class="loading-spinner" aria-hidden="true"></view>
       <text>{{i18n["正在检查连接状态..."]}}</text>
@@ -39,5 +39,5 @@
         <text class="steps-text">{{i18n["3. 选择要绑定的公众号并确认授权，然后返回 VoiceDrop"]}}</text>
       </view>
     </block>
-  </view>
+  </view></view></scroll-view>
 </view>

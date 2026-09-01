@@ -1,0 +1,14 @@
+.settings-scroll {
+  height: 100%;
+}
+
+.settings-scroll-content {
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: var(--settings-content-top) 32rpx 48rpx;
+}
+
+.settings-scroll-content .page-body,
+.settings-scroll-content .settings-content {
+  padding: 0 !important;
+}

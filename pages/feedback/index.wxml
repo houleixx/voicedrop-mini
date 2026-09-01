@@ -1,6 +1,6 @@
-<view class="screen settings-screen feedback-page">
+<view class="screen settings-screen feedback-page" style="height: 100vh; padding: 0; overflow: hidden;">
   <page-header language-revision="{{languageRevision}}" title="意见反馈" />
-  <view class="page-body feedback-body">
+  <scroll-view class="settings-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}"><view class="settings-scroll-content"><view class="page-body feedback-body">
     <view class="feature-editor-card">
       <textarea class="feature-editor" maxlength="2000" value="{{draft}}" bindinput="onInput" disabled="{{sending}}" placeholder="{{i18n['哪里不顺手？想要什么功能？写一句就行。']}}" placeholder-class="feature-editor-placeholder" />
       <text class="feature-count">{{draft.length}} / 2000</text>
@@ -10,5 +10,5 @@
       <view wx:if="{{sending}}" class="feature-loading"><view class="feature-spinner"></view><text>{{i18n["发送中…"]}}</text></view>
       <text wx:else>{{i18n["发送"]}}</text>
     </button>
-  </view>
+  </view></view></scroll-view>
 </view>

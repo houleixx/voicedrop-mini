@@ -21,9 +21,9 @@ const ENGLISH_UI = {
   '社区屏蔽管理': 'Blocked Users',
   '音频信息授权协议': 'Audio Information Consent',
   '语言': 'Language',
-  '我的录音': 'Recordings',
+  '我的录音': 'My recordings',
   'VD社区': 'VD Community',
-  '写书': 'Books',
+  '写书': 'Write a book',
   'VoiceDrop 口述': 'VoiceDrop Dictation'
 }
 
@@ -37,7 +37,7 @@ const ENGLISH_COPY = {
   '取消': 'Cancel', '完成': 'Done', '删除': 'Delete', '切换': 'Switch', '重试': 'Retry',
   '分享': 'Share', '拍照': 'Take Photo', '相册': 'Photo Album', '隐藏': 'Hidden',
   'AI生成': 'AI-generated', '提示词': 'Prompts', '回应': 'Reply', '推荐': 'Recommended',
-  '最新': 'Latest', '写书': 'Write a Book', '写一本新书': 'Write a New Book',
+  '最新': 'Latest', '书籍': 'Book', '写书': 'Write a Book', '写一本新书': 'Write a New Book',
   '正在整理书架…': 'Organizing your bookshelf…', '还没有录音': 'No recordings yet',
   '社区暂无文章': 'No community posts yet', '稍后刷新，或先分享自己的文章。': 'Refresh later, or share one of your articles first.',
   '输入访问令牌': 'Enter access token', '账户': 'Account', '你的 ID': 'Your ID',
