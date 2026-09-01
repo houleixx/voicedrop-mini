@@ -89,6 +89,7 @@ test('settings content scrolls independently from the fixed back header', () => 
   assert.match(css, /\.settings-page\s*\{[^}]*height:\s*100vh;[^}]*overflow:\s*hidden;/s)
   assert.match(css, /\.settings-scroll\s*\{[^}]*height:\s*100%;/s)
   assert.match(css, /\.settings-scroll-content\s*\{[^}]*padding:\s*198rpx 32rpx 48rpx;/s)
+  assert.match(css, /\.settings-scroll-content\s*\{[^}]*min-height:\s*calc\(100% \+ 2px\);/s)
   assert.equal(pageConfig.disableScroll, true)
 })
 
@@ -110,6 +111,9 @@ test('all secondary settings pages use the same independent rebound structure', 
     assert.match(css, /@import '\.\.\/\.\.\/styles\/settings-scroll\.wxss';/, page)
     assert.equal(config.disableScroll, true, page)
   })
+
+  const sharedCss = fs.readFileSync(path.join(root, 'styles/settings-scroll.wxss'), 'utf8')
+  assert.match(sharedCss, /min-height:\s*calc\(100% \+ 2px\);/)
 })
 
 test('settings page exposes Android-style profile name editor', () => {

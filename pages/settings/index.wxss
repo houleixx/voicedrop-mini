@@ -12,7 +12,8 @@
 
 .settings-scroll-content {
   box-sizing: border-box;
-  min-height: 100%;
+  /* Short content still needs a small scroll range for native rebound. */
+  min-height: calc(100% + 2px);
   padding: 198rpx 32rpx 48rpx;
 }
 

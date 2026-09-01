@@ -4,7 +4,8 @@
 
 .settings-scroll-content {
   box-sizing: border-box;
-  min-height: 100%;
+  /* Keep a tiny scroll range so short pages retain the native rebound affordance. */
+  min-height: calc(100% + 2px);
   padding: var(--settings-content-top) 32rpx 48rpx;
 }
 
