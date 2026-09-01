@@ -12,10 +12,11 @@
   </view>
 </view>
 
-<scroll-view class="section-tabs" scroll-x enhanced show-scrollbar="{{false}}">
+<scroll-view class="section-tabs" scroll-x enhanced show-scrollbar="{{false}}" scroll-left="{{scrollLeft}}" scroll-with-animation="{{scrollWithAnimation}}">
   <view class="section-tabs-inner">
     <view
       class="section-tab {{current === item.key ? 'active' : 'muted-tab'}}"
+      id="home-tab-{{item.key}}"
       wx:for="{{displayTabs}}"
       wx:key="key"
       data-tab="{{item.key}}"

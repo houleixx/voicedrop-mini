@@ -6,6 +6,8 @@ Component({
     statusBarHeight: 20,
     settingsTop: 0,
     capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX,
+    scrollLeft: 0,
+    scrollWithAnimation: false,
     displayTabs: [],
     brandName: i18n.ui('VoiceDrop 口述'),
     settingsLabel: i18n.ui('设置')
@@ -13,7 +15,8 @@ Component({
 
   observers: {
     tabs() { this.refreshTabs() },
-    languageRevision() { this.refreshTabs() }
+    languageRevision() { this.refreshTabs() },
+    current() { this.centerCurrentTab(true) }
   },
 
   properties: {
@@ -63,6 +66,28 @@ Component({
         })),
         brandName: i18n.ui('VoiceDrop 口述'),
         settingsLabel: i18n.ui('设置')
+      }, () => this.centerCurrentTab(false))
+    },
+    centerCurrentTab(animate) {
+      this.centerTab(this.properties.current, animate)
+    },
+    centerTab(key, animate, done) {
+      if (!key || typeof wx.createSelectorQuery !== 'function') return
+      wx.nextTick(() => {
+        wx.createSelectorQuery().in(this)
+          .select('.section-tabs').boundingClientRect()
+          .select(`#home-tab-${key}`).boundingClientRect()
+          .exec((rects) => {
+            const viewport = rects && rects[0]
+            const tab = rects && rects[1]
+            if (!viewport || !tab) return
+            const currentLeft = Number(this.data.scrollLeft) || 0
+            const target = currentLeft + tab.left - viewport.left + tab.width / 2 - viewport.width / 2
+            this.setData({
+              scrollLeft: Math.max(0, target),
+              scrollWithAnimation: Boolean(animate)
+            }, done)
+          })
       })
     },
     openSettings() {
@@ -72,7 +97,8 @@ Component({
     selectTab(event) {
       const tab = this.data.tabs.find((item) => item.key === event.currentTarget.dataset.tab)
       if (!tab || tab.key === this.data.current) return
-      this.triggerEvent('change', { key: tab.key, tab })
+      // Start centering immediately; page switching can otherwise delay the visual response.
+      this.centerTab(tab.key, true, () => this.triggerEvent('change', { key: tab.key, tab }))
     }
   }
 })
