@@ -1033,7 +1033,8 @@ test('books supports direct home-tab entry and renders inside the recordings pag
 
   assert.equal(page.initialTab({ tab: 'books' }), 'books')
   assert.ok(page.data.homeTabs.some((tab) => tab.key === 'books'))
-  assert.match(wxml, /wx:elif="\{\{activeTab === 'books'\}\}"/)
+  assert.match(wxml, /<view hidden="\{\{activeTab !== 'books'\}\}" class="books-tab-panel">/)
+  assert.doesNotMatch(wxml, /wx:elif="\{\{activeTab === 'books'\}\}"/)
   assert.match(wxml, /wx:for="\{\{bookRows\}\}"/)
   assert.match(wxml, /class="shelf-bar"/)
   assert.match(ruleBody(css, '.shelf-row'), /gap:\s*44rpx;/)

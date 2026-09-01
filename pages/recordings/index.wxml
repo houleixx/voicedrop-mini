@@ -153,7 +153,7 @@
       </view>
     </block>
 
-    <block wx:elif="{{activeTab === 'books'}}">
+    <view hidden="{{activeTab !== 'books'}}" class="books-tab-panel">
       <view wx:if="{{booksError && !bookItems.length}}" class="shelf-state">{{booksError}}</view>
       <view wx:elif="{{!booksLoaded && !bookItems.length}}" class="shelf-state loading-notice">
         <view class="loading-spinner" aria-hidden="true"></view>
@@ -181,7 +181,7 @@
           <view class="shelf-bar"></view>
         </view>
       </view>
-    </block>
+    </view>
     </view>
   </scroll-view>
 
