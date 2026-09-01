@@ -80,6 +80,17 @@ test('manual chapter shortcuts use explicit real-device-safe spacing', () => {
   assert.match(styles, /\.manual-tab\s*\+\s*\.manual-tab\s*\{[^}]*margin-left:\s*12rpx/)
 })
 
+test('manual chapter shortcuts size to localized labels instead of a fixed Chinese-width button', () => {
+  const styles = fs.readFileSync(path.join(root, 'pages/manual/index.wxss'), 'utf8')
+  const tab = styles.match(/\.manual-tab\s*\{([^}]*)\}/)
+
+  assert.ok(tab)
+  assert.doesNotMatch(tab[1], /^\s+width\s*:/m)
+  assert.match(tab[1], /flex:\s*0 0 auto;/)
+  assert.match(tab[1], /min-width:\s*128rpx;/)
+  assert.match(tab[1], /white-space:\s*nowrap;/)
+})
+
 test('manual content matches the iOS warm-paper reading surface without chapter cards', () => {
   const styles = fs.readFileSync(path.join(root, 'pages/manual/index.wxss'), 'utf8')
   const content = styles.match(/\.manual-content\s*\{([^}]*)\}/)

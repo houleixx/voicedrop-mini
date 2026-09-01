@@ -51,6 +51,58 @@ const SECTIONS = [
   }
 ]
 
+const ENGLISH_COPY = {
+  title: 'Audio Information Consent Agreement',
+  summary: 'To provide transcription, article creation and editing, voice commands, and community replies, VoiceDrop records and uploads audio only after you initiate an action. Audio may contain characteristics that can identify a person.',
+  versionLabel: 'Version',
+  effectiveDateLabel: 'Effective date',
+  sections: [
+    {
+      title: '1. Information we process',
+      paragraphs: ['We process audio that you actively record, recording duration, and the text, articles, and instruction-processing results produced from that audio. Audio may contain characteristics that can identify a person.']
+    },
+    {
+      title: '2. Purposes and uses',
+      paragraphs: ['Audio is used only to transcribe speech into text, create and edit articles, support AI interviews, carry out voice commands, and create community replies that you initiate.']
+    },
+    {
+      title: '3. How we process it',
+      paragraphs: ['After you actively start recording or hold the voice button, the Mini Program accesses the device microphone and sends complete audio or real-time audio frames to the VoiceDrop backend over an encrypted network for automated voice processing. Depending on the features you use, we retain recordings and their corresponding processing results.']
+    },
+    {
+      title: '4. Scope of use',
+      paragraphs: ['VoiceDrop uses audio only for the features above that you initiate. We do not extract voiceprint templates, perform voiceprint identification, use audio for advertising profiles, or sell it to unrelated third parties.']
+    },
+    {
+      title: '5. Retention and deletion',
+      paragraphs: ['Audio and processing results are retained with your current VoiceDrop account. You can delete an individual recording from the recordings list, or close your account to permanently delete all cloud and local data.']
+    },
+    {
+      title: '6. Your rights',
+      paragraphs: ['You may decline or withdraw this consent. Once you decline or withdraw it, we will not begin new audio collection. This affects only microphone-dependent features and does not affect browsing existing content. Withdrawing consent does not automatically delete historical recordings; you can still delete data from the recordings list or by closing your account.']
+    },
+    {
+      title: '7. Contact us',
+      paragraphs: [`For questions, suggestions, or complaints about audio information processing, email us at ${SUPPORT_EMAIL}.`]
+    }
+  ]
+}
+
+function localizedCopy(language) {
+  if (language === 'en') {
+    return Object.assign({ version: VERSION, effectiveDate: EFFECTIVE_DATE }, ENGLISH_COPY)
+  }
+  return {
+    title: TITLE,
+    version: VERSION,
+    effectiveDate: EFFECTIVE_DATE,
+    summary: SUMMARY,
+    versionLabel: '版本',
+    effectiveDateLabel: '生效日期',
+    sections: SECTIONS
+  }
+}
+
 function isGranted() {
   try {
     const state = wx.getStorageSync(STORAGE_KEY)
@@ -85,6 +137,7 @@ module.exports = {
   TITLE,
   SUMMARY,
   SECTIONS,
+  localizedCopy,
   isGranted,
   grant,
   revoke

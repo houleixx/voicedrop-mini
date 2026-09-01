@@ -70,6 +70,26 @@ test('agreement copy states audio purposes, handling, deletion, and contact deta
   assert.match(copy, /不进行声纹身份识别/)
 })
 
+test('agreement supplies complete English copy without changing its consent version', () => {
+  const { consent } = loadConsent()
+  const agreement = consent.localizedCopy('en')
+  const copy = [
+    agreement.title,
+    agreement.summary,
+    agreement.versionLabel,
+    agreement.effectiveDateLabel,
+    ...agreement.sections.flatMap((section) => [section.title, ...section.paragraphs])
+  ].join('\n')
+
+  assert.equal(agreement.title, 'Audio Information Consent Agreement')
+  assert.equal(agreement.version, consent.VERSION)
+  assert.match(copy, /transcription/i)
+  assert.match(copy, /voiceprint/i)
+  assert.match(copy, /delete/i)
+  assert.match(copy, /jianshuo@hotmail\.com/)
+  assert.doesNotMatch(copy, /[\u4e00-\u9fff]/)
+})
+
 test('storage errors fail closed', () => {
   const { consent } = loadConsent({}, {
     getStorageSync() { throw new Error('read failed') },
@@ -148,10 +168,10 @@ test('standalone agreement page is registered and reading it does not grant cons
   const wxml = fs.readFileSync(path.join(root, 'pages/audio-consent/index.wxml'), 'utf8')
 
   assert.ok(app.pages.includes('pages/audio-consent/index'))
-  assert.match(js, /audioConsent\.SECTIONS/)
+  assert.match(js, /audioConsent\.localizedCopy/)
   assert.doesNotMatch(js, /\.grant\(/)
   assert.match(wxml, /wx:for="\{\{sections\}\}"/)
-  assert.match(wxml, /生效日期/)
+  assert.match(wxml, /\{\{effectiveDateLabel\}\}/)
 })
 
 test('app does not declare platform microphone authorization', () => {

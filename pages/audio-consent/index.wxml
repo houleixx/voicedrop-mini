@@ -7,7 +7,7 @@
         <text class="section-title">{{item.title}}</text>
         <text class="section-paragraph" wx:for="{{item.paragraphs}}" wx:for-item="paragraph" wx:key="*this">{{paragraph}}</text>
       </view>
-      <text class="agreement-meta">版本 {{version}} · 生效日期 {{effectiveDate}}</text>
+      <text class="agreement-meta">{{versionLabel}} {{version}} · {{effectiveDateLabel}} {{effectiveDate}}</text>
     </view>
   </view></view></scroll-view>
 </view>

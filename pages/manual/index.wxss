@@ -29,11 +29,11 @@
 
 .manual-tab {
   display: flex;
-  width: 115rpx;
+  min-width: 128rpx;
   height: 52rpx;
-  flex: 0 0 115rpx;
+  flex: 0 0 auto;
   margin: 0;
-  padding: 0 12rpx;
+  padding: 0 18rpx;
   box-sizing: border-box;
   align-items: center;
   justify-content: center;
@@ -44,6 +44,7 @@
   font-size: 24rpx;
   font-weight: 700;
   line-height: 52rpx;
+  white-space: nowrap;
 }
 
 .manual-tab + .manual-tab {
