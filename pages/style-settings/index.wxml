@@ -1,5 +1,5 @@
 <view class="screen settings-screen">
-  <page-header title="写作风格" bgColor="#f9f2eb" textColor="#151210">
+  <page-header language-revision="{{languageRevision}}" title="写作风格" bgColor="#f9f2eb" textColor="#151210">
   </page-header>
 
   <view class="style-page settings-content">

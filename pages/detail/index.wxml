@@ -279,6 +279,7 @@
   <canvas canvas-id="xhsExportCanvas" width="1080" height="1440" class="photo-canvas xhs-export-canvas"></canvas>
   <config-menu
     open="{{longpressMenuOpen}}"
+    language-revision="{{languageRevision}}"
     menu="{{longpressMenu}}"
     anchor="{{longpressAnchor}}"
     anchor-type="{{longpressTarget.kind}}"
@@ -288,6 +289,7 @@
     bindclose="closeLongpressMenu" />
   <audio-consent-dialog
     visible="{{audioConsentVisible}}"
+    language-revision="{{languageRevision}}"
     bind:agree="onAudioConsentAgree"
     bind:decline="onAudioConsentDecline"
     bind:viewagreement="onAudioConsentViewAgreement"

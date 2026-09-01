@@ -31,11 +31,11 @@ Page({
     this.setData({ appliedLanguage: selectedLanguage, effectiveLanguage, labels: copyFor(effectiveLanguage) })
     i18n.notifyLanguageChanged(effectiveLanguage)
     wx.showToast({ title: effectiveLanguage === i18n.ENGLISH ? 'Language updated' : '语言已更新', icon: 'success' })
-    // Components and native page titles are constructed from their current
-    // locale. Re-launch the home page after the confirmation so the entire
-    // visible shell is recreated consistently rather than leaving stale tabs.
-    if (typeof wx.reLaunch === 'function') {
-      setTimeout(() => wx.reLaunch({ url: '/pages/recordings/index' }), 400)
+    // Active pages and shared components refresh through the language-change
+    // broadcast. Return to the page that opened this picker without resetting
+    // the user's navigation stack or their in-progress page state.
+    if (typeof wx.navigateBack === 'function') {
+      wx.navigateBack({ delta: 1 })
     }
   }
 })

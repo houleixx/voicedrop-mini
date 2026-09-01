@@ -1,5 +1,5 @@
 <view class="screen settings-screen">
-  <page-header title="{{pageTitle}}" />
+  <page-header language-revision="{{languageRevision}}" title="{{pageTitle}}" />
   <view class="edit-page settings-content" wx:if="{{!loading && item}}">
     <text class="error" wx:if="{{error}}">{{error}}</text>
     <text class="field-label">{{i18n["菜单里的名字"]}}</text><input class="field" maxlength="40" value="{{nameDraft}}" bindinput="onNameInput" />

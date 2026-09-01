@@ -6,11 +6,14 @@ Component({
     statusBarHeight: 20,
     settingsTop: 0,
     capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX,
-    displayTabs: []
+    displayTabs: [],
+    brandName: i18n.ui('VoiceDrop 口述'),
+    settingsLabel: i18n.ui('设置')
   },
 
   observers: {
-    tabs() { this.refreshTabs() }
+    tabs() { this.refreshTabs() },
+    languageRevision() { this.refreshTabs() }
   },
 
   properties: {
@@ -25,7 +28,8 @@ Component({
         { key: 'community', label: 'VD社区' },
         { key: 'books', label: '写书' }
       ]
-    }
+    },
+    languageRevision: { type: Number, value: 0 }
   },
 
   lifetimes: {
@@ -53,9 +57,13 @@ Component({
 
   methods: {
     refreshTabs() {
-      this.setData({ displayTabs: (this.properties.tabs || []).map((tab) => Object.assign({}, tab, {
-        label: i18n.ui(tab.label)
-      })) })
+      this.setData({
+        displayTabs: (this.properties.tabs || []).map((tab) => Object.assign({}, tab, {
+          label: i18n.ui(tab.label)
+        })),
+        brandName: i18n.ui('VoiceDrop 口述'),
+        settingsLabel: i18n.ui('设置')
+      })
     },
     openSettings() {
       this.triggerEvent('settings')

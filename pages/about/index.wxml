@@ -1,5 +1,5 @@
 <view class="screen settings-screen about-page">
-  <page-header title="关于" />
+  <page-header language-revision="{{languageRevision}}" title="关于" />
   <view class="page-body">
     <view class="about-card card">
       <text class="logo">{{i18n["VoiceDrop 口述"]}}</text>

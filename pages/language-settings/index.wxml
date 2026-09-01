@@ -1,5 +1,5 @@
 <view class="screen settings-screen language-settings-page">
-  <page-header title="{{labels.title}}" />
+  <page-header language-revision="{{languageRevision}}" title="{{labels.title}}" />
   <view class="page-body">
     <view class="card language-card">
       <text class="language-hint">{{labels.hint}}</text>

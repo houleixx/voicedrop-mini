@@ -58,7 +58,7 @@ test('manual keeps the tapped chapter selected while animated scrolling passes o
 test('manual uses a custom title bar and native scroll content instead of web-view', () => {
   const markup = fs.readFileSync(path.join(root, 'pages/manual/index.wxml'), 'utf8')
 
-  assert.match(markup, /<page-header title="使用手册"/)
+  assert.match(markup, /<page-header[^>]*title="使用手册"/)
   assert.match(markup, /class="manual-tabs" scroll-x/)
   assert.match(markup, /class="manual-content" scroll-y scroll-into-view="\{\{scrollTarget\}\}"/)
   assert.equal((markup.match(/bounces="\{\{true\}\}"/g) || []).length, 2)

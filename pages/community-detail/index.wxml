@@ -169,6 +169,7 @@
   </view>
   <audio-consent-dialog
     visible="{{audioConsentVisible}}"
+    language-revision="{{languageRevision}}"
     bind:agree="onAudioConsentAgree"
     bind:decline="onAudioConsentDecline"
     bind:viewagreement="onAudioConsentViewAgreement"

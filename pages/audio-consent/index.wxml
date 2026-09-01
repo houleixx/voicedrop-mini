@@ -1,5 +1,5 @@
 <view class="screen settings-screen agreement-page">
-  <page-header title="{{title}}" />
+  <page-header language-revision="{{languageRevision}}" title="{{title}}" />
   <view class="page-body agreement-body">
     <view class="agreement-card card">
       <text class="agreement-summary">{{summary}}</text>

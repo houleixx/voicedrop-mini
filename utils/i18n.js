@@ -152,7 +152,7 @@ const ENGLISH_COPY = {
   , '正在上传': 'Uploading', '已成文': 'Article ready', '无语音': 'No speech', '听录音': 'Transcribing', '挖文章': 'Writing article', '录音过长': 'Recording too long', '余额不足': 'Insufficient credits', '待处理': 'Pending'
   , '1 上手': '1 Getting started', '2 录音': '2 Recording', '3 改稿': '3 Editing', '4 发布': '4 Publishing', '5 社区': '5 Community', '6 文风': '6 Writing style', '7 账号': '7 Account'
   , '拷贝': 'Copy', '编辑': 'Edit'
-  , '选一个版本': 'Choose a version', '按住说话，修改文章': 'Hold to speak and edit', '松开 发送 · 上滑取消': 'Release to send · Swipe up to cancel', '上滑取消 · 松开放弃': 'Swipe up to cancel · Release to discard', '正在整理…': 'Preparing…', '正在连接…': 'Connecting…', '在听…': 'Listening…', '正在改…按住继续说': 'Editing… Hold to keep speaking', '加载中...': 'Loading…'
+  , '选一个版本': 'Choose a version', '按住说话，修改文章': 'Hold to speak and edit', '松开发送 · 上滑取消': 'Release to send · Swipe up to cancel', '上滑取消 · 松开放弃': 'Swipe up to cancel · Release to discard', '正在整理…': 'Preparing…', '正在连接…': 'Connecting…', '在听…': 'Listening…', '正在改…按住继续说': 'Editing… Hold to keep speaking', '加载中...': 'Loading…'
   , '选风格': 'Choose style'
   , '热门': 'Popular', '配图': 'Images', '轻点录音 · 长按说话': 'Tap to record · Hold to speak', '匿名 ID 保存在本机': 'Your anonymous ID is stored on this device', '已登录微信账号': 'Signed in with WeChat', '计算中': 'Calculating…', '暂不可用': 'Unavailable'
   , 'AI 连接中…': 'AI connecting…', 'AI 已断开 · 录音继续': 'AI disconnected · Recording continues', 'AI 采访暂不可用 · 录音继续': 'AI interview unavailable · Recording continues', 'AI 语音播放异常 · 采访仍在进行': 'AI playback issue · Interview continues', 'AI 正在说话': 'AI is speaking', 'AI 采访中 · 再点一下结束': 'AI interview · Tap again to end', 'AI 采访中': 'AI interview'

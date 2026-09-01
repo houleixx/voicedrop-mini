@@ -1,5 +1,5 @@
 <view class="screen settings-screen settings-page">
-  <page-header title="设置" />
+  <page-header language-revision="{{languageRevision}}" title="设置" />
   <view class="page-body">
 
     <!-- 顶部卡片：账户、算力 -->

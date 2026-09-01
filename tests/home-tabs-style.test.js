@@ -56,7 +56,7 @@ test('home typography keeps readable contrast and full-size tab targets', () => 
   const tabText = ruleBody(css, '.section-tab-text')
   const muted = ruleBody(css, '.muted-tab')
 
-  assert.match(wxml, />\{\{i18n\["VoiceDrop 口述"\]\}\}<\/text>/)
+  assert.match(wxml, />\{\{brandName\}\}<\/text>/)
   assert.match(brand, /color:\s*#746d63;/)
   assert.match(tabs, /margin-top:\s*-8rpx;/)
   assert.match(tab, /min-height:\s*88rpx;/)

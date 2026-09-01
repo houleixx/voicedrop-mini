@@ -29,7 +29,7 @@
 </template>
 
 <view class="screen recording-screen">
-  <home-tabs id="home-tabs" current="{{currentHomeTab}}" tabs="{{homeTabs}}" bind:change="switchHomeTab" bind:settings="openSettings" />
+  <home-tabs id="home-tabs" language-revision="{{languageRevision}}" current="{{currentHomeTab}}" tabs="{{homeTabs}}" bind:change="switchHomeTab" bind:settings="openSettings" />
 
   <view wx:if="{{activeTab === 'community'}}" class="community-feed-tabs" style="top: {{scrollContentTop}}px;">
     <block wx:if="{{!communitySearching}}">
@@ -210,6 +210,7 @@
   </view>
   <audio-consent-dialog
     visible="{{audioConsentVisible}}"
+    language-revision="{{languageRevision}}"
     bind:agree="onAudioConsentAgree"
     bind:decline="onAudioConsentDecline"
     bind:viewagreement="onAudioConsentViewAgreement"

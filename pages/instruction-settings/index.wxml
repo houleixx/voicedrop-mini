@@ -1,5 +1,5 @@
 <view class="screen settings-screen">
-  <page-header title="{{reordering ? '' : '提示词'}}" hideBack="{{reordering}}" safeRightAction>
+  <page-header language-revision="{{languageRevision}}" title="{{reordering ? '' : '提示词'}}" hideBack="{{reordering}}" safeRightAction>
     <view slot="left" wx:if="{{reordering}}" class="cancel-sort-header" bindtap="cancelReorder">{{i18n["取消"]}}</view>
     <view slot="right" wx:if="{{reordering}}" class="done-button" bindtap="finishReorder">{{i18n["完成"]}}</view>
     <view slot="right" wx:else class="add-button" bindtap="openNewMenu" aria-label="{{i18n['新建']}}"><text class="add-symbol">+</text></view>

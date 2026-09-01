@@ -1,5 +1,5 @@
 <view class="screen revise-page">
-  <page-header title="{{i18n['修改《'] + title + i18n['》']}}" />
+  <page-header language-revision="{{languageRevision}}" title="{{i18n['修改《'] + title + i18n['》']}}" />
   <view wx:if="{{denied}}" class="denied-state">
     <view class="denied-icon ri-lock-line"></view>
     <text class="denied-copy">{{denied}}</text>

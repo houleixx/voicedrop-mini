@@ -49,13 +49,15 @@ test('language changes notify active pages and update app-wide language state', 
 test('language settings applies a selected option only after Done', () => {
   let page
   const values = {}
+  const navigations = []
   global.Page = (definition) => { page = definition }
   global.wx = {
     getStorageSync: (key) => values[key],
     setStorageSync: (key, value) => { values[key] = value },
     getSystemInfoSync: () => ({ language: 'zh_CN' }),
     showToast: () => {},
-    reLaunch: () => {}
+    reLaunch: () => { throw new Error('language selection must not relaunch the home page') },
+    navigateBack: (options) => navigations.push(options)
   }
   delete require.cache[require.resolve('../pages/language-settings/index')]
   require('../pages/language-settings/index')
@@ -74,6 +76,7 @@ test('language settings applies a selected option only after Done', () => {
   assert.equal(values[i18n.LANGUAGE_KEY], 'en')
   assert.equal(ctx.data.effectiveLanguage, 'en')
   assert.equal(ctx.data.labels.title, 'Language')
+  assert.deepEqual(navigations, [{ delta: 1 }])
 })
 
 test('language settings page presents exactly the three iOS-equivalent choices', () => {
@@ -85,6 +88,32 @@ test('language settings page presents exactly the three iOS-equivalent choices',
   assert.match(wxml, /<button class="language-done" bindtap="applyLanguage">/)
   assert.doesNotMatch(wxml, /section-header/)
   assert.match(wxss, /--settings-content-top:\s*198rpx/)
+})
+
+test('home tabs recomputes its brand and accessibility copy after a language change', () => {
+  let component
+  const previousComponent = global.Component
+  const previousWx = global.wx
+  global.Component = (definition) => { component = definition }
+  global.wx = {
+    getStorageSync: (key) => key === i18n.LANGUAGE_KEY ? 'en' : undefined,
+    getSystemInfoSync: () => ({ language: 'zh_CN' })
+  }
+  delete require.cache[require.resolve('../components/home-tabs/index')]
+  require('../components/home-tabs/index')
+  const ctx = {
+    data: Object.assign({}, component.data),
+    properties: { tabs: [{ key: 'recordings', label: '我的录音' }] },
+    setData(update) { Object.assign(this.data, update) }
+  }
+
+  component.methods.refreshTabs.call(ctx)
+
+  assert.equal(ctx.data.brandName, 'VoiceDrop Dictation')
+  assert.equal(ctx.data.settingsLabel, 'Settings')
+  assert.equal(ctx.data.displayTabs[0].label, 'Recordings')
+  global.Component = previousComponent
+  global.wx = previousWx
 })
 
 test('native interface feedback is English without translating user-facing content labels', () => {

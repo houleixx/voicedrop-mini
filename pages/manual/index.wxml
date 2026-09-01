@@ -1,5 +1,5 @@
 <view class="manual-page">
-  <page-header title="使用手册" />
+  <page-header language-revision="{{languageRevision}}" title="使用手册" />
   <view class="manual-shell">
     <scroll-view class="manual-tabs" scroll-x enhanced bounces="{{true}}" show-scrollbar="{{false}}">
       <view class="manual-tabs-inner">

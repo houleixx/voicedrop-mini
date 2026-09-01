@@ -1,5 +1,5 @@
 <view class="screen shelf-page">
-  <home-tabs current="books" tabs="{{tabs}}" bind:change="switchTab" bind:settings="openSettings" />
+  <home-tabs language-revision="{{languageRevision}}" current="books" tabs="{{tabs}}" bind:change="switchTab" bind:settings="openSettings" />
   <scroll-view class="shelf-scroll" scroll-y enhanced bounces refresher-enabled refresher-triggered="{{refreshing}}" bindrefresherrefresh="refresh">
     <view wx:if="{{error && !items.length}}" class="shelf-state">{{error}}</view>
     <view wx:elif="{{loading && !items.length}}" class="shelf-state">{{i18n["正在整理书架…"]}}</view>

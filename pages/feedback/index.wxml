@@ -1,5 +1,5 @@
 <view class="screen settings-screen feedback-page">
-  <page-header title="意见反馈" />
+  <page-header language-revision="{{languageRevision}}" title="意见反馈" />
   <view class="page-body feedback-body">
     <view class="feature-editor-card">
       <textarea class="feature-editor" maxlength="2000" value="{{draft}}" bindinput="onInput" disabled="{{sending}}" placeholder="{{i18n['哪里不顺手？想要什么功能？写一句就行。']}}" placeholder-class="feature-editor-placeholder" />

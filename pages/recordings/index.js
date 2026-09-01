@@ -20,6 +20,7 @@ const resumeRefresh = require('../../utils/resume-refresh')
 const holdToTalk = require('../../utils/hold-to-talk')
 const audioConsentFlow = require('../../utils/audio-consent-flow')
 const recordPermission = require('../../utils/record-permission')
+const i18n = require('../../utils/i18n')
 
 const app = getApp()
 const MIN_BOOK_REFRESH_FEEDBACK_MS = 600
@@ -76,7 +77,7 @@ Page({
     commandStatusOk: true,
     commandTalking: false,
     commandCanceled: false,
-    dockHint: '轻点录音 · 长按说话',
+    dockHint: i18n.ui('轻点录音 · 长按说话'),
     linkRequest: null,
     communityLoading: false,
     communityPosts: [],
@@ -142,6 +143,10 @@ Page({
 
   onResize() {
     this.measureHomeTabsBottom()
+  },
+
+  onLanguageChanged() {
+    this._updateDockHint()
   },
 
   measureHomeTabsBottom() {
@@ -1368,9 +1373,9 @@ Page({
   _updateDockHint() {
     if (this.data.commandTalking) {
       const hint = this.data.commandCanceled ? '上滑取消 · 松开放弃' : '松开发送 · 上滑取消'
-      this.setData({ dockHint: hint })
+      this.setData({ dockHint: i18n.ui(hint) })
     } else {
-      this.setData({ dockHint: '轻点录音 · 长按说话' })
+      this.setData({ dockHint: i18n.ui('轻点录音 · 长按说话') })
     }
   },
 

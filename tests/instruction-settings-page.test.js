@@ -397,7 +397,7 @@ test('prompt editor matches the iOS header and sharing layout', () => {
   const root = path.join(__dirname, '..')
   const wxml = fs.readFileSync(path.join(root, 'pages/instruction-edit/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/instruction-edit/index.wxss'), 'utf8')
-  assert.match(wxml, /<page-header title="\{\{pageTitle\}\}" \/>/)
+  assert.match(wxml, /<page-header[^>]*title="\{\{pageTitle\}\}"[^>]*\/>/)
   assert.doesNotMatch(wxml, /titleAlign="left"/)
   assert.doesNotMatch(wxml, /slot="right"/)
   assert.match(wxml, /class="bottom-save[^\"]*"[\s\S]*bindtap="save"/)

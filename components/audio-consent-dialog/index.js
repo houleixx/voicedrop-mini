@@ -6,11 +6,18 @@ Component({
     visible: {
       type: Boolean,
       value: false
-    }
+    },
+    languageRevision: { type: Number, value: 0 }
   },
 
   data: {
     summary: i18n.ui(audioConsent.SUMMARY)
+  },
+
+  observers: {
+    languageRevision() {
+      this.setData({ summary: i18n.ui(audioConsent.SUMMARY) })
+    }
   },
 
   methods: {

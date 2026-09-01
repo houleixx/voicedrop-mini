@@ -188,7 +188,7 @@ test('record page discards a recording shorter than four seconds before staging 
 test('record page uses the shared page header and custom navigation', () => {
   assert.equal(config.navigationStyle, 'custom')
   assert.equal(config.usingComponents['page-header'], '../../components/page-header/index')
-  assert.match(wxml, /<page-header title="录音"\s*\/>/)
+  assert.match(wxml, /<page-header[^>]*title="录音"[^>]*\/>/)
   assert.doesNotMatch(wxml, /class="status-bar"[^>]*padding-top:/)
   assert.match(wxss, /\.status-bar\s*\{[^}]*padding-top:\s*180rpx;/)
   assert.doesNotMatch(js, /getSystemInfoSync/)

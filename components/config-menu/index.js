@@ -16,7 +16,8 @@ Component({
     menu: { type: Object, value: null },
     anchor: { type: Object, value: null },
     anchorType: { type: String, value: '' },
-    localRows: { type: Array, value: [] }
+    localRows: { type: Array, value: [] },
+    languageRevision: { type: Number, value: 0 }
   },
   data: {
     groups: [],
@@ -27,7 +28,7 @@ Component({
     openNode: null
   },
   observers: {
-    'open,menu,anchor,localRows': function (open, menu, anchor, localRows) {
+    'open,menu,anchor,localRows,languageRevision': function (open, menu, anchor, localRows) {
       if (!open) return
       const groups = uiConfig.renderableGroups(menu).map(localizedSystemNodes)
       const nodes = groups.flat()

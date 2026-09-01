@@ -12,7 +12,8 @@ Component({
     titleAlign: { type: String, value: 'center' },
     hideBack: { type: Boolean, value: false },
     safeRightAction: { type: Boolean, value: false },
-    backToHome: { type: Boolean, value: false }
+    backToHome: { type: Boolean, value: false },
+    languageRevision: { type: Number, value: 0 }
   },
   data: {
     toolbarTop: 0,
@@ -22,7 +23,8 @@ Component({
     displayTitle: ''
   },
   observers: {
-    title() { this.refreshTitle() }
+    title() { this.refreshTitle() },
+    languageRevision() { this.refreshTitle() }
   },
   lifetimes: {
     attached() {

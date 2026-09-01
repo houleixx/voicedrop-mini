@@ -92,7 +92,7 @@ test('native manual uses the shared title bar and Android-style quick section na
   assert.match(about, /navigateTo\(\{ url: '\/pages\/manual\/index' \}\)/)
   assert.doesNotMatch(about, /help\/manual/)
   assert.equal(config.navigationStyle, 'custom')
-  assert.match(markup, /<page-header title="使用手册"/)
+  assert.match(markup, /<page-header[^>]*title="使用手册"/)
   assert.match(markup, /scroll-into-view="\{\{scrollTarget\}\}"/)
   assert.match(source, /manualService\.loadBundled\(\)/)
   assert.doesNotMatch(source, /syncManual|https:\/\/voicedrop\.cn\/help\/manual/)
@@ -107,7 +107,7 @@ test('book writing page matches the current iOS price, seed and pipeline composi
   const config = JSON.parse(fs.readFileSync(path.join(root, 'pages/book-writing/index.json'), 'utf8'))
 
   assert.match(markup, /写一本书的价钱，提交时一次扣清/)
-  assert.match(markup, /<page-header title="写书"/)
+  assert.match(markup, /<page-header[^>]*title="写书"/)
   assert.equal(config.usingComponents['page-header'], '/components/page-header/index')
   assert.match(markup, /class="bolt ri-flashlight-line"/)
   assert.match(markup, /class="earn-summary"/)

@@ -3,8 +3,8 @@
     <view class="brand-wave" aria-hidden="true">
       <image class="brand-wave-image" src="/images/voicedrop-brand-waveform.svg" mode="aspectFit" />
     </view>
-    <text class="brand-name">{{i18n["VoiceDrop 口述"]}}</text>
-    <view class="settings-button" style="top: {{settingsTop}}px; right: {{capsuleSafeRightPx}}px;" bindtap="openSettings" aria-label="{{i18n['设置']}}">
+    <text class="brand-name">{{brandName}}</text>
+    <view class="settings-button" style="top: {{settingsTop}}px; right: {{capsuleSafeRightPx}}px;" bindtap="openSettings" aria-label="{{settingsLabel}}">
       <view class="settings-button-surface">
         <text class="settings-icon settings-icon-gear"></text>
       </view>

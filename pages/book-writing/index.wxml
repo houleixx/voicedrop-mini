@@ -1,5 +1,5 @@
 <view class="screen book-writing-page">
-  <page-header title="写书" />
+  <page-header language-revision="{{languageRevision}}" title="写书" />
   <block wx:if="{{submitted}}">
     <view class="submitted"><view class="submitted-check">✓</view><text class="submitted-title">{{i18n["开始写了！"]}}</text><text class="submitted-copy">{{i18n["现在可以关掉小程序。书通常 10–30 分钟写完，过稿一章、上架一章——写好就出现在「写书」书架上，下拉刷新就能看到。"]}}</text><button class="done" bindtap="done">{{i18n["好"]}}</button></view>
   </block>

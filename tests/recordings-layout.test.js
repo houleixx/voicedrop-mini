@@ -54,6 +54,27 @@ test('community starts in loading state instead of showing its empty state befor
   assert.match(wxml, /wx:elif="\{\{communityPosts\.length === 0\}\}"/)
 })
 
+test('language changes refresh the recording dock hint in every hold-to-talk state', () => {
+  const { page } = freshRecordingsPage({ getStorageSync: () => 'en' })
+  const ctx = {
+    data: Object.assign({}, page.data, { commandTalking: false, commandCanceled: false }),
+    setData(update) { Object.assign(this.data, update) },
+    _updateDockHint: page._updateDockHint
+  }
+
+  page.onLanguageChanged.call(ctx)
+  assert.equal(ctx.data.dockHint, 'Tap to record · Hold to speak')
+
+  ctx.data.commandTalking = true
+  ctx.data.commandCanceled = false
+  page.onLanguageChanged.call(ctx)
+  assert.equal(ctx.data.dockHint, 'Release to send · Swipe up to cancel')
+
+  ctx.data.commandCanceled = true
+  page.onLanguageChanged.call(ctx)
+  assert.equal(ctx.data.dockHint, 'Swipe up to cancel · Release to discard')
+})
+
 test('recordings restores a cached snapshot before starting its silent refresh', () => {
   const library = require('../services/library')
   const originalCachedRecordings = library.cachedRecordings
@@ -1267,7 +1288,7 @@ test('recording tags are rendered in the top home tabs instead of a secondary ta
   const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
   const js = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
 
-  assert.match(wxml, /<home-tabs id="home-tabs" current="\{\{currentHomeTab\}\}" tabs="\{\{homeTabs\}\}"/)
+  assert.match(wxml, /<home-tabs[^>]*id="home-tabs"[^>]*current="\{\{currentHomeTab\}\}"[^>]*tabs="\{\{homeTabs\}\}"/)
   assert.doesNotMatch(wxml, /class="tag-tabs"/)
   assert.doesNotMatch(wxml, /wx:for="\{\{homeTags\}\}"/)
   assert.match(js, /homeTabsFor\(homeTags\)/)

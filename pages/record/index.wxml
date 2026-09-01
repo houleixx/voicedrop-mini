@@ -1,5 +1,5 @@
 <view class="recording-screen">
-  <page-header title="录音" />
+  <page-header language-revision="{{languageRevision}}" title="录音" />
 
   <!-- Status bar area -->
   <view class="status-bar">

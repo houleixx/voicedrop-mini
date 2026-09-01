@@ -1,5 +1,5 @@
 <view class="screen settings-screen blocked-users-page">
-  <page-header title="社区屏蔽管理" />
+  <page-header language-revision="{{languageRevision}}" title="社区屏蔽管理" />
   <view class="page-body">
     <view wx:if="{{blockedAuthors.length === 0}}" class="card blocked-empty">
       <text class="empty-title">{{i18n["没有已屏蔽的作者"]}}</text>

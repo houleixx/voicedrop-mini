@@ -1,5 +1,5 @@
 <view class="screen settings-screen">
-  <page-header title="{{pageTitle}}" />
+  <page-header language-revision="{{languageRevision}}" title="{{pageTitle}}" />
   <view class="prompt-new-page settings-content">
     <text class="error" wx:if="{{error}}">{{error}}</text>
     <text class="field-label">{{type === 'group' ? i18n['分组名字'] : i18n['菜单里的名字']}}</text>

@@ -38,7 +38,7 @@ function installI18nRegistrationWrappers() {
       const onShow = definition.onShow
       const onLanguageChanged = definition.onLanguageChanged
       return registerPage(Object.assign({}, definition, {
-        data: localizeFeedbackData(Object.assign({ i18n: i18n.copy() }, definition.data || {})),
+        data: localizeFeedbackData(Object.assign({ i18n: i18n.copy(), languageRevision: 0 }, definition.data || {})),
         onLoad(...args) {
           wrapPageSetData(this)
           if (typeof this.setData === 'function') this.setData({ i18n: i18n.copy() })
@@ -50,7 +50,11 @@ function installI18nRegistrationWrappers() {
           return typeof onShow === 'function' ? onShow.apply(this, args) : undefined
         },
         onLanguageChanged(language) {
-          if (typeof this.setData === 'function') this.setData({ i18n: i18n.copy(language) })
+          if (typeof this.setData === 'function') {
+            const app = typeof getApp === 'function' ? getApp() : null
+            const languageRevision = Number(app && app.globalData && app.globalData.languageRevision || 0)
+            this.setData({ i18n: i18n.copy(language), languageRevision })
+          }
           return typeof onLanguageChanged === 'function' ? onLanguageChanged.call(this, language) : undefined
         }
       }))

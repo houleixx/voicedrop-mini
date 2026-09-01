@@ -50,7 +50,7 @@ test('config menu emits a picked leaf and lets the parent close after consuming 
 test('config menu keeps system rows fixed and allocates overflow only to custom rows', () => {
   const component = freshComponent()
   const state = ctx(component)
-  component.observers['open,menu,anchor,localRows'].call(state, true, { groups: [[
+  component.observers['open,menu,anchor,localRows,languageRevision'].call(state, true, { groups: [[
     { id: 'sys', label: '系统', origin: 'system', instruction: 'S' },
     { id: 'custom-a', label: '自定义 A', origin: 'user', instruction: 'A' },
     { id: 'custom-b', label: '自定义 B', origin: 'custom', instruction: 'B' }
