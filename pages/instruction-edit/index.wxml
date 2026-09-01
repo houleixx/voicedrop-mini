@@ -2,17 +2,17 @@
   <page-header title="{{pageTitle}}" />
   <view class="edit-page settings-content" wx:if="{{!loading && item}}">
     <text class="error" wx:if="{{error}}">{{error}}</text>
-    <text class="field-label">菜单里的名字</text><input class="field" maxlength="40" value="{{nameDraft}}" bindinput="onNameInput" />
+    <text class="field-label">{{i18n["菜单里的名字"]}}</text><input class="field" maxlength="40" value="{{nameDraft}}" bindinput="onNameInput" />
     <block wx:if="{{item.type === 'action'}}">
-      <text class="field-label section-gap">提示词</text><textarea class="field prompt-field" value="{{instructionDraft}}" bindinput="onInstructionInput" />
-      <view class="applies-head"><text class="field-label">适用于</text><text>决定在哪种长按里出现</text></view>
-      <view class="apply-options"><view class="apply-option {{textDraft ? 'selected' : ''}}" bindtap="toggleText"><text class="ri-edit-2-line"></text><text>文字</text><text class="apply-check">{{textDraft ? '✓' : ''}}</text></view><view class="apply-option image-option {{imageDraft ? 'selected' : ''}}" bindtap="toggleImage"><text class="ri-image-line"></text><text>图片</text><text class="apply-check">{{imageDraft ? '✓' : ''}}</text></view></view>
+      <text class="field-label section-gap">{{i18n["提示词"]}}</text><textarea class="field prompt-field" value="{{instructionDraft}}" bindinput="onInstructionInput" />
+      <view class="applies-head"><text class="field-label">{{i18n["适用于"]}}</text><text>{{i18n["决定在哪种长按里出现"]}}</text></view>
+      <view class="apply-options"><view class="apply-option {{textDraft ? 'selected' : ''}}" bindtap="toggleText"><text class="ri-edit-2-line"></text><text>{{i18n["文字"]}}</text><text class="apply-check">{{textDraft ? '✓' : ''}}</text></view><view class="apply-option image-option {{imageDraft ? 'selected' : ''}}" bindtap="toggleImage"><text class="ri-image-line"></text><text>{{i18n["图片"]}}</text><text class="apply-check">{{imageDraft ? '✓' : ''}}</text></view></view>
       <view class="share-card">
         <view class="share-head">
           <view class="setting-copy">
-            <text>分享这条提示词</text>
+            <text>{{i18n["分享这条提示词"]}}</text>
             <!-- 溯源转发：未修改的导入件分享的是原作者的码——文案不能说「关闭后码失效」 -->
-<text class="hint">{{sharing ? (shareBorrowed ? '转发中：这是原作者的分享码，关闭只停止转发，码不会失效' : '分享中：社区可见，关闭后分享码失效、社区帖撤下') : '开启后发布到社区，并得到分享码短链'}}</text>
+<text class="hint">{{sharing ? (shareBorrowed ? i18n['转发中：这是原作者的分享码，关闭只停止转发，码不会失效'] : i18n['分享中：社区可见，关闭后分享码失效、社区帖撤下']) : i18n['开启后发布到社区，并得到分享码短链']}}</text>
           </view>
           <switch checked="{{sharing}}" disabled="{{shareToggling}}" bindchange="toggleSharing" color="#c7432f" />
         </view>
@@ -21,17 +21,17 @@
           <text class="share-value">{{shareCode}}</text>
           <text class="share-link">voicedrop.cn/{{shareCode}}</text>
           <view class="share-actions">
-            <button class="share-action" bindtap="copyShareCode"><text class="ri-file-copy-line"></text><text>复制数字</text></button>
-            <button class="share-action" bindtap="copyShareLink"><text class="ri-link"></text><text>复制链接</text></button>
-            <button class="share-action" open-type="share"><text class="ri-share-box-line"></text><text>分享…</text></button>
+            <button class="share-action" bindtap="copyShareCode"><text class="ri-file-copy-line"></text><text>{{i18n["复制数字"]}}</text></button>
+            <button class="share-action" bindtap="copyShareLink"><text class="ri-link"></text><text>{{i18n["复制链接"]}}</text></button>
+            <button class="share-action" open-type="share"><text class="ri-share-box-line"></text><text>{{i18n["分享…"]}}</text></button>
           </view>
           <!-- 溯源转发：未修改的导入件分享的是原作者的码，改动正文保存后会自动停止转发 -->
-<text class="share-warning" wx:if="{{shareBorrowed}}">转发原作者的版本；改动正文保存后会自动停止转发</text>
-<text class="share-warning" wx:elif="{{dirty}}">分享的始终是已保存的版本</text>
+<text class="share-warning" wx:if="{{shareBorrowed}}">{{i18n["转发原作者的版本；改动正文保存后会自动停止转发"]}}</text>
+<text class="share-warning" wx:elif="{{dirty}}">{{i18n["分享的始终是已保存的版本"]}}</text>
         </view>
       </view>
     </block>
-    <button class="bottom-save {{dirty && !saving ? '' : 'disabled'}}" disabled="{{!dirty || saving}}" loading="{{saving}}" bindtap="save">{{saving ? '保存中' : '保存'}}</button>
+    <button class="bottom-save {{dirty && !saving ? '' : 'disabled'}}" disabled="{{!dirty || saving}}" loading="{{saving}}" bindtap="save">{{saving ? i18n['保存中'] : i18n['保存']}}</button>
   </view>
-  <view class="loading" wx:else>{{error || '加载中...'}}</view>
+  <view class="loading" wx:else>{{error || i18n['加载中...']}}</view>
 </view>

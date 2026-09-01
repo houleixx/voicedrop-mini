@@ -1,4 +1,14 @@
 const uiConfig = require('../../utils/ui-config')
+const i18n = require('../../utils/i18n')
+
+function localizedSystemNodes(nodes) {
+  return (nodes || []).map((node) => {
+    if (!node || node.origin !== 'system') return node
+    const copy = Object.assign({}, node, { label: i18n.ui(node.label) })
+    if (Array.isArray(node.children)) copy.children = localizedSystemNodes(node.children)
+    return copy
+  })
+}
 
 Component({
   properties: {
@@ -19,16 +29,17 @@ Component({
   observers: {
     'open,menu,anchor,localRows': function (open, menu, anchor, localRows) {
       if (!open) return
-      const groups = uiConfig.renderableGroups(menu)
+      const groups = uiConfig.renderableGroups(menu).map(localizedSystemNodes)
       const nodes = groups.flat()
       const fixedNodes = nodes.filter((node) => node.origin === 'system')
       const customNodes = nodes.filter((node) => node.origin !== 'system')
       const maxHeight = Math.max(48, Number(anchor && anchor.menuMaxHeight) || 320)
-      const fixedHeight = fixedNodes.length * 48 + (localRows || []).length * 48
-      const boundaryHeight = customNodes.length && (localRows || []).length ? 1 : 0
+      const localizedRows = (localRows || []).map((row) => Object.assign({}, row, { label: i18n.ui(row.label) }))
+      const fixedHeight = fixedNodes.length * 48 + localizedRows.length * 48
+      const boundaryHeight = customNodes.length && localizedRows.length ? 1 : 0
       const rootScrollHeight = Math.min(customNodes.length * 48,
         Math.max(0, maxHeight - fixedHeight - boundaryHeight))
-      this.setData({ groups, fixedNodes, customNodes, rootScrollHeight, submenuScrollHeight: 0, openNode: null })
+      this.setData({ groups, fixedNodes, customNodes, localRows: localizedRows, rootScrollHeight, submenuScrollHeight: 0, openNode: null })
       try { wx.vibrateShort({ type: 'light' }) } catch (_) {}
     }
   },
@@ -61,7 +72,7 @@ Component({
       this.triggerEvent('pick', { node })
     },
     pickLocal(event) {
-      const row = this.properties.localRows[Number(event.currentTarget.dataset.index)]
+      const row = this.data.localRows[Number(event.currentTarget.dataset.index)]
       if (!row) return
       this.triggerEvent('localpick', { id: row.id })
     }

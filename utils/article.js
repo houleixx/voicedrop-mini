@@ -265,6 +265,13 @@ function legacyBodyBlocks(body) {
 }
 
 function wechatMessage(errcode, errmsg) {
+  if (i18n.currentLanguage() === i18n.ENGLISH) {
+    if (errcode === 45004) return 'The summary is too short. Add more article body text and try again.'
+    if (errcode === 40007) return 'The draft expired, so a new draft was created.'
+    if (errcode === 45009 || errcode === 45011 || errcode === 45110) return 'Today’s publishing limit has been reached. Please try again tomorrow.'
+    if (!errcode && !errmsg) return null
+    return errmsg ? `Publishing failed: ${errmsg}` : 'Publishing failed'
+  }
   if (errcode === 45004) return '摘要太短，正文写长一点再发'
   if (errcode === 40007) return '草稿已失效，已重建一份'
   if (errcode === 45009 || errcode === 45011 || errcode === 45110) return '今天发布次数到上限了，明天再试'
@@ -299,3 +306,4 @@ module.exports = {
   wechatMessage,
   firstArticle
 }
+const i18n = require('./i18n')

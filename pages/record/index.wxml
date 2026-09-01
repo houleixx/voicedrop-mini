@@ -5,12 +5,12 @@
   <view class="status-bar">
     <view class="recording-status">
       <view class="status-dot"></view>
-      <text class="status-text">{{interviewActive ? 'AI 采访中' : '正在录音'}}</text>
+      <text class="status-text">{{interviewActive ? i18n['AI 采访中'] : i18n['正在录音']}}</text>
     </view>
     <text wx:if="{{interviewActive}}" class="interview-status {{interviewState}}">{{interviewStateText}}</text>
-    <view class="record-ai-notice" role="note" aria-label="AI生成内容说明">
-      <text class="record-ai-badge">AI生成</text>
-      <text class="record-ai-copy">录音结束后将由人工智能转写并生成文章</text>
+    <view class="record-ai-notice" role="note" aria-label="{{i18n['AI生成内容说明']}}">
+      <text class="record-ai-badge">{{i18n["AI生成"]}}</text>
+      <text class="record-ai-copy">{{i18n["录音结束后将由人工智能转写并生成文章"]}}</text>
     </view>
   </view>
 
@@ -24,7 +24,7 @@
       <view class="photo-filmstrip-row">
         <view class="photo-tile" wx:for="{{capturedPhotos}}" wx:key="key">
           <image class="photo-thumb" src="{{item.path}}" mode="aspectFill" />
-          <view class="photo-remove" data-index="{{index}}" catchtap="removePhoto" aria-label="删除照片">×</view>
+          <view class="photo-remove" data-index="{{index}}" catchtap="removePhoto" aria-label="{{i18n['删除照片']}}">×</view>
         </view>
       </view>
     </scroll-view>
@@ -34,14 +34,14 @@
   <view class="bottom-controls">
     <!-- Interview button -->
     <view class="interview-button-column" bindtap="toggleInterview">
-      <view class="interview-button {{interviewActive ? 'active' : ''}}" aria-label="{{interviewActive ? '结束采访' : '开始采访'}}">
+      <view class="interview-button {{interviewActive ? 'active' : ''}}" aria-label="{{interviewActive ? i18n['结束采访'] : i18n['开始采访']}}">
         <view class="interview-wave" aria-hidden="true">
           <view class="interview-wave-bar short"></view>
           <view class="interview-wave-bar tall"></view>
           <view class="interview-wave-bar medium"></view>
         </view>
       </view>
-      <text class="interview-label {{interviewActive ? 'active' : ''}}">采访</text>
+      <text class="interview-label {{interviewActive ? 'active' : ''}}">{{i18n["采访"]}}</text>
     </view>
 
     <!-- Stop button -->
@@ -49,7 +49,7 @@
       <view class="stop-button" bindtap="stopRecording">
         <view class="stop-icon"></view>
       </view>
-      <text class="stop-label">点击停止</text>
+      <text class="stop-label">{{i18n["点击停止"]}}</text>
     </view>
 
     <!-- Camera button -->
@@ -59,7 +59,7 @@
           <view class="camera-lens"></view>
         </view>
       </view>
-      <text class="camera-label">拍照</text>
+      <text class="camera-label">{{i18n["拍照"]}}</text>
     </view>
   </view>
 </view>

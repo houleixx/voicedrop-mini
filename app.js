@@ -4,6 +4,95 @@ const auth = require('./services/auth')
 const promptTree = require('./utils/prompt-tree')
 const referral = require('./services/referral')
 const apiRoute = require('./services/api-route')
+const i18n = require('./utils/i18n')
+
+// Every page/component receives locale copy through data, so WXML can remain
+// declarative.  Wrapping registration also refreshes a visible page when the
+// choice is applied; the language screen then relaunches the home shell to
+// recreate native navigation titles and shared components consistently.
+function installI18nRegistrationWrappers() {
+  if (typeof Page === 'function' && !Page.__voiceDropI18nWrapped) {
+    const registerPage = Page
+    const feedbackDataKeys = new Set(['error', 'importError', 'shareError', 'denied', 'booksError', 'dockHint', 'commandReply', 'accountSubtitle', 'cacheSizeText', 'holdEditTranscriptText', 'holdEditButtonText', 'loginStatusText', 'marketError'])
+    function localizeFeedbackData(data) {
+      if (!data || typeof data !== 'object') return data
+      const localized = Object.assign({}, data)
+      Object.keys(localized).forEach((key) => {
+        if (feedbackDataKeys.has(key) && typeof localized[key] === 'string') localized[key] = i18n.message(localized[key])
+      })
+      if (Array.isArray(localized.marketFilters)) {
+        localized.marketFilters = localized.marketFilters.map((filter) => Object.assign({}, filter, { label: i18n.ui(filter.label) }))
+      }
+      return localized
+    }
+    function wrapPageSetData(instance) {
+      if (!instance || instance.__voiceDropI18nSetData || typeof instance.setData !== 'function') return
+      const setData = instance.setData
+      instance.setData = function localizedSetData(data, callback) {
+        return setData.call(this, localizeFeedbackData(data), callback)
+      }
+      instance.__voiceDropI18nSetData = true
+    }
+    const wrappedPage = function registerLocalizedPage(definition) {
+      const onLoad = definition.onLoad
+      const onShow = definition.onShow
+      const onLanguageChanged = definition.onLanguageChanged
+      return registerPage(Object.assign({}, definition, {
+        data: localizeFeedbackData(Object.assign({ i18n: i18n.copy() }, definition.data || {})),
+        onLoad(...args) {
+          wrapPageSetData(this)
+          if (typeof this.setData === 'function') this.setData({ i18n: i18n.copy() })
+          return typeof onLoad === 'function' ? onLoad.apply(this, args) : undefined
+        },
+        onShow(...args) {
+          wrapPageSetData(this)
+          if (typeof this.setData === 'function') this.setData({ i18n: i18n.copy() })
+          return typeof onShow === 'function' ? onShow.apply(this, args) : undefined
+        },
+        onLanguageChanged(language) {
+          if (typeof this.setData === 'function') this.setData({ i18n: i18n.copy(language) })
+          return typeof onLanguageChanged === 'function' ? onLanguageChanged.call(this, language) : undefined
+        }
+      }))
+    }
+    wrappedPage.__voiceDropI18nWrapped = true
+    Page = wrappedPage
+  }
+  if (typeof Component === 'function' && !Component.__voiceDropI18nWrapped) {
+    const registerComponent = Component
+    const wrappedComponent = function registerLocalizedComponent(definition) {
+      return registerComponent(Object.assign({}, definition, {
+        data: Object.assign({ i18n: i18n.copy() }, definition.data || {})
+      }))
+    }
+    wrappedComponent.__voiceDropI18nWrapped = true
+    Component = wrappedComponent
+  }
+}
+
+installI18nRegistrationWrappers()
+
+// Native feedback is invoked throughout the established feature code.  Route
+// its display-only fields through the same dictionary so changing language
+// updates toasts, loading labels, dialogs, and native navigation titles too.
+function installI18nWxFeedbackWrapper() {
+  if (typeof wx === 'undefined' || wx.__voiceDropI18nWrapped) return
+  ;['showToast', 'showLoading', 'showModal', 'setNavigationBarTitle'].forEach((name) => {
+    if (typeof wx[name] !== 'function') return
+    const original = wx[name]
+    wx[name] = function localizedFeedback(options) {
+      if (!options || typeof options !== 'object') return original.apply(this, arguments)
+      const next = Object.assign({}, options)
+      ;['title', 'content', 'confirmText', 'cancelText'].forEach((field) => {
+        if (typeof next[field] === 'string') next[field] = i18n.message(next[field])
+      })
+      return original.call(this, next)
+    }
+  })
+  wx.__voiceDropI18nWrapped = true
+}
+
+installI18nWxFeedbackWrapper()
 
 function currentPageMatchesRoute(route) {
   if (!route || route.type !== 'navigateTo' || typeof getCurrentPages !== 'function') return false
@@ -42,7 +131,9 @@ App({
     pendingPhotoInsert: null,
     pendingReplyTo: null,
     pendingRecordTag: '',
-    pendingHomeTab: ''
+    pendingHomeTab: '',
+    language: i18n.currentLanguage(),
+    languageRevision: 0
   },
 
   onLaunch(options) {
@@ -57,6 +148,7 @@ App({
   },
 
   onShow(options) {
+    this.globalData.language = i18n.currentLanguage()
     this.handleImportToken(options)
     this.handleReferral(options)
     this.handleRouteOptions(options)

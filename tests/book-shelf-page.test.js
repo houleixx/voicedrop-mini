@@ -15,8 +15,8 @@ function loadShelfPage(shelf, cachedShelf = () => [{ slug: 'cached' }], cacheIde
   const originalBooks = require.cache[booksPath]
   const originalSettings = require.cache[settingsPath]
   const realBooks = require('../services/books')
-  const { markEditableByAuthor, refreshCoverUrls } = realBooks
-  require.cache[booksPath] = { exports: { cachedShelf, shelf, cacheIdentity, markEditableByAuthor, refreshCoverUrls } }
+  const { refreshCoverUrls } = realBooks
+  require.cache[booksPath] = { exports: { cachedShelf, shelf, cacheIdentity, refreshCoverUrls } }
   require.cache[settingsPath] = { exports: { loadStyle: async () => ({ name: '' }) } }
   global.Page = (page) => { definition = page }
   delete require.cache[pagePath]
@@ -105,6 +105,45 @@ test('forced shelf requests use a unique URL and no-cache header', async () => {
   assert.match(request.url, /[?&]_refresh=123456(?:&|$)/)
   assert.equal(request.token, 'test-token')
   assert.equal(request.options.header['Cache-Control'], 'no-cache')
+
+  delete require.cache[booksPath]
+  if (originalRequest) require.cache[requestPath] = originalRequest
+  else delete require.cache[requestPath]
+  if (originalAuth) require.cache[authPath] = originalAuth
+  else delete require.cache[authPath]
+  if (originalWx) global.wx = originalWx
+  else delete global.wx
+})
+
+test('book ownership and hiding use the per-book authenticated hidden endpoint', async () => {
+  const originalWx = global.wx
+  const requests = []
+  global.wx = { getStorageSync() {}, setStorageSync() {} }
+  const requestPath = require.resolve('../services/request')
+  const authPath = require.resolve('../services/auth')
+  const booksPath = require.resolve('../services/books')
+  const originalRequest = require.cache[requestPath]
+  const originalAuth = require.cache[authPath]
+  require.cache[authPath] = { exports: { bearer: () => 'owner-token', libraryCacheIdentity: () => 'users/owner/' } }
+  require.cache[requestPath] = { exports: {
+    get: async (url, token, options) => {
+      requests.push({ method: 'GET', url, token, options })
+      return { statusCode: 200, data: { mine: true, hidden: false } }
+    },
+    postJson: async (url, token, data, options) => {
+      requests.push({ method: 'POST', url, token, data, options })
+      return { statusCode: 200, data: {} }
+    }
+  } }
+  delete require.cache[booksPath]
+  const books = require(booksPath)
+
+  assert.deepEqual(await books.ownership('my-book'), { mine: true, hidden: false })
+  await books.setHidden('my-book', true)
+  assert.deepEqual(requests, [
+    { method: 'GET', url: 'https://voicedrop.cn/books/my-book/hidden', token: 'owner-token', options: { timeout: 15000, header: { 'Cache-Control': 'no-cache' } } },
+    { method: 'POST', url: 'https://voicedrop.cn/books/my-book/hidden', token: 'owner-token', data: { hidden: true }, options: { timeout: 20000 } }
+  ])
 
   delete require.cache[booksPath]
   if (originalRequest) require.cache[requestPath] = originalRequest

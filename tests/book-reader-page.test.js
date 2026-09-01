@@ -116,31 +116,16 @@ test('book reader shares the current in-book chapter and versioned cover', () =>
   assert.equal(payload.imageUrl, 'https://voicedrop.cn/books/sample-book/cover.jpg?v=456')
 })
 
-test('book shelf opens the revise conversation only for an author match', () => {
-  const shelf = loadShelfPage([{ slug: 'sample-book', title: '一本书', main: '主标题', editableByAuthor: true }])
-
-  shelf.page.reviseBook({ currentTarget: { dataset: { index: 0 } } })
-
-  const route = shelf.calls.find(([name]) => name === 'navigateTo')[1].url
-  assert.match(route, /^\/pages\/book-revise\/index\?slug=sample-book&title=/)
-
-  shelf.page.data.items[0].editableByAuthor = false
-  shelf.page.reviseBook({ currentTarget: { dataset: { index: 0 } } })
-  assert.equal(shelf.calls.filter(([name]) => name === 'navigateTo').length, 1)
-})
-
-test('book shelf owns the revise entry because web-view cannot host native overlays reliably', () => {
+test('book reader owns revise and hide actions after server ownership verification', () => {
   const readerMarkup = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxml'), 'utf8')
   const shelfMarkup = fs.readFileSync(path.join(__dirname, '../pages/book-shelf/index.wxml'), 'utf8')
   const recordingsMarkup = fs.readFileSync(path.join(__dirname, '../pages/recordings/index.wxml'), 'utf8')
 
-  assert.doesNotMatch(readerMarkup, /reader-more|openActions/)
-  assert.doesNotMatch(readerMarkup, /ai-generated-label/)
-  assert.match(shelfMarkup, /wx:if="\{\{item\.editableByAuthor\}\}"[^>]*class="book-revise"[^>]*catchtap="reviseBook"/)
-  assert.match(shelfMarkup, /class="book-revise"[^>]*>[\s\S]*?class="ri-edit-line"/)
-  assert.match(recordingsMarkup, /wx:if="\{\{cell\.editableByAuthor\}\}"[^>]*class="book-revise"[^>]*catchtap="reviseBook"/)
-  assert.match(shelfMarkup, /wx:if="\{\{item\.hidden\}\}"[^>]*class="book-hidden-badge">隐藏<\/text>/)
-  assert.match(recordingsMarkup, /wx:if="\{\{cell\.hidden\}\}"[^>]*class="book-hidden-badge">隐藏<\/text>/)
+  assert.match(readerMarkup, /wx:if="\{\{mine\}\}"[^>]*class="reader-actions"[^>]*bindtap="openActions"/)
+  assert.doesNotMatch(shelfMarkup, /editableByAuthor|reviseBook/)
+  assert.doesNotMatch(recordingsMarkup, /editableByAuthor|reviseBook/)
+  assert.match(shelfMarkup, /wx:if="\{\{item\.hidden\}\}"[^>]*class="book-hidden-badge">\{\{i18n\["隐藏"\]\}\}<\/text>/)
+  assert.match(recordingsMarkup, /wx:if="\{\{cell\.hidden\}\}"[^>]*class="book-hidden-badge">\{\{i18n\["隐藏"\]\}\}<\/text>/)
 })
 
 test('opening a shelf book preserves its full title for WeChat sharing', () => {

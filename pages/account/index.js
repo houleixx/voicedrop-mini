@@ -2,6 +2,7 @@ const auth = require('../../services/auth')
 const library = require('../../services/library')
 const recordingUploads = require('../../services/recording-upload-queue')
 const wechatAuth = require('../../services/wechat-auth')
+const i18n = require('../../utils/i18n')
 
 Page({
   data: {
@@ -110,7 +111,7 @@ Page({
       return
     }
     wx.getUserProfile({
-      desc: '用于同步设备和参与社区',
+      desc: i18n.ui('用于同步设备和参与社区'),
       success: (profile) => startLogin(profile.userInfo || {}),
       fail: () => startLogin({})
     })

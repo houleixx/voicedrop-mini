@@ -1,16 +1,16 @@
 <view class="screen community-detail-screen {{post.isPrompt ? 'prompt-detail-screen' : ''}}">
   <view class="detail-toolbar" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx;">
-    <view class="tool-button back-button" bindtap="goBack" role="button" aria-label="返回">
+    <view class="tool-button back-button" bindtap="goBack" role="button" aria-label="{{i18n['返回']}}">
       <text class="back-icon ri-arrow-left-s-line"></text>
     </view>
     <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;">
-      <button class="tool-button icon-only-button feed-button {{fed ? 'fed' : ''}}" bindtap="tip" disabled="{{fed || feeding}}" aria-label="投币">
+      <button class="tool-button icon-only-button feed-button {{fed ? 'fed' : ''}}" bindtap="tip" disabled="{{fed || feeding}}" aria-label="{{i18n['投币']}}">
         <text class="action-icon {{fed ? 'ri-flashlight-fill' : 'ri-flashlight-line'}}"></text>
       </button>
-      <button class="tool-button icon-only-button {{liked ? 'liked' : ''}}" bindtap="toggleLike" aria-label="喜欢">
+      <button class="tool-button icon-only-button {{liked ? 'liked' : ''}}" bindtap="toggleLike" aria-label="{{i18n['喜欢']}}">
         <text class="action-icon {{liked ? 'ri-heart-fill' : 'ri-heart-line'}}"></text>
       </button>
-      <button class="tool-button more-button {{post.isPrompt ? 'prompt-more-button' : ''}}" bindtap="showMoreActions" aria-label="更多">
+      <button class="tool-button more-button {{post.isPrompt ? 'prompt-more-button' : ''}}" bindtap="showMoreActions" aria-label="{{i18n['更多']}}">
         <text class="more-icon ri-more-fill"></text>
       </button>
     </view>
@@ -24,24 +24,24 @@
       <view class="article-meta">
         <text class="article-author">{{post.author || post.authorName || '匿名作者'}}</text>
         <text class="article-date" wx:if="{{post.dateLabel}}">{{post.dateLabel}}</text>
-        <view class="ai-generated-label" wx:if="{{!post.isPrompt}}" role="note" aria-label="AI生成内容">
-          <text>AI生成</text>
+        <view class="ai-generated-label" wx:if="{{!post.isPrompt}}" role="note" aria-label="{{i18n['AI生成内容']}}">
+          <text>{{i18n["AI生成"]}}</text>
         </view>
       </view>
       <view class="reply-to" wx:if="{{replyToPost && !loading}}" bindtap="openReplyTo">
         <view class="reply-to-icon community-reply-icon-accent"></view>
-        <text class="reply-to-prefix">回应</text>
+        <text class="reply-to-prefix">{{i18n["回应"]}}</text>
         <text class="reply-to-title">{{replyToPost.title || '原文'}}</text>
       </view>
     </view>
     <view class="loading-card" wx:if="{{loading}}">
       <view class="loading-spinner" aria-hidden="true"></view>
-      <text>加载中...</text>
+      <text>{{i18n["加载中..."]}}</text>
     </view>
     <view class="loaded-content" wx:else>
       <view class="prompt-detail-content" wx:if="{{post.isPrompt}}">
         <view class="prompt-share-code-block">
-          <text class="prompt-share-code-label">一条 VoiceDrop 提示词 · 分享码</text>
+          <text class="prompt-share-code-label">{{i18n["一条 VoiceDrop 提示词 · 分享码"]}}</text>
           <text class="prompt-share-code">{{post.promptCode}}</text>
         </view>
         <view class="prompt-body-panel">
@@ -56,24 +56,24 @@
                 <view wx:if="{{item.photoState === 'loading'}}" class="community-photo-placeholder community-photo-loading">
                   <view class="photo-loading-spinner" aria-hidden="true"></view>
                 </view>
-                <view wx:elif="{{item.photoState === 'loadFailed'}}" class="community-photo-placeholder">图片加载失败</view>
+                <view wx:elif="{{item.photoState === 'loadFailed'}}" class="community-photo-placeholder">{{i18n["图片加载失败"]}}</view>
               </view>
             </block>
           </block>
-          <text class="prompt-body-text" wx:if="{{!sections.length}}">提示词内容暂不可读，请稍后刷新。</text>
+          <text class="prompt-body-text" wx:if="{{!sections.length}}">{{i18n["提示词内容暂不可读，请稍后刷新。"]}}</text>
         </view>
         <view class="prompt-help">
-          <text class="prompt-help-title">怎么用</text>
+          <text class="prompt-help-title">{{i18n["怎么用"]}}</text>
           <text class="prompt-help-copy">在任意文章里长按屏幕按住说话，说「用 {{post.promptCode}} 改这段」——AI 按这条提示词干活，只管这一次，不改你的设置。</text>
-          <text class="prompt-help-copy" wx:if="{{post.mine}}">这是你分享的提示词。把分享码发给朋友，或在 设置 → 提示词 里管理。</text>
-          <text class="prompt-help-copy" wx:else>想长期用：点下面「收下这条提示词」，之后长按菜单里随手可用。</text>
+          <text class="prompt-help-copy" wx:if="{{post.mine}}">{{i18n["这是你分享的提示词。把分享码发给朋友，或在 设置 → 提示词 里管理。"]}}</text>
+          <text class="prompt-help-copy" wx:else>{{i18n["想长期用：点下面「收下这条提示词」，之后长按菜单里随手可用。"]}}</text>
         </view>
         <view
           class="prompt-collect-button {{promptImported ? 'is-imported' : ''}}"
           wx:if="{{!post.mine && post.promptCode}}"
           bindtap="collectPrompt"
           role="button"
-          aria-label="{{promptImported ? '已收下' : '收下这条提示词'}}"
+          aria-label="{{promptImported ? i18n['已收下'] : i18n['收下这条提示词']}}"
           aria-disabled="{{promptImported || promptImporting}}"
         >
           <text class="prompt-collect-icon {{promptImporting ? 'ri-loader-4-line is-spinning' : (promptImported ? 'ri-check-line' : 'ri-download-2-line')}}"></text>
@@ -94,12 +94,12 @@
                 <view wx:if="{{item.photoState === 'loading'}}" class="community-photo-placeholder community-photo-loading">
                   <view class="photo-loading-spinner" aria-hidden="true"></view>
                 </view>
-                <view wx:elif="{{item.photoState === 'loadFailed'}}" class="community-photo-placeholder">图片加载失败</view>
+                <view wx:elif="{{item.photoState === 'loadFailed'}}" class="community-photo-placeholder">{{i18n["图片加载失败"]}}</view>
               </view>
             </block>
           </block>
         </view>
-        <view class="empty card" wx:else>社区正文暂不可读，请稍后刷新或打开分享链接查看。</view>
+        <view class="empty card" wx:else>{{i18n["社区正文暂不可读，请稍后刷新或打开分享链接查看。"]}}</view>
 
         <view class="reply-section card" wx:if="{{replies.length}}">
           <view class="row">
@@ -111,7 +111,7 @@
               <text class="meta">{{item.author || item.authorName || '匿名作者'}} · {{item.replyLabel || '续文'}}</text>
               <text class="reply-title">{{item.title || '续文'}}</text>
               <text class="reply-preview" wx:if="{{item.preview}}">{{item.preview}}</text>
-              <text class="reply-more" wx:if="{{item.hasMore}}">继续阅读 ↓</text>
+              <text class="reply-more" wx:if="{{item.hasMore}}">{{i18n["继续阅读 ↓"]}}</text>
             </view>
           </view>
         </view>
@@ -124,20 +124,20 @@
   <view class="more-menu-layer" wx:if="{{moreMenuOpen}}" bindtap="closeMoreMenu">
     <view class="more-menu-card" style="top: {{toolbarTop + toolbarHeight + 20}}px;" catchtap="noop">
       <view class="more-menu-row" data-action="reply" bindtap="runMoreMenuAction">
-        <text class="more-menu-label">写回应</text>
+        <text class="more-menu-label">{{i18n["写回应"]}}</text>
         <text class="more-menu-icon ri-mic-line"></text>
       </view>
       <view class="more-menu-row more-menu-share-row">
-        <text class="more-menu-label">分享</text>
+        <text class="more-menu-label">{{i18n["分享"]}}</text>
         <text class="more-menu-icon ri-share-box-line"></text>
-        <button class="more-menu-share-button" open-type="share" bindtap="closeMoreMenu" aria-label="分享"></button>
+        <button class="more-menu-share-button" open-type="share" bindtap="closeMoreMenu" aria-label="{{i18n['分享']}}"></button>
       </view>
       <view class="more-menu-row is-danger" data-action="report" bindtap="runMoreMenuAction">
-        <text class="more-menu-label">举报</text>
+        <text class="more-menu-label">{{i18n["举报"]}}</text>
         <text class="more-menu-icon ri-flag-line"></text>
       </view>
       <view class="more-menu-row is-danger" data-action="blockAuthor" bindtap="runMoreMenuAction">
-        <text class="more-menu-label">屏蔽此用户</text>
+        <text class="more-menu-label">{{i18n["屏蔽此用户"]}}</text>
         <text class="more-menu-icon ri-hand-heart-line"></text>
       </view>
     </view>
@@ -146,7 +146,7 @@
   <view class="reply-recording-dock" wx:if="{{replyRecording}}">
     <view class="reply-recording-top">
       <text class="reply-recording-title">回复：{{article.title || post.title || '社区文章'}}</text>
-      <text class="reply-recording-cancel" wx:if="{{!replyUploading}}" bindtap="cancelReplyRecording">取消</text>
+      <text class="reply-recording-cancel" wx:if="{{!replyUploading}}" bindtap="cancelReplyRecording">{{i18n["取消"]}}</text>
     </view>
     <view class="reply-recording-controls">
       <view class="reply-recording-dot"></view>

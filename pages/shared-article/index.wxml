@@ -1,20 +1,20 @@
 <view class="screen community-detail-screen">
   <view class="detail-toolbar" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx;">
-    <view class="tool-button back-button" bindtap="goBack" aria-label="返回"><text class="back-icon ri-arrow-left-s-line"></text></view>
+    <view class="tool-button back-button" bindtap="goBack" aria-label="{{i18n['返回']}}"><text class="back-icon ri-arrow-left-s-line"></text></view>
     <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;">
-      <button class="tool-button more-button" bindtap="showMoreActions" aria-label="更多"><text class="more-icon ri-more-fill"></text></button>
+      <button class="tool-button more-button" bindtap="showMoreActions" aria-label="{{i18n['更多']}}"><text class="more-icon ri-more-fill"></text></button>
     </view>
   </view>
   <view class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight}}px + 54rpx);">
     <view class="article-head" wx:if="{{!loading && !error}}">
       <text class="article-title">{{article.title}}</text>
       <view class="ai-generated-row">
-        <view class="ai-generated-label" role="note" aria-label="AI生成内容">
-          <text>AI生成</text>
+        <view class="ai-generated-label" role="note" aria-label="{{i18n['AI生成内容']}}">
+          <text>{{i18n["AI生成"]}}</text>
         </view>
       </view>
     </view>
-    <view class="loading-card" wx:if="{{loading}}"><view class="loading-spinner"></view><text>加载中...</text></view>
+    <view class="loading-card" wx:if="{{loading}}"><view class="loading-spinner"></view><text>{{i18n["加载中..."]}}</text></view>
     <view class="empty" wx:elif="{{error}}">{{error}}</view>
     <view class="article" wx:else>
       <block wx:for="{{blocks}}" wx:key="index">
@@ -29,8 +29,8 @@
   <view class="more-menu-layer" wx:if="{{moreMenuOpen}}" bindtap="closeMoreMenu">
     <view class="more-menu-card" style="top: {{toolbarTop + toolbarHeight + 20}}px;" catchtap="noop">
       <view class="more-menu-row more-menu-share-row">
-        <text class="more-menu-label">分享</text><text class="more-menu-icon ri-share-box-line"></text>
-        <button class="more-menu-share-button" open-type="share" bindtap="closeMoreMenu" aria-label="分享"></button>
+        <text class="more-menu-label">{{i18n["分享"]}}</text><text class="more-menu-icon ri-share-box-line"></text>
+        <button class="more-menu-share-button" open-type="share" bindtap="closeMoreMenu" aria-label="{{i18n['分享']}}"></button>
       </view>
     </view>
   </view>

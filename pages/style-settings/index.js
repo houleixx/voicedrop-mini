@@ -1,10 +1,11 @@
 const settings = require('../../services/settings')
 const styleSelection = require('../../utils/style-selection')
+const i18n = require('../../utils/i18n')
 
 Page({
   data: {
     style: '',
-    styleSummary: '当前风格',
+    styleSummary: i18n.ui('当前风格'),
     styleRows: [],
     saving: false,
     styleHistory: { versions: [] },
@@ -14,6 +15,10 @@ Page({
 
   onShow() {
     this.load()
+  },
+
+  onLanguageChanged() {
+    this.loadStyleHistory()
   },
 
   onShareAppMessage() {
@@ -73,7 +78,7 @@ Page({
       styleHistory,
       style: headStyle,
       selectedHead: head,
-      styleSummary: currentRow ? currentRow.preview : '当前风格',
+      styleSummary: currentRow ? currentRow.preview : i18n.ui('当前风格'),
       styleRows: rows
     })
   },

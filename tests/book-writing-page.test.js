@@ -6,8 +6,8 @@ const path = require('node:path')
 test('book writing page prominently discloses AI-generated content', () => {
   const wxml = fs.readFileSync(path.join(__dirname, '../pages/book-writing/index.wxml'), 'utf8')
   assert.match(wxml, /class="ai-generated-notice"/)
-  assert.match(wxml, />AI生成</)
-  assert.match(wxml, /本功能使用人工智能生成书籍内容/)
+  assert.match(wxml, />\{\{i18n\["AI生成"\]\}\}</)
+  assert.match(wxml, /i18n\["本功能使用人工智能生成书籍内容"\]/)
 })
 
 test('book writing template keeps its placeholder expression compiler-safe', () => {

@@ -326,7 +326,7 @@ Page({
     current: null,
     articleIndex: 0,
     articleTabs: [],
-    styleLabel: '选风格',
+    styleLabel: styleRewrite.styleLabel(null),
     blocks: [],
     loading: true,
     versionHead: 0,
@@ -628,7 +628,7 @@ Page({
       active: index === articleIndex
     }))
     const hasWechatDraft = articles.some((article) => article && article.wechatMediaId)
-    const styleLabel = current && current.style != null ? `v${current.style} 风格` : '选风格'
+    const styleLabel = current && current.style != null ? styleRewrite.styleLabel(current.style) : styleRewrite.styleLabel(null)
     const body = current && current.body ? articleUtil.bodyWithoutDuplicateTitle(current) : ''
     const rawBlocks = body ? articleUtil.bodyBlocks(body) : []
     const deferPhotos = Boolean(options && options.deferPhotos)
@@ -1592,7 +1592,7 @@ Page({
         : { ok: await library.restyle(this.data.rec, styleVersion) }
       if (result.ok) {
         await this.refreshResolvedDoc()
-        this.setData({ styleLabel: `v${styleVersion} 风格` })
+        this.setData({ styleLabel: styleRewrite.styleLabel(styleVersion) })
         wx.showToast({ title: '重写成功', icon: 'success' })
       } else {
         wx.showModal({

@@ -35,8 +35,8 @@ test('home loading states show a spinner above the loading text', () => {
   const loadingNotice = ruleBody(css, '.loading-notice')
   const spinner = ruleBody(css, '.loading-spinner')
 
-  assert.match(wxml, /<view wx:elif="\{\{loading\}\}" class="notice loading-notice">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>加载中\.\.\.<\/text>\s*<\/view>/)
-  assert.match(wxml, /<view wx:elif="\{\{communityLoading \|\| !communityLoaded\}\}" class="notice loading-notice">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>正在加载\.\.\.<\/text>\s*<\/view>/)
+  assert.match(wxml, /<view wx:elif="\{\{loading\}\}" class="notice loading-notice">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>\{\{i18n\["加载中\.\.\."\]\}\}<\/text>\s*<\/view>/)
+  assert.match(wxml, /<view wx:elif="\{\{communityLoading \|\| !communityLoaded\}\}" class="notice loading-notice">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>\{\{i18n\["正在加载\.\.\."\]\}\}<\/text>\s*<\/view>/)
   assert.match(loadingNotice, /display:\s*flex;/)
   assert.match(loadingNotice, /flex-direction:\s*column;/)
   assert.match(spinner, /border-top-color:\s*#c7432f;/)
@@ -715,7 +715,7 @@ test('community feed mirrors Android masonry tabs and keeps filters above pull r
   assert.doesNotMatch(wxml, /communityFeedTab === 'prompts'/)
   assert.match(css, /\.community-feed-tabs\s*\{[^}]*height:\s*88rpx;[^}]*padding:\s*0 32rpx;[^}]*align-items:\s*center;/s)
   assert.match(wxml, /class="community-feed-tabs" style="top: \{\{scrollContentTop\}\}px;"/)
-  assert.match(wxml, /<text class="community-feed-tab-label">推荐<\/text>/)
+  assert.match(wxml, /<text class="community-feed-tab-label">\{\{i18n\["推荐"\]\}\}<\/text>/)
   assert.match(css, /\.community-feed-tab\s*\{[^}]*display:\s*flex;[^}]*box-sizing:\s*border-box;[^}]*height:\s*88rpx;[^}]*align-items:\s*center;[^}]*font-size:\s*30rpx;/s)
   assert.doesNotMatch(css, /\.community-feed-tab\s*\{[^}]*padding-top:/s)
   assert.match(css, /\.community-feed-tab-label\s*\{[^}]*display:\s*block;[^}]*height:\s*30rpx;[^}]*line-height:\s*30rpx;[^}]*white-space:\s*nowrap;/s)
@@ -1012,40 +1012,9 @@ test('books first load shows only the loading state before the shelf is ready', 
   assert.match(wxml, /<view wx:else class="shelf-rows books-shelf-inner">/)
 })
 
-test('books keep edit buttons visible while refreshing the same account profile', async () => {
-  const settings = require('../services/settings')
-  const auth = require('../services/auth')
-  const originalLoadStyle = settings.loadStyle
-  const originalBearer = auth.bearer
-  let resolveProfile
-  settings.loadStyle = () => new Promise((resolve) => { resolveProfile = resolve })
-  auth.bearer = () => 'same-account'
-
-  try {
-    const { page, helpers } = freshRecordingsPage()
-    const items = [{ slug: 'mine', author: 'Holly', editableByAuthor: true }]
-    const ctx = Object.assign({}, page, {
-      data: Object.assign({}, page.data, {
-        bookProfileAuthor: 'Holly',
-        bookItems: items,
-        bookRows: helpers.bookRowsFor(items)
-      }),
-      _bookProfileAuthorLoaded: true,
-      _bookProfileAuthorBearer: 'same-account',
-      setData(update) { Object.assign(this.data, update) }
-    })
-
-    const refreshing = page.loadBookProfileAuthor.call(ctx, { force: true })
-    assert.equal(ctx.data.bookProfileAuthor, 'Holly')
-    assert.equal(ctx.data.bookItems[0].editableByAuthor, true)
-
-    resolveProfile({ name: 'Holly' })
-    await refreshing
-    assert.equal(ctx.data.bookItems[0].editableByAuthor, true)
-  } finally {
-    settings.loadStyle = originalLoadStyle
-    auth.bearer = originalBearer
-  }
+test('books do not infer ownership from editable profile names', () => {
+  const source = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
+  assert.doesNotMatch(source, /loadBookProfileAuthor|markEditableByAuthor|editableByAuthor/)
 })
 
 test('community restores a cached snapshot before starting its silent refresh', () => {

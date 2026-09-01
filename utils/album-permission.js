@@ -1,4 +1,5 @@
 const SCOPE = 'scope.writePhotosAlbum'
+const i18n = require('./i18n')
 
 function getSetting(wxApi) {
   return new Promise((resolve) => {
@@ -21,9 +22,9 @@ function openSettings(wxApi) {
   return new Promise((resolve) => {
     if (!wxApi || typeof wxApi.showModal !== 'function') return resolve(false)
     wxApi.showModal({
-      title: '需要相册权限',
-      content: '请允许保存小红书图片到相册',
-      confirmText: '去设置',
+      title: i18n.ui('需要相册权限'),
+      content: i18n.ui('请允许保存小红书图片到相册'),
+      confirmText: i18n.ui('去设置'),
       success: (modalResult) => {
         if (!modalResult || !modalResult.confirm || typeof wxApi.openSetting !== 'function') return resolve(false)
         wxApi.openSetting({

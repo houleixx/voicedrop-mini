@@ -22,6 +22,10 @@ Page({
     this.load()
   },
 
+  onLanguageChanged() {
+    this.load()
+  },
+
   async load() {
     this.setData({ loading: true })
     try {

@@ -22,7 +22,7 @@ test('audio detail loading state shows a spinner above the text', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
 
-  assert.match(wxml, /<view wx:if="\{\{loading\}\}" class="loading-state">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>加载中\.\.\.<\/text>\s*<\/view>/)
+  assert.match(wxml, /<view wx:if="\{\{loading\}\}" class="loading-state">\s*<view class="loading-spinner" aria-hidden="true"><\/view>\s*<text>\{\{i18n\["加载中\.\.\."\]\}\}<\/text>\s*<\/view>/)
   assert.match(css, /\.loading-state\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*24rpx;/s)
   assert.match(css, /\.loading-spinner\s*\{[^}]*border-top-color:\s*#c7432f;[^}]*animation:\s*loading-spin\s+0\.8s\s+linear\s+infinite;/s)
 })
@@ -34,6 +34,26 @@ test('audio detail more-menu dividers are inset from both edges', () => {
   assert.match(css, /\.more-menu-row \+ \.more-menu-row::before\s*\{[^}]*right:\s*32rpx;[^}]*left:\s*32rpx;[^}]*height:\s*1rpx;/s)
   assert.match(css, /\.more-menu-separator\s*\{[^}]*height:\s*1rpx;[^}]*margin:\s*0 32rpx;[^}]*background:\s*rgba\(222, 214, 202, 0\.82\);/s)
   assert.doesNotMatch(css, /\.more-menu-separator\s*\{[^}]*border-top:/s)
+})
+
+test('audio detail more-menu localizes every action and truncates an overlong label', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
+  const menu = wxml.slice(wxml.indexOf('<view class="more-menu-layer"'), wxml.indexOf('<view class="style-sheet-layer"'))
+
+  assert.match(menu, /i18n\['更新公众号草稿'\]/)
+  assert.match(menu, /i18n\['发布公众号草稿'\]/)
+  assert.match(menu, /i18n\['正在准备微信卡片…'\]/)
+  assert.match(menu, /i18n\['微信卡片准备失败，点此重试'\]/)
+  assert.match(css, /\.more-menu-label\s*\{[^}]*display:\s*block;[^}]*min-width:\s*0;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/s)
+})
+
+test('detail style sheet localizes its metadata and preserves the article timestamp on one line', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
+
+  assert.match(wxml, /item\.words \+ i18n\[' 字 · '\] \+ \(item\.date \|\| i18n\['未记录日期'\]\)/)
+  assert.match(css, /\.article-meta > text:first-child\s*\{[^}]*flex:\s*0 0 auto;[^}]*white-space:\s*nowrap;/s)
 })
 
 test('audio detail more button uses the shared Remix icon font', () => {
@@ -846,10 +866,10 @@ test('detail image instruction starts grace then making state for the exact phot
 test('detail page renders iOS making and failed photo placeholders', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
-  assert.match(wxml, /正在制作中/)
-  assert.match(wxml, /约 1 分钟完成/)
-  assert.match(wxml, /暂时无法显示/)
-  assert.match(wxml, /bindtap="retryMakingPhoto"[^>]*>重试</)
+  assert.match(wxml, /i18n\["正在制作中"\]/)
+  assert.match(wxml, /i18n\["约 1 分钟完成"\]/)
+  assert.match(wxml, /i18n\["暂时无法显示"\]/)
+  assert.match(wxml, /bindtap="retryMakingPhoto"[^>]*>\{\{i18n\["重试"\]\}\}</)
   assert.match(wxml, /photo-making-dot/)
   assert.match(css, /@keyframes\s+photo-making-pulse/)
   assert.match(css, /#f3eee4/i)

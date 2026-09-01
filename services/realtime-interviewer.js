@@ -1,15 +1,16 @@
 const realtimeSession = require('./realtime-session')
 const realtimePlayer = require('./realtime-audio-player')
 const muLaw = require('../utils/mu-law')
+const i18n = require('../utils/i18n')
 
 function stateText(active, state, muted, playbackError) {
   if (!active) return ''
-  if (state === 'connecting') return 'AI 连接中…'
-  if (state === 'degraded') return 'AI 已断开 · 录音继续'
-  if (state === 'unavailable') return 'AI 采访暂不可用 · 录音继续'
-  if (playbackError) return 'AI 语音播放异常 · 采访仍在进行'
-  if (state === 'live') return muted ? 'AI 正在说话' : 'AI 采访中 · 再点一下结束'
-  return 'AI 采访中'
+  if (state === 'connecting') return i18n.ui('AI 连接中…')
+  if (state === 'degraded') return i18n.ui('AI 已断开 · 录音继续')
+  if (state === 'unavailable') return i18n.ui('AI 采访暂不可用 · 录音继续')
+  if (playbackError) return i18n.ui('AI 语音播放异常 · 采访仍在进行')
+  if (state === 'live') return muted ? i18n.ui('AI 正在说话') : i18n.ui('AI 采访中 · 再点一下结束')
+  return i18n.ui('AI 采访中')
 }
 
 function createInterviewer(handlers, injected) {

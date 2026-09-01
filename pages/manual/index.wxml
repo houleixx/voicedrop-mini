@@ -8,7 +8,7 @@
     </scroll-view>
 
     <scroll-view class="manual-content" scroll-y scroll-into-view="{{scrollTarget}}" scroll-with-animation enhanced bounces="{{true}}" show-scrollbar="{{false}}">
-      <view wx:if="{{error}}" class="manual-status manual-error"><text>{{error}}</text><text>请重新打开小程序</text></view>
+      <view wx:if="{{error}}" class="manual-status manual-error"><text>{{error}}</text><text>{{i18n["请重新打开小程序"]}}</text></view>
       <block wx:else>
         <view wx:for="{{chapters}}" wx:key="id" id="{{item.id}}" class="manual-section" data-id="{{item.id}}" bindappear="onSectionVisible">
           <rich-text class="manual-rich" nodes="{{item.html}}"></rich-text>

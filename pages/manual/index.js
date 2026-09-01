@@ -1,4 +1,5 @@
 const manualService = require('../../services/manual')
+const i18n = require('../../utils/i18n')
 
 const SECTIONS = [
   { id: 'ch1', label: '1 上手' },
@@ -21,6 +22,7 @@ Page({
   },
 
   onLoad() {
+    this.setData({ sections: localizedSections() })
     const chapters = manualService.loadBundled()
     if (chapters.length) {
       this.setData({ chapters, error: '' })
@@ -52,3 +54,7 @@ Page({
     clearTimeout(this.sectionTimer)
   }
 })
+
+function localizedSections() {
+  return SECTIONS.map((section) => Object.assign({}, section, { label: i18n.ui(section.label) }))
+}

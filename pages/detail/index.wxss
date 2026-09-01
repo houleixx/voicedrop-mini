@@ -347,8 +347,12 @@
 }
 
 .more-menu-label {
+  display: block;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .more-menu-icon {
@@ -625,6 +629,11 @@
   gap: 8rpx;
 }
 
+.article-meta > text:first-child {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .article-meta .ai-generated-label {
   margin-top: 0;
   margin-left: auto;
@@ -641,6 +650,8 @@
   min-height: 40rpx;
   margin: 0 0 0 12rpx;
   padding: 0;
+  min-width: 0;
+  flex: 0 1 auto;
   align-items: center;
   gap: 8rpx;
   border-radius: 0;

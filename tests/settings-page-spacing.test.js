@@ -114,7 +114,7 @@ test('about pages inherit the compact settings rhythm and readable secondary tex
   assert.match(aboutStyles, /\.version\s*\{[^}]*color:\s*#756f66;[^}]*font-size:\s*24rpx;/s)
   assert.match(aboutStyles, /\.menu\s*\{[^}]*margin-top:\s*0;/s)
   assert.match(aboutMarkup, /class="row blocked-entry" bindtap="openBlockedUsers"/)
-  assert.match(aboutMarkup, /\{\{blockedAuthors\.length\}\} 人/)
+  assert.match(aboutMarkup, /\{\{blockedAuthors\.length \+ i18n\[' 人'\]\}\}/)
   assert.doesNotMatch(aboutMarkup, /class="card blocked"/)
   assert.match(aboutStyles, /\.menu \.row\s*\{[^}]*min-height:\s*120rpx;[^}]*padding:\s*20rpx 28rpx;/s)
   assert.match(aboutStyles, /\.about-menu-subtitle,[\s\S]*\.about-menu-status\s*\{[^}]*color:\s*#756f66;[^}]*font-size:\s*24rpx;/s)

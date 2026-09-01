@@ -1,6 +1,7 @@
 const promptStore = require('../../services/prompt-store')
 const promptDrag = require('../../utils/prompt-drag')
 const tree = require('../../utils/prompt-tree')
+const i18n = require('../../utils/i18n')
 
 function appliesLabel(item) {
   const applies = item.appliesTo || []
@@ -15,7 +16,8 @@ function marketKindLabel(item) {
 }
 
 function authorInitial(author) {
-  return String(author || '匿名').trim().slice(0, 1) || '匿'
+  const name = String(author || i18n.ui('匿名')).trim()
+  return Array.from(name)[0] || Array.from(i18n.ui('匿名'))[0]
 }
 
 function rowFor(item, depth, parentId, index, expanded) {
@@ -31,8 +33,8 @@ function rowFor(item, depth, parentId, index, expanded) {
   return {
     id: item.id, type: item.type, title: item.label, depth, parentId, index,
     childCount: (item.children || []).length, expanded: !!expanded,
-    imageOnly: appliesLabel(item) === '仅图片', appliesLabel: appliesLabel(item),
-    originLabel
+    imageOnly: appliesLabel(item) === '仅图片', appliesLabel: i18n.ui(appliesLabel(item)),
+    originKey: originLabel, originLabel: i18n.ui(originLabel)
   }
 }
 
@@ -103,8 +105,8 @@ Page({
   },
   decorateMarket(items) {
     return (items || []).map((item) => Object.assign({}, item, {
-      appliesLabel: appliesLabel(item).replace('仅', '') || '全部',
-      detailKindLabel: marketKindLabel(item),
+      appliesLabel: i18n.ui(appliesLabel(item).replace('仅', '') || '全部'),
+      detailKindLabel: i18n.ui(marketKindLabel(item)),
       authorInitial: authorInitial(item.author),
       imageOnly: appliesLabel(item) === '仅图片',
       imported: tree.containsImport(promptStore.items(), item.code)
@@ -141,7 +143,7 @@ Page({
     const result = await promptStore.preview(code)
     if (!this.data.marketDetail || this.data.marketDetail.code !== code) return
     this.setData({ marketDetailLoading: false,
-      marketDetailPrompt: result.ok && result.data && result.data.prompt ? result.data.prompt : '这条提示词暂时无法读取。' })
+      marketDetailPrompt: result.ok && result.data && result.data.prompt ? result.data.prompt : i18n.ui('这条提示词暂时无法读取。') })
   },
   async quickImportMarket(event) { return this.importMarketCode(event.currentTarget.dataset.code, false) },
   async importMarketDetail() {

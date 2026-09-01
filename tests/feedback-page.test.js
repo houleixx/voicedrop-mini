@@ -55,7 +55,7 @@ test('feedback content clears the fixed title bar and the send label is flex-cen
   assert.match(wxml, /class="screen settings-screen feedback-page"[\s\S]*class="page-body feedback-body"/)
   assert.match(css, /\.feedback-page\s*\{[^}]*--settings-content-top:\s*198rpx;/s)
   assert.match(css, /\.feature-primary\s*\{[^}]*display:\s*flex;[^}]*height:\s*92rpx;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s)
-  assert.match(wxml, /placeholder="哪里不顺手？想要什么功能？写一句就行。"/)
+  assert.match(wxml, /placeholder="\{\{i18n\['哪里不顺手？想要什么功能？写一句就行。'\]\}\}"/)
   assert.doesNotMatch(wxml, /class="feature-intro"/)
   assert.match(wxml, /wx:if="\{\{sending\}\}" class="feature-loading"[\s\S]*class="feature-spinner"[\s\S]*发送中…/)
   assert.match(css, /@keyframes feedback-spin/)

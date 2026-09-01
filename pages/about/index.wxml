@@ -2,63 +2,63 @@
   <page-header title="关于" />
   <view class="page-body">
     <view class="about-card card">
-      <text class="logo">VoiceDrop 口述</text>
-      <text class="desc">把口述录音自动变成文章的小程序客户端。</text>
-      <text class="version">当前版本 {{appVersion}}</text>
+      <text class="logo">{{i18n["VoiceDrop 口述"]}}</text>
+      <text class="desc">{{i18n["把口述录音自动变成文章的小程序客户端。"]}}</text>
+      <text class="version">{{i18n['当前版本 '] + i18n[appVersion]}}</text>
     </view>
 
-    <text class="section-label">帮助与反馈</text>
+    <text class="section-label">{{i18n["帮助与反馈"]}}</text>
     <view class="card menu help-menu">
       <view class="row" bindtap="openManual">
         <view class="about-menu-icon"><text class="about-menu-icon-glyph ri-book-read-line"></text></view>
         <view class="about-menu-content">
-          <text class="about-menu-title">使用手册</text>
-          <text class="about-menu-subtitle">怎么录、怎么改、怎么发</text>
+          <text class="about-menu-title">{{i18n["使用手册"]}}</text>
+          <text class="about-menu-subtitle">{{i18n["怎么录、怎么改、怎么发"]}}</text>
         </view>
         <text class="about-arrow ri-arrow-right-s-line" aria-hidden="true"></text>
       </view>
       <view class="row" bindtap="openFeedback">
         <view class="about-menu-icon"><text class="about-menu-icon-glyph ri-feedback-line"></text></view>
         <view class="about-menu-content">
-          <text class="about-menu-title">意见反馈</text>
-          <text class="about-menu-subtitle">提改进意见，直达开发者</text>
+          <text class="about-menu-title">{{i18n["意见反馈"]}}</text>
+          <text class="about-menu-subtitle">{{i18n["提改进意见，直达开发者"]}}</text>
         </view>
         <text class="about-arrow ri-arrow-right-s-line" aria-hidden="true"></text>
       </view>
     </view>
 
-    <text class="section-label">隐私与社区</text>
+    <text class="section-label">{{i18n["隐私与社区"]}}</text>
     <view class="card menu">
       <view class="row" bindtap="privacy">
         <view class="about-menu-icon"><text class="about-menu-icon-glyph ri-shield-keyhole-line"></text></view>
-        <view class="about-menu-content"><text class="about-menu-title">隐私说明</text></view>
+        <view class="about-menu-content"><text class="about-menu-title">{{i18n["隐私说明"]}}</text></view>
         <text class="about-arrow ri-arrow-right-s-line" aria-hidden="true"></text>
       </view>
       <view class="row" bindtap="openAudioConsent">
         <view class="about-menu-icon"><text class="about-menu-icon-glyph ri-mic-line"></text></view>
         <view class="about-menu-content">
-          <text class="about-menu-title">音频信息授权协议</text>
-          <text class="about-menu-subtitle">{{audioConsentGranted ? '已授权' : '未授权'}}</text>
+          <text class="about-menu-title">{{i18n["音频信息授权协议"]}}</text>
+          <text class="about-menu-subtitle">{{audioConsentGranted ? i18n['已授权'] : i18n['未授权']}}</text>
         </view>
         <text class="about-arrow ri-arrow-right-s-line" aria-hidden="true"></text>
       </view>
       <view class="row" bindtap="communityTerms">
         <view class="about-menu-icon"><text class="about-menu-icon-glyph ri-team-line"></text></view>
-        <view class="about-menu-content"><text class="about-menu-title">社区公约</text></view>
+        <view class="about-menu-content"><text class="about-menu-title">{{i18n["社区公约"]}}</text></view>
         <text class="about-arrow ri-arrow-right-s-line" aria-hidden="true"></text>
       </view>
       <view class="row blocked-entry" bindtap="openBlockedUsers">
         <view class="about-menu-icon"><text class="about-menu-icon-glyph ri-forbid-line"></text></view>
-        <view class="about-menu-content"><text class="about-menu-title">已屏蔽用户</text></view>
+        <view class="about-menu-content"><text class="about-menu-title">{{i18n["已屏蔽用户"]}}</text></view>
         <view class="row-action">
-          <text class="about-menu-status">{{blockedAuthors.length}} 人</text>
+          <text class="about-menu-status">{{blockedAuthors.length + i18n[' 人']}}</text>
           <text class="about-arrow ri-arrow-right-s-line" aria-hidden="true"></text>
         </view>
       </view>
       <view class="row" bindtap="copyEmail">
         <view class="about-menu-icon"><text class="about-menu-icon-glyph ri-customer-service-2-line"></text></view>
         <view class="about-menu-content">
-          <text class="about-menu-title">支持与投诉</text>
+          <text class="about-menu-title">{{i18n["支持与投诉"]}}</text>
           <text class="about-menu-subtitle">{{supportEmail}}</text>
         </view>
         <text class="about-arrow ri-arrow-right-s-line" aria-hidden="true"></text>

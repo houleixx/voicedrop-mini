@@ -5,10 +5,10 @@
            src="{{item.coverPhotoUrl}}" mode="widthFix" lazy-load
            data-cover-key="{{item.coverPhotoKey}}" data-share-id="{{item.shareId}}" bindload="onCommunityCoverLoad" binderror="onCommunityCoverError" />
     <view class="community-card-body">
-      <view wx:if="{{item.isPrompt}}" class="community-prompt-badge">提示词</view>
+      <view wx:if="{{item.isPrompt}}" class="community-prompt-badge">{{i18n["提示词"]}}</view>
       <view wx:if="{{item.isReply}}" class="community-reply-badge">
         <view class="community-reply-badge-icon community-reply-icon-accent"></view>
-        <text>回应</text>
+        <text>{{i18n["回应"]}}</text>
       </view>
       <text class="community-card-title">{{item.title || '(无题)'}}</text>
       <text wx:if="{{item.preview && !item.coverPhotoUrl}}" class="community-card-preview">{{item.preview}}</text>
@@ -34,24 +34,24 @@
   <view wx:if="{{activeTab === 'community'}}" class="community-feed-tabs" style="top: {{scrollContentTop}}px;">
     <block wx:if="{{!communitySearching}}">
     <view class="community-feed-tab {{communityFeedTab === 'recommended' ? 'active' : ''}}"
-          data-feed-tab="recommended" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">推荐</text></view>
+          data-feed-tab="recommended" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">{{i18n["推荐"]}}</text></view>
     <view class="community-feed-tab {{communityFeedTab === 'latest' ? 'active' : ''}}"
-          data-feed-tab="latest" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">最新</text></view>
+          data-feed-tab="latest" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">{{i18n["最新"]}}</text></view>
     <view class="community-feed-tab {{communityFeedTab === 'replies' ? 'active' : ''}}"
-          data-feed-tab="replies" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">回应</text></view>
+          data-feed-tab="replies" bindtap="selectCommunityFeed"><text class="community-feed-tab-label">{{i18n["回应"]}}</text></view>
     <view class="community-search-spacer"></view>
-    <view class="community-search-button ri-search-line" bindtap="openCommunitySearch" aria-label="搜索社区"></view>
+    <view class="community-search-button ri-search-line" bindtap="openCommunitySearch" aria-label="{{i18n['搜索社区']}}"></view>
     </block>
     <block wx:else>
       <view class="community-search-slot">
         <view class="community-search-box">
           <text class="ri-search-line community-search-leading"></text>
-          <input class="community-search-input" value="{{communitySearchQuery}}" placeholder="搜索标题、作者或内容"
+          <input class="community-search-input" value="{{communitySearchQuery}}" placeholder="{{i18n['搜索标题、作者或内容']}}"
                  focus bindinput="onCommunitySearchInput" confirm-type="search" />
         </view>
       </view>
       <view class="community-search-cancel-slot" bindtap="closeCommunitySearch">
-        <text class="community-search-cancel-label">取消</text>
+        <text class="community-search-cancel-label">{{i18n["取消"]}}</text>
       </view>
     </block>
   </view>
@@ -80,11 +80,11 @@
       <view wx:if="{{error}}" class="notice">{{error}}</view>
       <view wx:elif="{{loading}}" class="notice loading-notice">
         <view class="loading-spinner" aria-hidden="true"></view>
-        <text>加载中...</text>
+        <text>{{i18n["加载中..."]}}</text>
       </view>
 
       <view wx:if="{{!loading && !error && records.length === 0}}" class="empty card">
-        <text class="empty-title">还没有录音</text>
+        <text class="empty-title">{{i18n["还没有录音"]}}</text>
         <text class="empty-sub">{{selectedTag ? '当前标签还没有录音。' : '录一段话，VoiceDrop 会把它整理成文章。'}}</text>
       </view>
 
@@ -122,7 +122,7 @@
             </view>
             <text class="chevron ri-arrow-right-s-line" aria-hidden="true"></text>
           </view>
-          <view class="delete-btn" data-index="{{index}}" bindtap="confirmDelete">删除</view>
+          <view class="delete-btn" data-index="{{index}}" bindtap="confirmDelete">{{i18n["删除"]}}</view>
         </view>
       </view>
     </block>
@@ -131,11 +131,11 @@
       <view wx:if="{{communityError}}" class="notice">{{communityError}}</view>
       <view wx:elif="{{communityLoading || !communityLoaded}}" class="notice loading-notice">
         <view class="loading-spinner" aria-hidden="true"></view>
-        <text>正在加载...</text>
+        <text>{{i18n["正在加载..."]}}</text>
       </view>
       <view wx:elif="{{communityPosts.length === 0}}" class="empty card">
-        <text class="empty-title">社区暂无文章</text>
-        <text class="empty-sub">稍后刷新，或先分享自己的文章。</text>
+        <text class="empty-title">{{i18n["社区暂无文章"]}}</text>
+        <text class="empty-sub">{{i18n["稍后刷新，或先分享自己的文章。"]}}</text>
       </view>
 
       <view wx:else class="community-post-list">
@@ -156,22 +156,21 @@
       <view wx:if="{{booksError && !bookItems.length}}" class="shelf-state">{{booksError}}</view>
       <view wx:elif="{{!booksLoaded && !bookItems.length}}" class="shelf-state loading-notice">
         <view class="loading-spinner" aria-hidden="true"></view>
-        <text>正在整理书架…</text>
+        <text>{{i18n["正在整理书架…"]}}</text>
       </view>
       <view wx:else class="shelf-rows books-shelf-inner">
         <view class="shelf-row-group" wx:for="{{bookRows}}" wx:key="index" wx:for-item="row">
           <view class="shelf-row">
             <block wx:for="{{row}}" wx:key="key" wx:for-item="cell">
               <view wx:if="{{cell.kind === 'write'}}" class="shelf-cell write-cell" bindtap="writeBook">
-                <view class="book-cover write-cover"><view class="write-plus">＋</view><text class="write-label">写书</text></view>
-                <view class="book-caption-stack"><text class="book-caption">写一本新书</text><text class="book-meta"> </text></view>
+                <view class="book-cover write-cover"><view class="write-plus">＋</view><text class="write-label">{{i18n["写书"]}}</text></view>
+                <view class="book-caption-stack"><text class="book-caption">{{i18n["写一本新书"]}}</text><text class="book-meta"> </text></view>
               </view>
               <view wx:else class="shelf-cell" data-slug="{{cell.slug}}" bindtap="openBook">
                 <view class="book-cover cloth" style="background: radial-gradient(circle at 25% 15%, rgba(255,255,255,.10), rgba(255,255,255,0) 64%), linear-gradient(145deg, {{cell.c}}, {{cell.c2}});">
                   <text class="cover-main">{{cell.main}}</text><view class="cover-rule"></view><text wx:if="{{cell.sub}}" class="cover-sub">{{cell.sub}}</text>
                   <image wx:if="{{cell.coverDisplayUrl}}" class="cover-image" src="{{cell.coverDisplayUrl}}" mode="aspectFill" data-slug="{{cell.slug}}" binderror="onBookCoverError" />
-                  <text wx:if="{{cell.hidden}}" class="book-hidden-badge">隐藏</text>
-                  <button wx:if="{{cell.editableByAuthor}}" class="book-revise" hover-class="book-revise-active" data-slug="{{cell.slug}}" catchtap="reviseBook" aria-label="修改{{cell.main}}"><text class="ri-edit-line"></text></button>
+                  <text wx:if="{{cell.hidden}}" class="book-hidden-badge">{{i18n["隐藏"]}}</text>
                 </view>
                 <view class="book-caption-stack"><text class="book-caption">{{cell.main}}</text><text class="book-meta">{{cell.chapters ? cell.chapters + ' 章' : (cell.sub || ' ')}}</text></view>
               </view>
@@ -197,7 +196,7 @@
             bindtouchmove="onMicTouchMove"
             bindtouchend="onMicTouchEnd"
             bindtouchcancel="onMicTouchCancel"
-            aria-label="{{recording ? '停止录音' : '开始录音'}}">
+            aria-label="{{recording ? i18n['停止录音'] : i18n['开始录音']}}">
         <view class="mic-icon">
           <view class="mic-head"></view>
           <view class="mic-stand"></view>
@@ -217,17 +216,17 @@
   />
 
   <view wx:if="{{linkRequest}}" class="device-link-layer" catchtouchmove="preventDeviceLinkTouchMove">
-    <view class="device-link-dialog" role="dialog" aria-label="设备登录请求">
-      <text class="device-link-title">有新设备想登录你的账号</text>
-      <text class="device-link-summary">在新设备上输入下面的验证码</text>
+    <view class="device-link-dialog" role="dialog" aria-label="{{i18n['设备登录请求']}}">
+      <text class="device-link-title">{{i18n["有新设备想登录你的账号"]}}</text>
+      <text class="device-link-summary">{{i18n["在新设备上输入下面的验证码"]}}</text>
 
-      <text class="device-link-code" aria-label="验证码 {{linkRequest.code}}">{{linkRequest.code}}</text>
+      <text class="device-link-code" aria-label="{{i18n['验证码 '] + linkRequest.code}}">{{linkRequest.code}}</text>
 
-      <text class="device-link-note">不是你本人操作？点「不是我」。</text>
+      <text class="device-link-note">{{i18n["不是你本人操作？点「不是我」。"]}}</text>
 
       <view class="device-link-actions">
-        <button class="device-link-button device-link-reject" bindtap="rejectDeviceLink">不是我</button>
-        <button class="device-link-button device-link-confirm" bindtap="acknowledgeDeviceLink">这是我</button>
+        <button class="device-link-button device-link-reject" bindtap="rejectDeviceLink">{{i18n["不是我"]}}</button>
+        <button class="device-link-button device-link-confirm" bindtap="acknowledgeDeviceLink">{{i18n["这是我"]}}</button>
       </view>
     </view>
   </view>

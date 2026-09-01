@@ -1,6 +1,5 @@
 const books = require('../../services/books')
 const bookCoverCache = require('../../services/book-cover-cache')
-const settings = require('../../services/settings')
 const MIN_REFRESH_FEEDBACK_MS = 600
 
 function wait(milliseconds) {
@@ -14,7 +13,7 @@ Page({
       { key: 'community', label: 'VD社区' },
       { key: 'books', label: '写书' }
     ],
-    items: [], profileAuthor: '', loading: true, refreshing: false, error: ''
+    items: [], loading: true, refreshing: false, error: ''
   },
 
   onLoad() {
@@ -22,10 +21,9 @@ Page({
     this._shelfIdentity = books.cacheIdentity()
     this.ensureBookCoverSession()
     const cached = books.cachedShelf()
-    const items = this.prepareBookItems(cached, '')
+    const items = this.prepareBookItems(cached)
     this.setData({ items, loading: cached.length === 0 })
     this._bookCoverSession.load(items)
-    this.loadProfileAuthor()
     this.load({ keepData: true })
   },
 
@@ -34,40 +32,13 @@ Page({
     if (identity !== this._shelfIdentity) {
       this._shelfIdentity = identity
       this._shelfRequestId = (this._shelfRequestId || 0) + 1
-      this._profileAuthorRequestId = (this._profileAuthorRequestId || 0) + 1
       const cached = books.cachedShelf()
-      const items = this.prepareBookItems(cached, '')
-      this.setData({ items, profileAuthor: '', loading: cached.length === 0, error: '' })
+      const items = this.prepareBookItems(cached)
+      this.setData({ items, loading: cached.length === 0, error: '' })
       this._bookCoverSession.load(items)
-      this.loadProfileAuthor()
       this.load({ keepData: cached.length > 0 })
       return
     }
-    if (this._reloadAuthorAfterSettings) {
-      this._reloadAuthorAfterSettings = false
-      this.loadProfileAuthor()
-    }
-    if (!this._reloadAfterRevise) return
-    this._reloadAfterRevise = false
-    this.load({ keepData: true, forceRefresh: true })
-  },
-
-  async loadProfileAuthor() {
-    const requestId = (this._profileAuthorRequestId || 0) + 1
-    this._profileAuthorRequestId = requestId
-    this.setData({
-      profileAuthor: '',
-      items: books.markEditableByAuthor(this.data.items, '')
-    })
-    try {
-      const profile = await settings.loadStyle()
-      if (this._shelfActive === false || this._profileAuthorRequestId !== requestId) return
-      const profileAuthor = String(profile && profile.name || '').trim()
-      this.setData({
-        profileAuthor,
-        items: books.markEditableByAuthor(this.data.items, profileAuthor)
-      })
-    } catch (_) {}
   },
 
   async load(options) {
@@ -77,7 +48,7 @@ Page({
     try {
       const items = await books.shelf({ forceRefresh })
       if (this._shelfRequestId !== requestId) return
-      const prepared = this.prepareBookItems(items, this.data.profileAuthor)
+      const prepared = this.prepareBookItems(items)
       this.setData({ items: prepared, error: '' })
       this._bookCoverSession.load(prepared)
     } catch (_) {
@@ -109,7 +80,6 @@ Page({
   onUnload() {
     this._shelfActive = false
     this._shelfRequestId = (this._shelfRequestId || 0) + 1
-    this._profileAuthorRequestId = (this._profileAuthorRequestId || 0) + 1
     if (this._bookCoverSession) this._bookCoverSession.dispose()
   },
   ensureBookCoverSession() {
@@ -126,9 +96,9 @@ Page({
     })
     return this._bookCoverSession
   },
-  prepareBookItems(items, author) {
+  prepareBookItems(items) {
     const routed = books.refreshCoverUrls(items)
-    return this.ensureBookCoverSession().decorate(books.markEditableByAuthor(routed, author))
+    return this.ensureBookCoverSession().decorate(routed)
   },
   onBookCoverError(event) {
     const slug = event.currentTarget.dataset.slug
@@ -149,18 +119,12 @@ Page({
     wx.navigateTo({ url: '/pages/settings/index' })
   },
   writeBook() { wx.navigateTo({ url: '/pages/book-writing/index' }) },
-  reviseBook(event) {
-    const book = this.data.items[event.currentTarget.dataset.index]
-    if (!book || !book.editableByAuthor) return
-    this._reloadAfterRevise = true
-    wx.navigateTo({
-      url: `/pages/book-revise/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main || book.title || '')}`,
-      fail: () => { this._reloadAfterRevise = false }
-    })
-  },
   openBook(event) {
     const book = this.data.items[event.currentTarget.dataset.index]
     if (!book) return
-    wx.navigateTo({ url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.title)}&main=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author)}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}` })
+    wx.navigateTo({
+      url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.title)}&main=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author)}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}&mine=${book.mine ? '1' : '0'}&hidden=${book.hidden ? '1' : '0'}`,
+      events: { bookHiddenChanged: () => this.load({ keepData: true, forceRefresh: true }) }
+    })
   }
 })

@@ -20,7 +20,7 @@ test('AI-generated article result pages show a prominent AI生成 label', () => 
     const wxml = read(wxmlPath)
     const wxss = read(wxssPath)
 
-    assert.match(wxml, /class="ai-generated-label"[^>]*>[\s\S]*?<text[^>]*>AI生成<\/text>/)
+    assert.match(wxml, /class="ai-generated-label"[^>]*>[\s\S]*?<text[^>]*>\{\{i18n\["AI生成"\]\}\}<\/text>/)
     assert.match(wxss, /\.ai-generated-label\s*\{[^}]*display:\s*inline-flex;[^}]*color:\s*#d8593b;[^}]*background:\s*#f6e4dc;[^}]*font-weight:\s*600;/s)
   }
 })
@@ -63,8 +63,8 @@ test('recording entry prominently explains that AI generates the article', () =>
   const wxml = read('pages/record/index.wxml')
   const wxss = read('pages/record/index.wxss')
 
-  assert.match(wxml, /class="record-ai-notice"[^>]*>[\s\S]*?>AI生成</)
-  assert.match(wxml, /录音结束后将由人工智能转写并生成文章/)
+  assert.match(wxml, /class="record-ai-notice"[^>]*>[\s\S]*?>\{\{i18n\["AI生成"\]\}\}</)
+  assert.match(wxml, /i18n\["录音结束后将由人工智能转写并生成文章"\]/)
   assert.match(wxss, /\.record-ai-notice\s*\{[^}]*display:\s*flex;/s)
   assert.doesNotMatch(wxss, /\.record-ai-notice\s*\{[^}]*(?:border|background):/s)
 })

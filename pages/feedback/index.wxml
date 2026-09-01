@@ -2,13 +2,13 @@
   <page-header title="意见反馈" />
   <view class="page-body feedback-body">
     <view class="feature-editor-card">
-      <textarea class="feature-editor" maxlength="2000" value="{{draft}}" bindinput="onInput" disabled="{{sending}}" placeholder="哪里不顺手？想要什么功能？写一句就行。" placeholder-class="feature-editor-placeholder" />
+      <textarea class="feature-editor" maxlength="2000" value="{{draft}}" bindinput="onInput" disabled="{{sending}}" placeholder="{{i18n['哪里不顺手？想要什么功能？写一句就行。']}}" placeholder-class="feature-editor-placeholder" />
       <text class="feature-count">{{draft.length}} / 2000</text>
     </view>
-    <text class="feature-hint {{failed ? 'error' : ''}}">{{failed ? '发送失败，请检查网络后重试' : '会带上你的账户身份，方便改进后回访。'}}</text>
+    <text class="feature-hint {{failed ? 'error' : ''}}">{{failed ? i18n['发送失败，请检查网络后重试'] : i18n['会带上你的账户身份，方便改进后回访。']}}</text>
     <button class="feature-primary" bindtap="send" disabled="{{!draft || sending}}">
-      <view wx:if="{{sending}}" class="feature-loading"><view class="feature-spinner"></view><text>发送中…</text></view>
-      <text wx:else>发送</text>
+      <view wx:if="{{sending}}" class="feature-loading"><view class="feature-spinner"></view><text>{{i18n["发送中…"]}}</text></view>
+      <text wx:else>{{i18n["发送"]}}</text>
     </button>
   </view>
 </view>

@@ -226,8 +226,8 @@ test('record page mixes AI playback into the final microphone PCM timeline', asy
 test('record page stops interview before primary recording and renders Android copy', () => {
   assert.match(js, /stopRecording\(\)\s*\{[\s\S]*this\.stopInterviewer\(\)[\s\S]*audio\.stop\(\)/)
   assert.match(wxml, /bindtap="toggleInterview"/)
-  assert.match(wxml, />采访</)
-  assert.match(wxml, /AI 采访中/)
+  assert.match(wxml, />\{\{i18n\["采访"\]\}\}</)
+  assert.match(wxml, /interviewActive \? i18n\['AI 采访中'\] : i18n\['正在录音'\]/)
   assert.match(wxml, /interviewStateText/)
   assert.match(wxss, /\.interview-button-column/)
   assert.match(wxss, /\.interview-button\.active/)

@@ -1,0 +1,23 @@
+<view class="screen settings-screen language-settings-page">
+  <page-header title="{{labels.title}}" />
+  <view class="page-body">
+    <view class="card language-card">
+      <text class="language-hint">{{labels.hint}}</text>
+      <radio-group bindchange="selectLanguage">
+        <label class="language-option">
+          <text class="language-option-copy">{{labels.followSystem}}</text>
+          <radio value="" checked="{{selectedLanguage === ''}}" color="#c7432f" />
+        </label>
+        <label class="language-option">
+          <text class="language-option-copy">{{labels.simplifiedChinese}}</text>
+          <radio value="zh-Hans" checked="{{selectedLanguage === 'zh-Hans'}}" color="#c7432f" />
+        </label>
+        <label class="language-option no-border">
+          <text class="language-option-copy">{{labels.english}}</text>
+          <radio value="en" checked="{{selectedLanguage === 'en'}}" color="#c7432f" />
+        </label>
+      </radio-group>
+    </view>
+    <button class="language-done" bindtap="applyLanguage">{{labels.done}}</button>
+  </view>
+</view>

@@ -2,18 +2,17 @@
   <home-tabs current="books" tabs="{{tabs}}" bind:change="switchTab" bind:settings="openSettings" />
   <scroll-view class="shelf-scroll" scroll-y enhanced bounces refresher-enabled refresher-triggered="{{refreshing}}" bindrefresherrefresh="refresh">
     <view wx:if="{{error && !items.length}}" class="shelf-state">{{error}}</view>
-    <view wx:elif="{{loading && !items.length}}" class="shelf-state">正在整理书架…</view>
+    <view wx:elif="{{loading && !items.length}}" class="shelf-state">{{i18n["正在整理书架…"]}}</view>
     <view class="shelf-grid">
       <view class="shelf-cell write-cell" bindtap="writeBook">
-        <view class="book-cover write-cover"><view class="write-plus">＋</view><text>写书</text></view>
-        <text class="book-caption">写一本新书</text>
+        <view class="book-cover write-cover"><view class="write-plus">＋</view><text>{{i18n["写书"]}}</text></view>
+        <text class="book-caption">{{i18n["写一本新书"]}}</text>
       </view>
       <view class="shelf-cell" wx:for="{{items}}" wx:key="slug" data-index="{{index}}" bindtap="openBook">
         <view class="book-cover cloth" style="background: linear-gradient(145deg, {{item.c}}, {{item.c2}});">
           <text class="cover-main">{{item.main}}</text><view class="cover-rule"></view><text class="cover-sub">{{item.sub}}</text>
           <image wx:if="{{item.coverDisplayUrl}}" class="cover-image" src="{{item.coverDisplayUrl}}" mode="aspectFill" data-slug="{{item.slug}}" binderror="onBookCoverError" />
-          <text wx:if="{{item.hidden}}" class="book-hidden-badge">隐藏</text>
-          <button wx:if="{{item.editableByAuthor}}" class="book-revise" hover-class="book-revise-active" data-index="{{index}}" catchtap="reviseBook" aria-label="修改{{item.main}}"><text class="ri-edit-line"></text></button>
+          <text wx:if="{{item.hidden}}" class="book-hidden-badge">{{i18n["隐藏"]}}</text>
         </view>
         <text class="book-caption">{{item.main}}</text>
         <text class="book-meta">{{item.chapters ? item.chapters + ' 章' : item.sub}}</text>

@@ -47,7 +47,7 @@ test('independent import page uses the shared primary action and sends header ba
   assert.match(wxml, /<page-header[^>]*backToHome/)
   assert.match(wxml, /class="primary import-button"/)
   assert.match(wxml, /loading="\{\{loading \|\| importing\}\}"/)
-  assert.match(wxml, /\{\{loading \? '正在读取\.\.\.' : '确认导入'\}\}/)
+  assert.match(wxml, /\{\{loading \? i18n\['正在读取\.\.\.'\] : i18n\['确认导入'\]\}\}/)
   assert.doesNotMatch(wxml, /<view class="state" wx:if="\{\{loading\}\}">正在读取\.\.\.<\/view>/)
   assert.match(css, /\.code-input\s*\{[^}]*height:\s*120rpx;[^}]*box-sizing:\s*border-box;/s)
 })

@@ -72,7 +72,7 @@ test('about page labels builds without a published version as development builds
 
   assert.equal(h.ctx.data.appVersion, '开发版')
   const wxml = fs.readFileSync(path.join(root, 'pages/about/index.wxml'), 'utf8')
-  assert.match(wxml, /当前版本\s+\{\{appVersion\}\}/)
+  assert.match(wxml, /\{\{i18n\['当前版本 '\] \+ i18n\[appVersion\]\}\}/)
 })
 
 test('about page identifies a trial build without claiming a version number', () => {
@@ -91,7 +91,7 @@ test('about page opens blocked-user management from the merged menu card', () =>
 
   assert.deepEqual(h.navigations, ['/pages/blocked-users/index'])
   assert.match(markup, /class="card menu"[\s\S]*class="row blocked-entry" bindtap="openBlockedUsers"/)
-  assert.match(markup, /已屏蔽用户[\s\S]*\{\{blockedAuthors\.length\}\} 人/)
+  assert.match(markup, /已屏蔽用户[\s\S]*\{\{blockedAuthors\.length \+ i18n\[' 人'\]\}\}/)
   assert.doesNotMatch(markup, /class="card blocked"/)
   assert.doesNotMatch(markup, /bindtap="unblock"/)
 })

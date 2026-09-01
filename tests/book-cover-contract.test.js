@@ -28,17 +28,13 @@ test('book index keeps optional author and server order metadata', () => {
   assert.equal(books.coverUrl(list[1]), 'https://voicedrop.cn/books/older/cover.jpg')
 })
 
-test('book editability temporarily follows the trimmed profile author name', () => {
-  const list = books.markEditableByAuthor([
-    { slug: 'mine', author: ' 王小明 ' },
-    { slug: 'other', author: '李小明' },
-    { slug: 'unsigned', author: '' }
-  ], '王小明')
-
-  assert.equal(list[0].editableByAuthor, true)
-  assert.equal(list[1].editableByAuthor, false)
-  assert.equal(list[2].editableByAuthor, false)
-  assert.equal(books.markEditableByAuthor(list, '').some((book) => book.editableByAuthor), false)
+test('book index preserves server ownership instead of inferring it from an author name', () => {
+  const list = books.normalizeIndex({ books: [
+    { slug: 'mine', author: '王小明', mine: true },
+    { slug: 'same-name', author: '王小明', mine: false }
+  ] })
+  assert.equal(list[0].mine, true)
+  assert.equal(list[1].mine, false)
 })
 
 test('book chapter share accepts only pages under the selected book root', () => {

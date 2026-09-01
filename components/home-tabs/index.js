@@ -1,10 +1,16 @@
 const capsuleLayout = require('../../utils/capsule-layout')
+const i18n = require('../../utils/i18n')
 
 Component({
   data: {
     statusBarHeight: 20,
     settingsTop: 0,
-    capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX
+    capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX,
+    displayTabs: []
+  },
+
+  observers: {
+    tabs() { this.refreshTabs() }
   },
 
   properties: {
@@ -24,6 +30,7 @@ Component({
 
   lifetimes: {
     attached() {
+      if (typeof this.refreshTabs === 'function') this.refreshTabs()
       try {
         const info = wx.getSystemInfoSync()
         this.setData({ statusBarHeight: info.statusBarHeight })
@@ -45,6 +52,11 @@ Component({
   },
 
   methods: {
+    refreshTabs() {
+      this.setData({ displayTabs: (this.properties.tabs || []).map((tab) => Object.assign({}, tab, {
+        label: i18n.ui(tab.label)
+      })) })
+    },
     openSettings() {
       this.triggerEvent('settings')
     },

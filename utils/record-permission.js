@@ -32,9 +32,9 @@ function openSettings(wxApi) {
       return
     }
     wxApi.showModal({
-      title: '需要录音权限',
-      content: '请允许使用麦克风进行录音和语音处理',
-      confirmText: '去设置',
+      title: i18n.ui('需要录音权限'),
+      content: i18n.ui('请允许使用麦克风进行录音和语音处理'),
+      confirmText: i18n.ui('去设置'),
       success: (modalResult) => {
         if (!modalResult || !modalResult.confirm || typeof wxApi.openSetting !== 'function') {
           resolve(false)
@@ -62,3 +62,4 @@ async function ensure(wxApi) {
 module.exports = {
   ensure
 }
+const i18n = require('./i18n')

@@ -1,3 +1,5 @@
+const i18n = require('./i18n')
+
 const PERIODS = {
   EarlyMorning: '清晨',
   Morning: '上午',
@@ -6,6 +8,11 @@ const PERIODS = {
   Evening: '傍晚',
   Night: '晚上',
   LateNight: '深夜'
+}
+
+const PERIODS_EN = {
+  EarlyMorning: 'Early morning', Morning: 'Morning', Noon: 'Noon', Afternoon: 'Afternoon',
+  Evening: 'Evening', Night: 'Night', LateNight: 'Late night'
 }
 
 const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -60,11 +67,11 @@ function parseStem(stem) {
   }
 }
 
-function weekdayToChinese(sessionTs) {
+function weekdayLabel(sessionTs) {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(sessionTs || '')
   if (!match) return ''
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
-  return WEEKDAYS_ZH[date.getDay()]
+  return i18n.currentLanguage() === i18n.ENGLISH ? WEEKDAYS_EN[date.getDay()] : WEEKDAYS_ZH[date.getDay()]
 }
 
 function rowTitle(rec) {
@@ -72,28 +79,35 @@ function rowTitle(rec) {
   const parsed = parseStem(rec.stem || stemOf(rec.audioName))
   if (!parsed) return rec.stem || stemOf(rec.audioName)
   const parts = []
-  const weekday = weekdayToChinese(parsed.sessionTs)
+  const weekday = weekdayLabel(parsed.sessionTs)
   if (weekday) parts.push(weekday)
-  if (PERIODS[parsed.period]) parts.push(PERIODS[parsed.period])
+  const period = i18n.currentLanguage() === i18n.ENGLISH ? PERIODS_EN[parsed.period] : PERIODS[parsed.period]
+  if (period) parts.push(period)
   const label = parts.join('·')
   return parsed.place ? `${label} · ${parsed.place}` : (label || rec.stem)
 }
 
 function timeLabel(rec) {
   const parsed = parseStem(rec && (rec.stem || stemOf(rec.audioName)))
-  if (parsed && parsed.month && parsed.day && parsed.hhmm) return `${parsed.month}月${parsed.day}日 ${parsed.hhmm}`
+  if (parsed && parsed.month && parsed.day && parsed.hhmm) {
+    if (i18n.currentLanguage() === i18n.ENGLISH) {
+      const month = new Date(2000, parsed.month - 1, 1).toLocaleString('en', { month: 'short' })
+      return `${month} ${parsed.day}, ${parsed.hhmm}`
+    }
+    return `${parsed.month}月${parsed.day}日 ${parsed.hhmm}`
+  }
   return rec && rec.uploaded || ''
 }
 
 function statusLabel(rec) {
-  if (rec.uploading) return '正在上传'
-  if (rec.hasArticles) return '已成文'
-  if (rec.isEmpty) return '无语音'
-  if (rec.phase === 'asr') return '听录音'
-  if (rec.phase === 'mining') return '挖文章'
-  if (rec.blockReason === 'too-long') return '录音过长'
-  if (rec.blockReason === 'no-credit') return '余额不足'
-  return '待处理'
+  if (rec.uploading) return i18n.ui('正在上传')
+  if (rec.hasArticles) return i18n.ui('已成文')
+  if (rec.isEmpty) return i18n.ui('无语音')
+  if (rec.phase === 'asr') return i18n.ui('听录音')
+  if (rec.phase === 'mining') return i18n.ui('挖文章')
+  if (rec.blockReason === 'too-long') return i18n.ui('录音过长')
+  if (rec.blockReason === 'no-credit') return i18n.ui('余额不足')
+  return i18n.ui('待处理')
 }
 
 /**

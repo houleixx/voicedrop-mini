@@ -1,4 +1,5 @@
 const audioConsent = require('../../utils/audio-consent')
+const i18n = require('../../utils/i18n')
 
 Component({
   properties: {
@@ -9,7 +10,7 @@ Component({
   },
 
   data: {
-    summary: audioConsent.SUMMARY
+    summary: i18n.ui(audioConsent.SUMMARY)
   },
 
   methods: {

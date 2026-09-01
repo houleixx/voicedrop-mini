@@ -2,14 +2,14 @@
   <page-header title="社区屏蔽管理" />
   <view class="page-body">
     <view wx:if="{{blockedAuthors.length === 0}}" class="card blocked-empty">
-      <text class="empty-title">没有已屏蔽的作者</text>
+      <text class="empty-title">{{i18n["没有已屏蔽的作者"]}}</text>
     </view>
 
     <view wx:else class="card blocked-list">
       <view class="blocked-row" wx:for="{{blockedAuthors}}" wx:key="*this">
         <text class="blocked-author">{{item}}</text>
         <view class="blocked-action">
-          <button class="unblock" data-author="{{item}}" bindtap="unblock">取消屏蔽</button>
+          <button class="unblock" data-author="{{item}}" bindtap="unblock">{{i18n["取消屏蔽"]}}</button>
         </view>
       </view>
     </view>

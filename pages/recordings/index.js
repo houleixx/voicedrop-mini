@@ -11,7 +11,6 @@ const asrDictation = require('../../services/asr-dictation')
 const community = require('../../services/community')
 const books = require('../../services/books')
 const bookCoverCache = require('../../services/book-cover-cache')
-const settings = require('../../services/settings')
 const blockStore = require('../../utils/block-store')
 const pendingReplies = require('../../utils/pending-replies')
 const prefs = require('../../utils/prefs')
@@ -90,7 +89,6 @@ Page({
     communityLoaded: false,
     bookItems: [],
     bookRows: bookRowsFor([]),
-    bookProfileAuthor: '',
     booksLoading: false,
     booksError: '',
     booksLoaded: false,
@@ -133,7 +131,6 @@ Page({
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
     if (this.data.activeTab === 'books') {
-      this.loadBookProfileAuthor()
       const restored = this.restoreCachedBooks()
       this.loadBooks(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
@@ -207,7 +204,6 @@ Page({
       }
     }
     if (this.data.activeTab === 'books') {
-      this.loadBookProfileAuthor({ force: true })
       this.loadBooks({ silent: true, keepDataOnError: true })
     }
     const redraw = resumeRefresh.shouldRedrawOnResume(false, this.topLevelUiRendered)
@@ -340,7 +336,6 @@ Page({
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
     if (this.data.activeTab === 'books') {
-      this.loadBookProfileAuthor()
       const restored = this.data.booksLoaded || this.restoreCachedBooks()
       this.loadBooks(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
@@ -379,7 +374,6 @@ Page({
       this.loadCommunity(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
     if (activeTab === 'books') {
-      this.loadBookProfileAuthor()
       const restored = this.data.booksLoaded || this.restoreCachedBooks()
       this.loadBooks(restored ? { silent: true, keepDataOnError: true } : undefined)
     }
@@ -430,7 +424,7 @@ Page({
   restoreCachedBooks() {
     const items = books.cachedShelf()
     if (!items.length) return false
-    const bookItems = this.prepareBookItems(items, this.data.bookProfileAuthor)
+    const bookItems = this.prepareBookItems(items)
     this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksLoading: false, booksError: '', booksLoaded: true })
     this._bookCoverSession.load(bookItems)
     return true
@@ -451,9 +445,9 @@ Page({
     return this._bookCoverSession
   },
 
-  prepareBookItems(items, author) {
+  prepareBookItems(items) {
     const routed = books.refreshCoverUrls(items)
-    return this.ensureBookCoverSession().decorate(books.markEditableByAuthor(routed, author))
+    return this.ensureBookCoverSession().decorate(routed)
   },
 
   onBookCoverError(event) {
@@ -467,28 +461,6 @@ Page({
     this.ensureBookCoverSession().retry(book)
   },
 
-  async loadBookProfileAuthor(options) {
-    let bearer = ''
-    try { bearer = auth.bearer() } catch (_) { return }
-    const sameAccount = this._bookProfileAuthorLoaded && this._bookProfileAuthorBearer === bearer
-    if (sameAccount && !(options && options.force)) return
-    const requestId = (this._bookProfileAuthorRequestId || 0) + 1
-    this._bookProfileAuthorRequestId = requestId
-    if (!sameAccount) {
-      const hiddenItems = books.markEditableByAuthor(this.data.bookItems, '')
-      this.setData({ bookProfileAuthor: '', bookItems: hiddenItems, bookRows: bookRowsFor(hiddenItems) })
-    }
-    try {
-      const profile = await settings.loadStyle()
-      if (this._pageUnloaded || this._bookProfileAuthorRequestId !== requestId) return
-      const bookProfileAuthor = String(profile && profile.name || '').trim()
-      const bookItems = books.markEditableByAuthor(this.data.bookItems, bookProfileAuthor)
-      this._bookProfileAuthorLoaded = true
-      this._bookProfileAuthorBearer = bearer
-      this.setData({ bookProfileAuthor, bookItems, bookRows: bookRowsFor(bookItems) })
-    } catch (_) {}
-  },
-
   async loadBooks(options) {
     const silent = Boolean(options && options.silent)
     const keepDataOnError = Boolean(options && options.keepDataOnError)
@@ -499,7 +471,7 @@ Page({
     try {
       const items = await books.shelf({ forceRefresh })
       if (this._pageUnloaded || this._bookLoadRequestId !== requestId) return true
-      const bookItems = this.prepareBookItems(items, this.data.bookProfileAuthor)
+      const bookItems = this.prepareBookItems(items)
       this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksError: '', booksLoaded: true })
       this._bookCoverSession.load(bookItems)
       return true
@@ -520,20 +492,14 @@ Page({
     wx.navigateTo({ url: '/pages/book-writing/index' })
   },
 
-  reviseBook(event) {
-    const slug = event.currentTarget.dataset.slug
-    const book = this.data.bookItems.find((item) => item.slug === slug)
-    if (!book || !book.editableByAuthor) return
-    wx.navigateTo({
-      url: `/pages/book-revise/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main || book.title || '')}`
-    })
-  },
-
   openBook(event) {
     const slug = event.currentTarget.dataset.slug
     const book = this.data.bookItems.find((item) => item.slug === slug)
     if (!book) return
-    wx.navigateTo({ url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author || '')}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}` })
+    wx.navigateTo({
+      url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author || '')}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}&mine=${book.mine ? '1' : '0'}&hidden=${book.hidden ? '1' : '0'}`,
+      events: { bookHiddenChanged: () => this.loadBooks({ silent: true, keepDataOnError: true, forceRefresh: true }) }
+    })
   },
 
   refreshFromUser() {
@@ -1151,9 +1117,8 @@ Page({
     if (!accountState.identityChanged(this._socketBearer, currentBearer)) return false
     this._socketBearer = currentBearer
     this._bookLoadRequestId = (this._bookLoadRequestId || 0) + 1
-    this._bookProfileAuthorRequestId = (this._bookProfileAuthorRequestId || 0) + 1
     const cachedBooks = books.cachedShelf()
-    const bookItems = this.prepareBookItems(cachedBooks, '')
+    const bookItems = this.prepareBookItems(cachedBooks)
     if (this.statusSession) this.statusSession.close()
     if (this.commandSession) this.commandSession.close()
     this._libraryCommandConfirms = []
@@ -1163,7 +1128,6 @@ Page({
       commandReply: '',
       commandReplyOk: true,
       commandState: '',
-      bookProfileAuthor: '',
       bookItems,
       bookRows: bookRowsFor(bookItems),
       booksLoaded: cachedBooks.length > 0,

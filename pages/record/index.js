@@ -103,6 +103,12 @@ Page({
     }
   },
 
+  onLanguageChanged() {
+    if (!this.interviewer) return
+    const state = this.interviewer.state()
+    this.setData({ interviewStateText: state.stateText })
+  },
+
   onHide() {
     this._pageVisible = false
     if (this._photoSelecting || this._photoPickerRecoveryPending) {

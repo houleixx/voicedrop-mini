@@ -82,20 +82,20 @@ test('settings page hides follow-up toggle', () => {
 test('settings page exposes Android-style profile name editor', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
 
-  assert.match(wxml, /bindtap="openNameEditor"[\s\S]*名字/)
+  assert.match(wxml, /bindtap="openNameEditor"[\s\S]*i18n\["名字"\]/)
   assert.match(wxml, /class="name-card-icon"[\s\S]*class="name-card-avatar"[\s\S]*class="name-card-lines"/)
   assert.doesNotMatch(wxml, /<text class="menu-icon-text">人<\/text>/)
-  assert.match(wxml, /文章署名，以及挖文章时对你的称呼/)
+  assert.match(wxml, /i18n\["署名和挖文章时对你的称呼"\]/)
   assert.match(wxml, /\{\{profileName \|\| ''\}\}/)
   assert.match(wxml, /wx:if="\{\{nameEditorOpen\}\}"/)
-  assert.match(wxml, /bindtap="saveName"[\s\S]*完成/)
+  assert.match(wxml, /bindtap="saveName"[\s\S]*i18n\["完成"\]/)
 })
 
 test('settings page links to prompt customization', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
   assert.match(wxml, /data-url="\/pages\/instruction-settings\/index"/)
-  assert.match(wxml, />提示词</)
-  assert.match(wxml, /自定义长按菜单里的每个动作/)
+  assert.match(wxml, />\{\{i18n\["提示词"\]\}\}</)
+  assert.match(wxml, /i18n\["自定义长按菜单里的每个动作"\]/)
 })
 
 test('settings page uses Remix Icon instead of platform glyphs', () => {
@@ -108,6 +108,7 @@ test('settings page uses Remix Icon instead of platform glyphs', () => {
     'ri-wechat-line',
     'ri-team-line',
     'ri-group-line',
+    'ri-global-line',
     'ri-delete-bin-line',
     'ri-information-line',
     'ri-arrow-right-s-line'
@@ -118,17 +119,25 @@ test('settings page uses Remix Icon instead of platform glyphs', () => {
   assert.doesNotMatch(wxml, /ri-delete-bin-6-line/)
 })
 
+test('settings page exposes the centralized language selector', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
+  assert.match(wxml, /data-url="\/pages\/language-settings\/index"/)
+  assert.match(wxml, />\{\{i18n\["语言"\]\}\}</)
+  assert.match(wxml, /\{\{languageLabel\}\}/)
+  assert.ok(wxml.indexOf('i18n["加入社群"]') < wxml.indexOf('<!-- 语言 -->'))
+})
+
 test('settings page uses the official Enterprise WeChat group plugin', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/settings/index.wxss'), 'utf8')
   const pageConfig = JSON.parse(fs.readFileSync(path.join(root, 'pages/settings/index.json'), 'utf8'))
   const appConfig = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
 
-  assert.match(wxml, /bindtap="openJoinCommunity"[\s\S]*?>加入社群</)
+  assert.match(wxml, /bindtap="openJoinCommunity"[\s\S]*?>\{\{i18n\["加入社群"\]\}\}</)
   assert.match(wxml, /wx:if="\{\{joinCommunityOpen\}\}"/)
-  assert.match(wxml, /class="community-join-button"[^>]+aria-label="加入 VoiceDrop 社群"/)
-  assert.match(wxml, /<cell class="community-plugin-trigger" url="\{\{joinCommunityUrl\}\}" paddingStyle="20" iconBorderRadius="8" contactText="加入社群" contactTextBlod="\{\{true\}\}" style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; opacity: 0;" bind:completemessage="onJoinCommunityComplete"/)
-  assert.match(wxml, /class="community-dialog-dismiss"[^>]+aria-label="关闭"/)
+  assert.match(wxml, /class="community-join-button"[^>]+aria-label="\{\{i18n\['加入 VoiceDrop 社群'\]\}\}"/)
+  assert.match(wxml, /<cell class="community-plugin-trigger" url="\{\{joinCommunityUrl\}\}" paddingStyle="20" iconBorderRadius="8" contactText="\{\{i18n\['加入社群'\]\}\}" contactTextBlod="\{\{true\}\}" style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; opacity: 0;" bind:completemessage="onJoinCommunityComplete"/)
+  assert.match(wxml, /class="community-dialog-dismiss"[^>]+aria-label="\{\{i18n\['关闭'\]\}\}"/)
   assert.equal(pageConfig.usingComponents.cell, 'plugin://materialPlugin/cell')
   assert.equal(appConfig.plugins.materialPlugin.provider, 'wx4d2deeab3aed6e5a')
   assert.equal(appConfig.plugins.materialPlugin.version, '1.0.13')
@@ -152,8 +161,8 @@ test('settings page presents rebuildable cache size with the Remix 2.5 delete ic
   const icons = fs.readFileSync(path.join(root, 'styles/remixicon.wxss'), 'utf8')
 
   assert.match(wxml, /ri-delete-bin-line/)
-  assert.match(wxml, />清除缓存</)
-  assert.match(wxml, />文章与图片缓存</)
+  assert.match(wxml, />\{\{i18n\["清除缓存"\]\}\}</)
+  assert.match(wxml, />\{\{i18n\["文章与图片缓存"\]\}\}</)
   assert.match(wxml, /\{\{cacheSizeText\}\}/)
   assert.match(wxml, /\{\{cacheSizeText\}\}[\s\S]*?ri-arrow-right-s-line/)
   assert.match(icons, /\.ri-delete-bin-line:before\s*\{\s*content:\s*"\\ec2a"/)
@@ -303,7 +312,7 @@ test('settings about entry shows the current release version', async () => {
 
   assert.equal(ctx.data.appVersion, '1.2.3')
   const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
-  assert.match(wxml, />当前版本\s+\{\{appVersion\}\}</)
+  assert.match(wxml, />\{\{i18n\["当前版本 "\] \+ appVersion\}\}</)
 })
 
 test('settings page trims and limits profile name before saving', async () => {

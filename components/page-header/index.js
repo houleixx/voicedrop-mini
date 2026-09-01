@@ -1,4 +1,5 @@
 const capsuleLayout = require('../../utils/capsule-layout')
+const i18n = require('../../utils/i18n')
 
 Component({
   options: {
@@ -17,10 +18,15 @@ Component({
     toolbarTop: 0,
     toolbarHeight: 64,
     paddingLeft: 50,
-    capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX
+    capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX,
+    displayTitle: ''
+  },
+  observers: {
+    title() { this.refreshTitle() }
   },
   lifetimes: {
     attached() {
+      if (typeof this.refreshTitle === 'function') this.refreshTitle()
       try {
         const info = wx.getSystemInfoSync()
         const statusBarHeight = (info && info.statusBarHeight) || 0
@@ -52,6 +58,9 @@ Component({
     }
   },
   methods: {
+    refreshTitle() {
+      this.setData({ displayTitle: i18n.ui(this.properties.title) })
+    },
     goBack() {
       if (this.data.backToHome) {
         wx.reLaunch({ url: '/pages/recordings/index' })

@@ -80,7 +80,7 @@ test('all more-menu buttons use the shared font icon instead of dot characters',
 
   for (const relativePath of menuPages) {
     const wxml = fs.readFileSync(path.join(root, relativePath), 'utf8')
-    const menuButton = wxml.match(/<button\b[^>]*aria-label="更多"[^>]*>[\s\S]*?<\/button>/)?.[0]
+    const menuButton = wxml.match(/<button\b[^>]*aria-label="\{\{i18n\['更多'\]\}\}"[^>]*>[\s\S]*?<\/button>/)?.[0]
 
     assert.ok(menuButton, `${relativePath} should contain a more-menu button`)
     assert.match(menuButton, /\bri-more-fill\b/, `${relativePath} should use the shared font icon`)

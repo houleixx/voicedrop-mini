@@ -5,6 +5,7 @@ const usage = require('../../services/usage')
 const prefs = require('../../utils/prefs')
 const appVersion = require('../../utils/app-version')
 const cacheMaintenance = require('../../services/cache-maintenance')
+const i18n = require('../../utils/i18n')
 
 Page({
   data: {
@@ -27,6 +28,7 @@ Page({
     cacheClearing: false,
     joinCommunityUrl: 'https://work.weixin.qq.com/gm/28a6505fcd2fa4dd94b3b08f34fb2c5a',
     joinCommunityOpen: false,
+    languageLabel: '跟随系统',
     appVersion: '开发版'
   },
 
@@ -44,6 +46,14 @@ Page({
 
   onUnload() {
     this.leaveSettingsPage()
+  },
+
+  onLanguageChanged() {
+    this.setData({
+      languageLabel: i18n.languageLabel(i18n.selectedLanguage()),
+      accountSubtitle: accountSubtitleFor(auth.isWechatAuthenticated()),
+      appVersion: appVersion.label()
+    })
   },
 
   leaveSettingsPage() {
@@ -88,9 +98,10 @@ Page({
         balance: balanceResult,
         capacity: usage.articleCapacity(balanceResult.suanli || 0),
         shortAnonId: shortId,
-        accountSubtitle: wechatAuthed ? '已登录微信账号' : '匿名 ID 保存在本机',
+        accountSubtitle: accountSubtitleFor(wechatAuthed),
         autoShareCommunity: Boolean(configResult.autoShareCommunity),
         followUpEnabled: prefs.followUpEnabled(),
+        languageLabel: i18n.languageLabel(i18n.selectedLanguage()),
         wechatConfigured: Boolean(wechatResult && wechatResult.connected)
       })
     } catch (error) {
@@ -232,6 +243,10 @@ Page({
 function accountShortCode(scope) {
   const match = String(scope || '').trim().match(/^users\/anon-([0-9a-f]{6,})\/$/i)
   return match ? match[1].slice(0, 6).toUpperCase() : ''
+}
+
+function accountSubtitleFor(wechatAuthed) {
+  return i18n.ui(wechatAuthed ? '已登录微信账号' : '匿名 ID 保存在本机')
 }
 
 function cacheUiActive(page, lifecycle, request) {

@@ -1,6 +1,7 @@
 const auth = require('./auth')
 const http = require('./request')
 const route = require('./api-route')
+const i18n = require('../utils/i18n')
 
 const API = 'https://lab.jianshuo.dev/api/book'
 const HISTORY_API = API + '/history'
@@ -20,6 +21,10 @@ function shelfWebUrl() {
 
 function indexUrl() {
   return `${routedShelfBase()}?format=json`
+}
+
+function hiddenUrl(slug) {
+  return `${routedShelfBase()}${encodeURIComponent(String(slug || '').trim())}/hidden`
 }
 
 function cacheIdentity() {
@@ -56,6 +61,10 @@ function formatThreadStamp(value) {
   const date = new Date(Number(value) || 0)
   if (!Number.isFinite(date.getTime())) return ''
   const two = (part) => String(part).padStart(2, '0')
+  if (i18n.currentLanguage() === i18n.ENGLISH) {
+    const month = date.toLocaleString('en', { month: 'short' })
+    return `${month} ${date.getDate()}, ${two(date.getHours())}:${two(date.getMinutes())}`
+  }
   return (date.getMonth() + 1) + '月' + date.getDate() + '日 ' + two(date.getHours()) + ':' + two(date.getMinutes())
 }
 
@@ -86,6 +95,19 @@ function normalizeThread(data) {
 }
 
 function reviseMessage(statusCode, data) {
+  const english = i18n.currentLanguage() === i18n.ENGLISH
+  if (english) {
+    if (statusCode === 202) return 'Your changes were submitted. You can close the mini program; the revision note will appear here when it is ready.'
+    if (statusCode === 402) {
+      const body = data && typeof data === 'object' ? data : {}
+      return `Not enough credits: a revision needs ${formatSuanli(body.need_suanli, REVISE_SUANLI)} credits and you have ${formatSuanli(body.suanli, 0)}.`
+    }
+    if (statusCode === 401) return 'Identity verification failed. Please try again later.'
+    if (statusCode === 403) return 'Only this book’s owner can revise it.'
+    if (statusCode === 404) return 'This older book has no registered owner and cannot be revised online yet.'
+    if (statusCode === 409) return 'A previous revision is still running. Submit again when it finishes.'
+    return statusCode ? `The server returned ${statusCode}. Please try again later.` : 'Could not reach the server. Check your network and try again.'
+  }
   if (statusCode === 202) return '已提交修改，可以关掉小程序，改完后这里会留下修改说明。'
   if (statusCode === 402) {
     const body = data && typeof data === 'object' ? data : {}
@@ -109,7 +131,8 @@ function normalizeBook(item) {
     cover: Boolean(book.cover), coverAt: Math.max(0, Number(book.coverAt) || 0),
     chapters: Math.max(0, Number(book.chapters) || 0),
     author: String(book.author || ''), createdAt: Math.max(0, Number(book.createdAt) || 0),
-    hidden: book.hidden === true
+    hidden: book.hidden === true,
+    mine: book.mine === true
   }
   normalized.coverUrl = normalized.cover ? coverUrl(normalized) : ''
   return normalized
@@ -176,11 +199,27 @@ function refreshCoverUrls(items) {
   }))
 }
 
-function markEditableByAuthor(items, author) {
-  const currentAuthor = String(author || '').trim()
-  return (items || []).map((book) => Object.assign({}, book, {
-    editableByAuthor: Boolean(currentAuthor) && String(book && book.author || '').trim() === currentAuthor
-  }))
+// The shelf's `mine` is only a quick first-frame hint.  The reader asks the
+// per-book endpoint before it exposes owner actions, because shelves may be
+// served from a local or edge cache.
+async function ownership(slug) {
+  const res = await http.get(hiddenUrl(slug), auth.bearer(), {
+    timeout: 15000,
+    header: { 'Cache-Control': 'no-cache' }
+  })
+  if (res.statusCode < 200 || res.statusCode >= 300) throw new Error(`book ownership HTTP ${res.statusCode}`)
+  const data = res.data && typeof res.data === 'object' ? res.data : {}
+  return { mine: data.mine === true, hidden: data.hidden === true }
+}
+
+async function setHidden(slug, hidden) {
+  const res = await http.postJson(hiddenUrl(slug), auth.bearer(), { hidden: hidden === true }, { timeout: 20000 })
+  if (res.statusCode < 200 || res.statusCode >= 300) {
+    const error = new Error(`book hidden HTTP ${res.statusCode}`)
+    error.statusCode = res.statusCode || 0
+    throw error
+  }
+  return { hidden: hidden === true }
 }
 
 function cachedShelf() {
@@ -255,6 +294,16 @@ function shortfall(balance) {
 }
 
 function message(statusCode, data) {
+  const english = i18n.currentLanguage() === i18n.ENGLISH
+  if (english) {
+    if (statusCode === 202) return 'Writing has started. You can close the mini program and pull down to refresh your bookshelf later.'
+    if (statusCode === 402) {
+      const body = data && typeof data === 'object' ? data : {}
+      return `Not enough credits: writing a book needs ${formatSuanli(body.need_suanli, BOOK_SUANLI)} credits and you have ${formatSuanli(body.suanli, 0)}. See Settings → Credits for ways to earn more.`
+    }
+    if (statusCode === 401) return 'Identity verification failed. Please try again later.'
+    return statusCode ? `The server returned ${statusCode}. Please try again later.` : 'Could not reach the server. Check your network and try again.'
+  }
   if (statusCode === 202) return '开始写了！现在可以关闭小程序，稍后下拉刷新「写书」书架查看。'
   if (statusCode === 402) {
     const body = data && typeof data === 'object' ? data : {}
@@ -277,9 +326,9 @@ function result(response) {
 
 module.exports = {
   API, HISTORY_API, REVISE_API, BOOK_SUANLI, REVISE_SUANLI,
-  shelfWebUrl, indexUrl, CACHE_KEY, cacheIdentity, cacheKeyFor,
+  shelfWebUrl, indexUrl, hiddenUrl, CACHE_KEY, cacheIdentity, cacheKeyFor,
   start, history, revise, shelf, shelfRequestUrl, cachedShelf, normalizeIndex, refreshCoverUrls,
-  markEditableByAuthor,
+  ownership, setHidden,
   normalizeThread, formatThreadStamp, reviseMessage, readerUrl, coverUrl,
   shareTitle, readerPageUrl, writingContext, formatBalance, shortfall, message, result
 }

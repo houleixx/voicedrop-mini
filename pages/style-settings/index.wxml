@@ -10,7 +10,7 @@
           <text class="chip-caret">{{styleHistoryOpen ? '⌃' : '⌄'}}</text>
         </view>
         <text class="mode-summary">{{styleSummary}}</text>
-        <text class="mode-count">共 {{styleRows.length}} 版</text>
+        <text class="mode-count">{{i18n['共 '] + styleRows.length + i18n[' 个版本']}}</text>
       </view>
 
       <view wx:if="{{styleHistoryOpen}}" class="version-panel">
@@ -18,23 +18,23 @@
           <view class="version-row {{item.selected ? 'selected' : ''}}" wx:for="{{styleRows}}" wx:key="v" data-version="{{item.v}}" bindtap="selectStyleVersion">
             <text class="version-title">v{{item.v}}</text>
             <text class="version-preview">{{item.preview}}</text>
-            <text class="version-meta">{{item.words}} 字 · {{item.date}}</text>
+            <text class="version-meta">{{item.words + i18n[' 字 · '] + item.date}}</text>
             <view class="check-indicator {{item.selected ? 'selected' : ''}}">
               <text wx:if="{{item.selected}}" class="check-icon">✓</text>
             </view>
           </view>
         </view>
 
-        <view wx:if="{{!styleHistory.versions || styleHistory.versions.length === 0}}" class="version-empty">暂无文风历史</view>
+        <view wx:if="{{!styleHistory.versions || styleHistory.versions.length === 0}}" class="version-empty">{{i18n["暂无文风历史"]}}</view>
 
-        <text class="version-foot">选择一个版本，将自动切换为当前写作风格。</text>
+        <text class="version-foot">{{i18n["选择一个版本，将自动切换为当前写作风格。"]}}</text>
       </view>
     </view>
 
     <view class="style-editor">
-      <text class="editor-label">当前写作风格</text>
-      <textarea class="field textarea" value="{{style}}" bindinput="onStyleInput" placeholder="例如：胸有成竹地下断言，不绕弯；语气自然，可以添加 emoji" />
-      <button class="primary save-button" loading="{{saving}}" bindtap="saveStyle">保存文风</button>
+      <text class="editor-label">{{i18n["当前写作风格"]}}</text>
+      <textarea class="field textarea" value="{{style}}" bindinput="onStyleInput" placeholder="{{i18n['例如：胸有成竹地下断言，不绕弯；语气自然，可以添加 emoji']}}" />
+      <button class="primary save-button" loading="{{saving}}" bindtap="saveStyle">{{i18n["保存文风"]}}</button>
     </view>
   </view>
 </view>

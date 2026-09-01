@@ -10,7 +10,7 @@
           <text class="menu-icon-text ri-user-line"></text>
         </view>
         <view class="menu-content">
-          <text class="menu-title">账户</text>
+          <text class="menu-title">{{i18n["账户"]}}</text>
           <text class="menu-subtitle">{{accountSubtitle}}</text>
         </view>
         <view class="menu-right">
@@ -25,8 +25,8 @@
           <text class="menu-icon-text ri-flashlight-line"></text>
         </view>
         <view class="menu-content">
-          <text class="menu-title">算力</text>
-          <text class="menu-subtitle">约可成文 {{capacity}} 篇</text>
+          <text class="menu-title">{{i18n["算力"]}}</text>
+          <text class="menu-subtitle">{{i18n["约可成文 "] + capacity + i18n[" 篇"]}}</text>
         </view>
         <view class="menu-right">
           <text class="menu-value">{{balance.suanli || 0}}</text>
@@ -36,7 +36,7 @@
     </view>
 
     <!-- 写作 -->
-    <view class="section-header">写作</view>
+    <view class="section-header">{{i18n["写作"]}}</view>
     <view class="card menu-card">
       <!-- 名字 -->
       <view class="menu-item" bindtap="openNameEditor">
@@ -50,8 +50,8 @@
           </view>
         </view>
         <view class="menu-content">
-          <text class="menu-title">名字</text>
-          <text class="menu-subtitle">署名和挖文章时对你的称呼</text>
+          <text class="menu-title">{{i18n["名字"]}}</text>
+          <text class="menu-subtitle">{{i18n["署名和挖文章时对你的称呼"]}}</text>
         </view>
         <view class="menu-right">
           <text class="menu-status">{{profileName || ''}}</text>
@@ -65,8 +65,8 @@
           <text class="menu-icon-text ri-quill-pen-line"></text>
         </view>
         <view class="menu-content">
-          <text class="menu-title">写作风格</text>
-          <text class="menu-subtitle">成文时模仿这套语气</text>
+          <text class="menu-title">{{i18n["写作风格"]}}</text>
+          <text class="menu-subtitle">{{i18n["成文时模仿这套语气"]}}</text>
         </view>
         <view class="menu-right">
           <text class="menu-arrow ri-arrow-right-s-line"></text>
@@ -77,15 +77,15 @@
       <view class="menu-item no-bottom-border" data-url="/pages/instruction-settings/index" bindtap="openPage">
         <view class="menu-icon icon-beige"><text class="menu-icon-text ri-magic-line"></text></view>
         <view class="menu-content">
-          <text class="menu-title">提示词</text>
-          <text class="menu-subtitle">自定义长按菜单里的每个动作</text>
+          <text class="menu-title">{{i18n["提示词"]}}</text>
+          <text class="menu-subtitle">{{i18n["自定义长按菜单里的每个动作"]}}</text>
         </view>
         <view class="menu-right"><text class="menu-arrow ri-arrow-right-s-line"></text></view>
       </view>
     </view>
 
     <!-- 发布 -->
-    <view class="section-header">发布</view>
+    <view class="section-header">{{i18n["发布"]}}</view>
     <view class="card menu-card">
       <!-- 微信公众号 -->
       <view class="menu-item" data-url="/pages/wechat-settings/index" bindtap="openPage">
@@ -93,11 +93,11 @@
           <text class="menu-icon-text ri-wechat-line"></text>
         </view>
         <view class="menu-content">
-          <text class="menu-title">微信公众号</text>
-          <text class="menu-subtitle">成文一键推送到草稿箱</text>
+          <text class="menu-title">{{i18n["微信公众号"]}}</text>
+          <text class="menu-subtitle">{{i18n["成文一键推送到草稿箱"]}}</text>
         </view>
         <view class="menu-right">
-          <text class="menu-status {{wechatConfigured ? '' : 'menu-status-empty'}}">{{wechatConfigured ? '已连接' : '未连接'}}</text>
+          <text class="menu-status {{wechatConfigured ? '' : 'menu-status-empty'}}">{{wechatConfigured ? i18n['已连接'] : i18n['未连接']}}</text>
           <text class="menu-arrow ri-arrow-right-s-line"></text>
         </view>
       </view>
@@ -108,8 +108,8 @@
           <text class="menu-icon-text ri-team-line"></text>
         </view>
         <view class="menu-content">
-          <text class="menu-title">自动分享到 VD 社区</text>
-          <text class="menu-subtitle">挖出新文章后自动发到社区</text>
+          <text class="menu-title">{{i18n["自动分享到 VD 社区"]}}</text>
+          <text class="menu-subtitle">{{i18n["挖出新文章后自动发到社区"]}}</text>
         </view>
         <view class="menu-right">
           <switch checked="{{autoShareCommunity}}" bindchange="toggleAutoShare" color="#c7432f" />
@@ -118,7 +118,7 @@
     </view>
 
     <!-- 其他 -->
-    <view class="section-header">其他</view>
+    <view class="section-header">{{i18n["其他"]}}</view>
     <view class="card menu-card">
       <!-- 加入社群 -->
       <view class="menu-item" bindtap="openJoinCommunity">
@@ -126,10 +126,25 @@
           <text class="menu-icon-text ri-group-line"></text>
         </view>
         <view class="menu-content">
-          <text class="menu-title">加入社群</text>
-          <text class="menu-subtitle">和 VoiceDrop 用户一起交流</text>
+          <text class="menu-title">{{i18n["加入社群"]}}</text>
+          <text class="menu-subtitle">{{i18n["和 VoiceDrop 用户一起交流"]}}</text>
         </view>
         <view class="menu-right">
+          <text class="menu-arrow ri-arrow-right-s-line"></text>
+        </view>
+      </view>
+
+      <!-- 语言 -->
+      <view class="menu-item" data-url="/pages/language-settings/index" bindtap="openPage">
+        <view class="menu-icon icon-beige">
+          <text class="menu-icon-text ri-global-line"></text>
+        </view>
+        <view class="menu-content">
+          <text class="menu-title">{{i18n["语言"]}}</text>
+          <text class="menu-subtitle">{{i18n["跟随系统、简体中文或 English"]}}</text>
+        </view>
+        <view class="menu-right">
+          <text class="menu-status">{{languageLabel}}</text>
           <text class="menu-arrow ri-arrow-right-s-line"></text>
         </view>
       </view>
@@ -140,8 +155,8 @@
           <text class="menu-icon-text ri-delete-bin-line"></text>
         </view>
         <view class="menu-content">
-          <text class="menu-title">清除缓存</text>
-          <text class="menu-subtitle">文章与图片缓存</text>
+          <text class="menu-title">{{i18n["清除缓存"]}}</text>
+          <text class="menu-subtitle">{{i18n["文章与图片缓存"]}}</text>
         </view>
         <view class="menu-right">
           <text class="menu-status">{{cacheSizeText}}</text>
@@ -155,8 +170,8 @@
           <text class="menu-icon-text ri-information-line"></text>
         </view>
         <view class="menu-content">
-          <text class="menu-title">关于</text>
-          <text class="menu-subtitle">当前版本 {{appVersion}}</text>
+          <text class="menu-title">{{i18n["关于"]}}</text>
+          <text class="menu-subtitle">{{i18n["当前版本 "] + appVersion}}</text>
         </view>
         <view class="menu-right">
           <text class="menu-arrow ri-arrow-right-s-line"></text>
@@ -166,29 +181,29 @@
 
     <view class="dialog-overlay community-dialog-overlay" wx:if="{{joinCommunityOpen}}" bindtap="closeJoinCommunity">
       <view class="community-dialog" catchtap="preventJoinCommunityClose">
-        <view class="community-dialog-dismiss" role="button" aria-label="关闭" bindtap="closeJoinCommunity">
+        <view class="community-dialog-dismiss" role="button" aria-label="{{i18n['关闭']}}" bindtap="closeJoinCommunity">
           <text class="ri-close-line"></text>
         </view>
-        <text class="dialog-title community-dialog-title">加入 VoiceDrop 社群</text>
-        <text class="community-dialog-hint">点击“加入社群”，即可进入对应社群。</text>
+        <text class="dialog-title community-dialog-title">{{i18n["加入 VoiceDrop 社群"]}}</text>
+        <text class="community-dialog-hint">{{i18n["点击“加入社群”，即可进入对应社群。"]}}</text>
         <view class="community-join-action">
-          <view class="community-join-button" role="button" aria-label="加入 VoiceDrop 社群">
+          <view class="community-join-button" role="button" aria-label="{{i18n['加入 VoiceDrop 社群']}}">
             <text class="community-join-icon ri-group-line"></text>
-            <text class="community-join-label">加入社群</text>
+            <text class="community-join-label">{{i18n["加入社群"]}}</text>
           </view>
-          <cell class="community-plugin-trigger" url="{{joinCommunityUrl}}" paddingStyle="20" iconBorderRadius="8" contactText="加入社群" contactTextBlod="{{true}}" style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; opacity: 0;" bind:completemessage="onJoinCommunityComplete" />
+          <cell class="community-plugin-trigger" url="{{joinCommunityUrl}}" paddingStyle="20" iconBorderRadius="8" contactText="{{i18n['加入社群']}}" contactTextBlod="{{true}}" style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; opacity: 0;" bind:completemessage="onJoinCommunityComplete" />
         </view>
       </view>
     </view>
 
     <view class="dialog-overlay" wx:if="{{nameEditorOpen}}" bindtap="closeNameEditor" style="padding-bottom: {{nameKeyboardHeight ? nameKeyboardHeight + 44 : 44}}rpx;">
       <view class="name-dialog" catchtap="preventNameEditorClose">
-        <text class="dialog-title">名字</text>
-        <input class="name-input" value="{{nameInput}}" bindinput="onNameInput" bindkeyboardheightchange="onNameKeyboardHeightChange" adjust-position="{{false}}" maxlength="20" placeholder="你的名字" focus="{{nameEditorOpen}}" />
-        <text class="dialog-hint">这个名字会出现在文章署名，以及挖文章时对你的称呼。随时可改。</text>
+        <text class="dialog-title">{{i18n["名字"]}}</text>
+        <input class="name-input" value="{{nameInput}}" bindinput="onNameInput" bindkeyboardheightchange="onNameKeyboardHeightChange" adjust-position="{{false}}" maxlength="20" placeholder="{{i18n['你的名字']}}" focus="{{nameEditorOpen}}" />
+        <text class="dialog-hint">{{i18n["这个名字会出现在文章署名，以及挖文章时对你的称呼。随时可改。"]}}</text>
         <view class="dialog-actions">
-          <button class="dialog-button dialog-button-cancel" disabled="{{nameSaving}}" bindtap="closeNameEditor">取消</button>
-          <button class="dialog-button dialog-button-confirm" loading="{{nameSaving}}" bindtap="saveName">完成</button>
+          <button class="dialog-button dialog-button-cancel" disabled="{{nameSaving}}" bindtap="closeNameEditor">{{i18n["取消"]}}</button>
+          <button class="dialog-button dialog-button-confirm" loading="{{nameSaving}}" bindtap="saveName">{{i18n["完成"]}}</button>
         </view>
       </view>
     </view>

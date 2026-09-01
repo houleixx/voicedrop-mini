@@ -5,6 +5,7 @@
     "pages/shared-article/index",
     "pages/community-detail/index",
     "pages/settings/index",
+    "pages/language-settings/index",
     "pages/account/index",
     "pages/usage/index",
     "pages/about/index",

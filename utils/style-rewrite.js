@@ -1,4 +1,5 @@
 const article = require('./article')
+const i18n = require('./i18n')
 
 function styleVersionForArticle(item) {
   if (!item) return null
@@ -26,8 +27,18 @@ function generatedVersions(history) {
 
 function buttonText(styleVersion, generated) {
   const version = Number(styleVersion)
-  if (version < 0 || Number.isNaN(version)) return '选一个版本'
-  return generated && generated[version] ? `切换到 v${version} 风格` : `用 v${version} 重写本文`
+  if (version < 0 || Number.isNaN(version)) return i18n.ui('选一个版本')
+  const label = styleLabel(version)
+  if (i18n.currentLanguage() === i18n.ENGLISH) {
+    return generated && generated[version] ? `Switch to ${label}` : `Rewrite this article with ${label}`
+  }
+  return generated && generated[version] ? `切换到 ${label}` : `用 v${version} 重写本文`
+}
+
+function styleLabel(styleVersion) {
+  const version = Number(styleVersion)
+  if (version < 0 || Number.isNaN(version)) return i18n.ui('选风格')
+  return i18n.currentLanguage() === i18n.ENGLISH ? `v${version} style` : `v${version} 风格`
 }
 
 function choiceLabel(item, generated) {
@@ -42,5 +53,6 @@ module.exports = {
   generatedVersions,
   styleVersionForArticle,
   buttonText,
+  styleLabel,
   choiceLabel
 }

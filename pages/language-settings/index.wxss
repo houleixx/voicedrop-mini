@@ -1,0 +1,42 @@
+.language-settings-page {
+  --settings-content-top: 198rpx;
+  min-height: 100vh;
+  background: #faf6ef;
+}
+
+.language-card {
+  margin-top: 0;
+  overflow: hidden;
+  background: #ffffff;
+  border: 2rpx solid #ece3d5;
+  border-radius: 24rpx;
+}
+
+.language-done { width: 100%; height: 96rpx; margin-top: 28rpx; border: 0; border-radius: 20rpx; background: #c7432f; color: #fff; font-size: 32rpx; font-weight: 800; line-height: 96rpx; }
+.language-done::after { border: 0; }
+
+.language-hint {
+  display: block;
+  padding: 28rpx 28rpx 20rpx;
+  color: #8f8980;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
+
+.language-option {
+  display: flex;
+  min-height: 104rpx;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 28rpx;
+  border-bottom: 1rpx solid #eee6de;
+}
+
+.language-option.no-border {
+  border-bottom: 0;
+}
+
+.language-option-copy {
+  color: #29231f;
+  font-size: 30rpx;
+}
