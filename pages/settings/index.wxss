@@ -1,7 +1,23 @@
 @import '../../styles/remixicon.wxss';
 
 .settings-page {
-  --settings-content-top: 198rpx;
+  height: 100vh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.settings-scroll {
+  height: 100%;
+}
+
+.settings-scroll-content {
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 198rpx 32rpx 48rpx;
+}
+
+.settings-scroll-content .page-body {
+  padding: 0;
 }
 
 /* 分组卡片 */

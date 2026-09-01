@@ -79,6 +79,19 @@ test('settings page hides follow-up toggle', () => {
   assert.doesNotMatch(wxml, /toggleFollowUp/)
 })
 
+test('settings content scrolls independently from the fixed back header', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
+  const css = fs.readFileSync(path.join(root, 'pages/settings/index.wxss'), 'utf8')
+  const pageConfig = JSON.parse(fs.readFileSync(path.join(root, 'pages/settings/index.json'), 'utf8'))
+
+  assert.ok(wxml.indexOf('<page-header') < wxml.indexOf('<scroll-view class="settings-scroll"'))
+  assert.match(wxml, /<scroll-view class="settings-scroll"[^>]*scroll-y[^>]*enhanced[^>]*bounces="\{\{true\}\}"/)
+  assert.match(css, /\.settings-page\s*\{[^}]*height:\s*100vh;[^}]*overflow:\s*hidden;/s)
+  assert.match(css, /\.settings-scroll\s*\{[^}]*height:\s*100%;/s)
+  assert.match(css, /\.settings-scroll-content\s*\{[^}]*padding:\s*198rpx 32rpx 48rpx;/s)
+  assert.equal(pageConfig.disableScroll, true)
+})
+
 test('settings page exposes Android-style profile name editor', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/settings/index.wxml'), 'utf8')
 

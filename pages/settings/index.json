@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "设置",
   "navigationStyle": "custom",
+  "disableScroll": true,
   "usingComponents": {
     "page-header": "../../components/page-header/index",
     "cell": "plugin://materialPlugin/cell"
