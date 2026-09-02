@@ -48,11 +48,11 @@
     <view class="stats-card">
       <view class="stat-row">
         <text class="stat-title">{{i18n["录音"]}}</text>
-        <text class="stat-value">{{recordCount}} 条</text>
+        <text class="stat-value">{{recordCount}}{{i18n[' 条']}}</text>
       </view>
       <view class="stat-row">
         <text class="stat-title">{{i18n["成文"]}}</text>
-        <text class="stat-value">{{articleCount}} 篇</text>
+        <text class="stat-value">{{articleCount}}{{i18n[' 篇']}}</text>
       </view>
     </view>
 

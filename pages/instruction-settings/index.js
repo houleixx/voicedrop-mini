@@ -15,6 +15,15 @@ function marketKindLabel(item) {
   return appliesLabel(item) === '仅图片' ? '配图提示词' : '文字提示词'
 }
 
+function marketFilters() {
+  return [
+    { key: 'hot', label: i18n.ui('热门'), sort: 'hot', scope: '' },
+    { key: 'new', label: i18n.ui('最新'), sort: 'new', scope: '' },
+    { key: 'text', label: i18n.ui('文字'), sort: 'hot', scope: 'text' },
+    { key: 'image', label: i18n.ui('配图'), sort: 'hot', scope: 'image' }
+  ]
+}
+
 function authorInitial(author) {
   const name = String(author || i18n.ui('匿名')).trim()
   return Array.from(name)[0] || Array.from(i18n.ui('匿名'))[0]
@@ -66,12 +75,7 @@ Page({
     mutating: false, reordering: false, newMenuVisible: false, newMenuClosing: false, groupDialogVisible: false, groupName: '', importVisible: false, importClosing: false,
     importCode: '', importPreview: null, importLoading: false, importing: false, importError: '', importKeyboardHeight: 0, rowHeightPx: 56,
     swipedRowId: '', swipeOffset: 0, swipeDeletePx: 72, swipeDragging: false,
-    marketFilters: [
-      { key: 'hot', label: '热门', sort: 'hot', scope: '' },
-      { key: 'new', label: '最新', sort: 'new', scope: '' },
-      { key: 'text', label: '文字', sort: 'hot', scope: 'text' },
-      { key: 'image', label: '配图', sort: 'hot', scope: 'image' }
-    ],
+    marketFilters: marketFilters(),
     marketFilter: 'hot', marketItems: [], marketLoading: false, marketError: '', marketImportingCode: '',
     marketDetail: null, marketDetailPrompt: '', marketDetailLoading: false, marketDetailClosing: false
   },
@@ -94,6 +98,13 @@ Page({
       if (!this.data.marketItems.length && !this.data.marketLoading) this.loadMarket()
     }
   },
+  onLanguageChanged() {
+    this.setData({
+      marketFilters: marketFilters(),
+      rows: this.displayedRows(promptStore.items()),
+      marketItems: this.decorateMarket(this.data.marketItems)
+    })
+  },
   displayedRows(items) { return rowsFor(items, this.data.expandedGroups) },
   async loadItems() {
     const cached = promptStore.items()
@@ -101,7 +112,7 @@ Page({
     const result = await promptStore.refresh()
     const items = promptStore.items()
     this.setData({ rows: this.displayedRows(items), loading: false, empty: !items.length,
-      marketItems: this.decorateMarket(this.data.marketItems), error: result.ok ? '' : '加载失败，正在显示上次内容' })
+      marketItems: this.decorateMarket(this.data.marketItems), error: result.ok ? '' : i18n.ui('加载失败，正在显示上次内容') })
   },
   decorateMarket(items) {
     return (items || []).map((item) => Object.assign({}, item, {
@@ -120,7 +131,7 @@ Page({
     const result = await promptStore.market({ sort: filter.sort, scope: filter.scope, limit: 30 })
     if (requestKey !== this.data.marketFilter) return
     this.setData({ marketLoading: false, marketItems: result.ok ? this.decorateMarket(result.items) : [],
-      marketError: result.ok ? '' : '社区提示词加载失败，点此重试' })
+      marketError: result.ok ? '' : i18n.ui('社区提示词加载失败，点此重试') })
   },
   selectMarketFilter(event) {
     const key = event.currentTarget.dataset.key
@@ -157,12 +168,12 @@ Page({
     const result = await promptStore.importCode(code)
     if (!result.ok) {
       this.setData({ marketImportingCode: '' })
-      wx.showToast({ title: '导入失败，请重试', icon: 'none' })
+      wx.showToast({ title: i18n.ui('导入失败，请重试'), icon: 'none' })
       return
     }
     this.setData({ marketImportingCode: '', marketItems: this.decorateMarket(this.data.marketItems) })
     if (closeDetail) this.closeMarketDetail()
-    wx.showToast({ title: result.already ? '已经导入过了' : '已加入提示词', icon: 'none' })
+    wx.showToast({ title: i18n.ui(result.already ? '已经导入过了' : '已加入提示词'), icon: 'none' })
     await this.loadItems()
   },
   handleRowTap(event) {
@@ -239,11 +250,11 @@ Page({
   async confirmCreateGroup() {
     if (this.data.mutating) return
     const label = this.data.groupName.trim()
-    if (!label) { wx.showToast({ title: '请输入分组名字', icon: 'none' }); return }
+    if (!label) { wx.showToast({ title: i18n.ui('请输入分组名字'), icon: 'none' }); return }
     this.setData({ mutating: true })
     const result = await promptStore.add({ id: tree.newUserId(), type: 'group', label, origin: 'user', children: [] }, null)
-    if (!result.ok) { this.setData({ mutating: false, error: '创建失败，请重试' }); return }
-    wx.showToast({ title: '已创建' })
+    if (!result.ok) { this.setData({ mutating: false, error: i18n.ui('创建失败，请重试') }); return }
+    wx.showToast({ title: i18n.ui('已创建') })
     this.setData({ mutating: false, newMenuVisible: false, groupDialogVisible: false, groupName: '' })
     await this.loadItems()
   },
@@ -262,14 +273,14 @@ Page({
     this.setData({ importLoading: true, importError: '' })
     const result = await promptStore.preview(code)
     if (code !== this.data.importCode) return
-    this.setData({ importLoading: false, importPreview: result.ok ? result.data : null, importError: result.ok ? '' : (result.error === 'not_found' ? '分享码无效或已停止分享' : '加载失败，请重试') })
+    this.setData({ importLoading: false, importPreview: result.ok ? result.data : null, importError: result.ok ? '' : i18n.ui(result.error === 'not_found' ? '分享码无效或已停止分享' : '加载失败，请重试') })
   },
   async confirmImportSheet() {
     if (!this.data.importPreview || this.data.importing) return
     this.setData({ importing: true, importError: '' })
     const result = await promptStore.importCode(this.data.importCode)
-    if (!result.ok) { this.setData({ importing: false, importError: '导入失败，请重试' }); return }
-    wx.showToast({ title: '已导入' })
+    if (!result.ok) { this.setData({ importing: false, importError: i18n.ui('导入失败，请重试') }); return }
+    wx.showToast({ title: i18n.ui('已导入') })
     this.setData({ importing: false })
     this.closeImport()
     await this.loadItems()
@@ -279,10 +290,10 @@ Page({
     const id = event.currentTarget.dataset.id
     const item = findItem(promptStore.items(), id)
     if (!item || item.type !== 'action') { this.closeSwipe(); return }
-    const modal = await new Promise((resolve) => wx.showModal({ title: '删除提示词', content: `确定删除“${item.label}”吗？删除后无法恢复。`, confirmText: '删除', confirmColor: '#d8593b', success: resolve }))
+    const modal = await new Promise((resolve) => wx.showModal({ title: i18n.ui('删除提示词'), content: i18n.currentLanguage() === i18n.ENGLISH ? `Delete “${item.label}”? This cannot be undone.` : `确定删除“${item.label}”吗？删除后无法恢复。`, confirmText: i18n.ui('删除'), confirmColor: '#d8593b', success: resolve }))
     if (!modal.confirm) { this.closeSwipe(); return }
     this.setData({ mutating: true })
-    wx.showLoading({ title: '删除中', mask: true })
+    wx.showLoading({ title: i18n.ui('删除中'), mask: true })
     let result
     try {
       result = await promptStore.remove(id)
@@ -291,15 +302,15 @@ Page({
     } finally {
       wx.hideLoading()
     }
-    this.setData({ mutating: false, swipedRowId: '', swipeOffset: 0, rows: this.displayedRows(promptStore.items()), error: result.ok ? '' : '删除失败，请重试' })
+    this.setData({ mutating: false, swipedRowId: '', swipeOffset: 0, rows: this.displayedRows(promptStore.items()), error: result.ok ? '' : i18n.ui('删除失败，请重试') })
   },
   async restoreDefaults() {
     if (this.data.mutating) return
-    const modal = await new Promise((resolve) => wx.showModal({ title: '恢复默认提示词', content: '会补回缺少的系统提示词，不会删除自建内容。', success: resolve }))
+    const modal = await new Promise((resolve) => wx.showModal({ title: i18n.ui('恢复默认提示词'), content: i18n.ui('会补回缺少的系统提示词，不会删除自建内容。'), success: resolve }))
     if (!modal.confirm) return
     this.setData({ mutating: true })
     const result = await promptStore.restoreDefaults()
-    this.setData({ mutating: false, rows: this.displayedRows(promptStore.items()), error: result.ok ? '' : '恢复失败，请重试' })
+    this.setData({ mutating: false, rows: this.displayedRows(promptStore.items()), error: result.ok ? '' : i18n.ui('恢复失败，请重试') })
   },
   startReorder() {
     if (this.data.reordering || this.data.mutating) return
@@ -319,7 +330,7 @@ Page({
       this.dragController.move(id, intoGroup ? target.id : (target.parentId || null), intoGroup ? target.childCount : target.index)
       const expandedGroups = intoGroup ? Array.from(new Set([...this.data.expandedGroups, target.id])) : this.data.expandedGroups
       this.setData({ expandedGroups, rows: rowsFor(this.dragController.draft(), expandedGroups) })
-    } catch (_) { wx.showToast({ title: '分组不能放进分组', icon: 'none' }) }
+    } catch (_) { wx.showToast({ title: i18n.ui('分组不能放进分组'), icon: 'none' }) }
   },
   cancelReorder() {
     if (this.dragController) this.dragController.cancel()
@@ -338,7 +349,7 @@ Page({
     } finally {
       wx.hideLoading()
     }
-    if (!result.ok) { this.setData({ mutating: false, error: result.error === 'conflict' ? '列表已更新，请重新排序' : '保存失败，请重试' }); return }
+    if (!result.ok) { this.setData({ mutating: false, error: i18n.ui(result.error === 'conflict' ? '列表已更新，请重新排序' : '保存失败，请重试') }); return }
     this.dragController = null
     this.setData({ mutating: false, reordering: false, rows: this.displayedRows(promptStore.items()), error: '' })
   }

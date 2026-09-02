@@ -1,5 +1,6 @@
 const usage = require('../../services/usage')
 const usageFormat = require('../../utils/usage-format')
+const i18n = require('../../utils/i18n')
 const formatEntry = usageFormat.formatEntry
 
 Page({
@@ -47,7 +48,7 @@ Page({
           capacity: usage.articleCapacity(remaining)
         })
       } else {
-        wx.showToast({ title: '加载失败', icon: 'error' })
+        wx.showToast({ title: i18n.message('加载失败'), icon: 'error' })
       }
 
       if (summaryResult.status === 'fulfilled') {

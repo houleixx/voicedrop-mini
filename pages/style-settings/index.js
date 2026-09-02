@@ -43,7 +43,7 @@ Page({
       })
       await this.loadStyleHistory()
     } catch (error) {
-      wx.showToast({ title: '加载失败', icon: 'error' })
+      wx.showToast({ title: i18n.message('加载失败'), icon: 'error' })
     }
   },
 
@@ -56,7 +56,7 @@ Page({
     const ok = await settings.saveStyle(this.data.style)
     this.setData({ saving: false })
     if (!options || !options.silent) {
-      wx.showToast({ title: ok ? '已保存' : '保存失败', icon: ok ? 'success' : 'error' })
+      wx.showToast({ title: i18n.message(ok ? '已保存' : '保存失败'), icon: ok ? 'success' : 'error' })
     }
     return ok
   },
@@ -107,7 +107,7 @@ Page({
       styleHistoryOpen: false
     })
     const ok = await settings.saveStyleHead(version)
-    wx.showToast({ title: ok ? '已切换文风' : '切换失败', icon: ok ? 'success' : 'error' })
+    wx.showToast({ title: i18n.ui(ok ? '已切换文风' : '切换失败'), icon: ok ? 'success' : 'error' })
     if (!ok) {
       await this.load()
     }

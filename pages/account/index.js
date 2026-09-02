@@ -34,7 +34,7 @@ Page({
       token,
       maskedToken: maskToken(token),
       wechatAuthed,
-      loginStatusText: wechatAuthed ? '已用微信登录' : '未登录微信'
+      loginStatusText: i18n.ui(wechatAuthed ? '已用微信登录' : '未登录微信')
     })
     try {
       const scope = await library.ownerScope({ anonymous: true })
@@ -82,14 +82,14 @@ Page({
     const token = this.data.importToken.trim()
     const ok = auth.adoptToken(token)
     if (ok) {
-      wx.showToast({ title: '已切换到已有账号', icon: 'success' })
+      wx.showToast({ title: i18n.ui('已切换到已有账号'), icon: 'success' })
       this.setData({ showImportDialog: false, importToken: '' })
       this.refresh()
       this.loadStats()
     } else {
       wx.showModal({
-        title: '提示',
-        content: '请粘贴以 anon_ 开头的访问令牌',
+        title: i18n.ui('提示'),
+        content: i18n.ui('请粘贴以 anon_ 开头的访问令牌'),
         showCancel: false
       })
     }
@@ -121,7 +121,7 @@ Page({
     if (this.data.wechatLoggingIn) return
     this.setData({
       wechatLoggingIn: true,
-      loginStatusText: '正在登录微信...'
+      loginStatusText: i18n.ui('正在登录微信...')
     })
     wx.login({
       success: async (login) => {
@@ -137,15 +137,15 @@ Page({
             }
           } else {
             wx.showModal({
-              title: '微信登录失败',
-              content: result.detail || result.error || '登录失败',
+              title: i18n.ui('微信登录失败'),
+              content: i18n.message(result.detail || result.error || '登录失败'),
               showCancel: false
             })
           }
         } catch (error) {
           wx.showModal({
-            title: '微信登录失败',
-            content: error && error.message || '登录失败',
+            title: i18n.ui('微信登录失败'),
+            content: i18n.message(error && error.message || '登录失败'),
             showCancel: false
           })
         } finally {
@@ -156,35 +156,35 @@ Page({
       fail: () => {
         this.setData({ wechatLoggingIn: false })
         this.refresh()
-        wx.showToast({ title: '登录失败', icon: 'error' })
+        wx.showToast({ title: i18n.message('登录失败'), icon: 'error' })
       }
     })
   },
 
   confirmWechatAccountSwitch(result) {
     wx.showModal({
-      title: '该微信已关联另一个云端空间',
-      content: '是否切换到微信已绑定的云端空间？当前空间会保存在本机，退出微信登录后会恢复当前空间。',
-      confirmText: '切换',
-      cancelText: '保留当前',
+      title: i18n.ui('该微信已关联另一个云端空间'),
+      content: i18n.ui('是否切换到微信已绑定的云端空间？当前空间会保存在本机，退出微信登录后会恢复当前空间。'),
+      confirmText: i18n.ui('切换'),
+      cancelText: i18n.ui('保留当前'),
       showCancel: true,
       success: (choice) => {
         if (choice.confirm) this.completeSwitchedWechatLogin(result)
       },
-      fail: () => wx.showToast({ title: '账号切换提示打开失败', icon: 'none' })
+      fail: () => wx.showToast({ title: i18n.ui('账号切换提示打开失败'), icon: 'none' })
     })
   },
 
   completeWechatLogin(result) {
     if (!auth.storeSession(result.session)) {
       wx.showModal({
-        title: '微信登录失败',
-        content: '无效会话',
+        title: i18n.ui('微信登录失败'),
+        content: i18n.ui('无效会话'),
         showCancel: false
       })
       return
     }
-    wx.showToast({ title: '已登录' })
+    wx.showToast({ title: i18n.ui('已登录') })
     this.refresh()
     this.loadStats()
   },
@@ -192,13 +192,13 @@ Page({
   completeSwitchedWechatLogin(result) {
     if (!auth.switchToWechatAccount(result.session)) {
       wx.showModal({
-        title: '微信登录失败',
-        content: '无效会话',
+        title: i18n.ui('微信登录失败'),
+        content: i18n.ui('无效会话'),
         showCancel: false
       })
       return
     }
-    wx.showToast({ title: '已切换到微信空间' })
+    wx.showToast({ title: i18n.ui('已切换到微信空间') })
     wx.reLaunch({ url: '/pages/recordings/index' })
   },
 
@@ -210,28 +210,28 @@ Page({
   async deleteAccount() {
     const confirmed = await new Promise((resolve) => {
       wx.showModal({
-        title: '永久删除账户？',
-        content: '将永久删除你的全部数据：云端录音、文章、照片、设置、社区分享和登录绑定，本机数据也会清空。此操作不可恢复。',
-        confirmText: '永久删除',
+        title: i18n.ui('永久删除账户？'),
+        content: i18n.ui('将永久删除你的全部数据：云端录音、文章、照片、设置、社区分享和登录绑定，本机数据也会清空。此操作不可恢复。'),
+        confirmText: i18n.ui('永久删除'),
         confirmColor: '#d8593b',
-        cancelText: '取消',
+        cancelText: i18n.ui('取消'),
         success: (result) => resolve(Boolean(result.confirm)),
         fail: () => resolve(false)
       })
     })
     if (!confirmed) return
-    wx.showLoading({ title: '正在删除' })
+    wx.showLoading({ title: i18n.ui('正在删除') })
     try {
       if (!await library.deleteAccount()) {
-        wx.showToast({ title: '删除失败，请稍后再试', icon: 'none' })
+        wx.showToast({ title: i18n.ui('删除失败，请稍后再试'), icon: 'none' })
         return
       }
       await recordingUploads.clearAll()
       auth.resetAnonymous()
-      wx.showToast({ title: '账户已删除', icon: 'success' })
+      wx.showToast({ title: i18n.ui('账户已删除'), icon: 'success' })
       wx.reLaunch({ url: '/pages/recordings/index' })
     } catch (_) {
-      wx.showToast({ title: '删除失败，请稍后再试', icon: 'none' })
+      wx.showToast({ title: i18n.ui('删除失败，请稍后再试'), icon: 'none' })
     } finally {
       wx.hideLoading()
     }
