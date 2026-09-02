@@ -34,6 +34,15 @@ test('book writing page localizes its dynamic labels and keeps the submit button
   assert.match(css, /\.feature-primary\[disabled\]\s*\{[^}]*border:\s*2rpx solid #d1cac0;[^}]*background:\s*#9b9388;[^}]*box-shadow:\s*none;/s)
 })
 
+test('book writing footer hint aligns with the body content', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../pages/book-writing/index.wxss'), 'utf8')
+
+  assert.match(css, /\.writing-body\s*\{[^}]*padding:\s*8rpx 40rpx 60rpx;/s)
+  assert.match(css, /\.writing-scroll\s*\{[^}]*bottom:\s*calc\(236rpx \+ env\(safe-area-inset-bottom\)\);/s)
+  assert.match(css, /\.writing-bottom\s*\{[^}]*height:\s*calc\(236rpx \+ env\(safe-area-inset-bottom\)\);[^}]*padding:\s*20rpx 16rpx calc\(20rpx \+ env\(safe-area-inset-bottom\)\);/s)
+  assert.match(css, /\.bottom-hint\s*\{[^}]*margin:\s*18rpx 24rpx 0;[^}]*text-align:\s*left;/s)
+})
+
 function loadWritingPage(start) {
   const events = []
   let definition

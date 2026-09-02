@@ -13,7 +13,7 @@
   position: fixed;
   top: 198rpx;
   right: 0;
-  bottom: calc(260rpx + env(safe-area-inset-bottom));
+  bottom: calc(236rpx + env(safe-area-inset-bottom));
   left: 0;
 }
 
@@ -402,6 +402,7 @@
   left: 0;
   z-index: 20;
   box-sizing: border-box;
+  height: calc(236rpx + env(safe-area-inset-bottom));
   padding: 20rpx 16rpx calc(20rpx + env(safe-area-inset-bottom));
   border-top: 2rpx solid #eadfd2;
   background: #faf6ef;
@@ -448,11 +449,11 @@
 }
 
 .bottom-hint {
-  margin-top: 18rpx;
+  margin: 18rpx 24rpx 0;
   color: #b8ae9e;
   font-size: 25rpx;
   line-height: 1.35;
-  text-align: center;
+  text-align: left;
 }
 
 .submitted {
