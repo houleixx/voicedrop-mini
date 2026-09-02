@@ -29,6 +29,7 @@ test('book writing page localizes its dynamic labels and keeps the submit button
   assert.match(i18n.ui('AI生成 · 提交后可关闭小程序，10–30 分钟写完并出现在「写书」书架', 'en'), /^AI-Generated ·/)
   assert.match(i18n.ui('比如：为什么一切都在变乱？\n或：钱不脏，是我一直躲着它。', 'en'), /^For example:/)
   assert.equal(i18n.ui('算力不够 · 还差 ', 'en') + 12, 'Not enough credits · Need 12')
+  assert.equal(i18n.ui('开始写书 · ', 'en') + 160 + i18n.ui(' 算力', 'en'), 'Start writing · 160 credits')
   assert.match(css, /\.feature-primary\s*\{[^}]*width:\s*100%;[^}]*height:\s*auto;[^}]*min-height:\s*108rpx;[^}]*white-space:\s*normal;[^}]*word-break:\s*break-word;/s)
   assert.match(css, /\.feature-primary\[disabled\]\s*\{[^}]*border:\s*2rpx solid #d1cac0;[^}]*background:\s*#9b9388;[^}]*box-shadow:\s*none;/s)
 })

@@ -11,10 +11,10 @@
         <text class="ai-generated-copy">{{i18n["本功能使用人工智能生成书籍内容"]}}</text>
       </view>
       <view class="price-card">
-        <view class="price-main"><view class="price"><text class="bolt ri-flashlight-line"></text><view class="price-copy"><text class="amount">320</text><text class="price-unit">{{i18n["算力"]}}</text></view></view><text class="price-note">{{i18n["写一本书的价钱，提交时一次扣清"]}}</text></view>
-        <view class="balance"><text wx:if="{{balance === null}}" class="balance-loading">{{i18n["加载中…"]}}</text><block wx:else><text class="balance-value {{balance < 320 ? 'short' : ''}}">{{balanceDisplay}}</text><text class="balance-label">{{i18n["你现在的算力"]}}</text></block></view>
+        <view class="price-main"><view class="price"><text class="bolt ri-flashlight-line"></text><view class="price-copy"><text class="amount">{{price}}</text><text class="price-unit">{{i18n["算力"]}}</text></view></view><text class="price-note">{{i18n["写一本书的价钱，提交时一次扣清"]}}</text></view>
+        <view class="balance"><text wx:if="{{balance === null}}" class="balance-loading">{{i18n["加载中…"]}}</text><block wx:else><text class="balance-value {{balance < price ? 'short' : ''}}">{{balanceDisplay}}</text><text class="balance-label">{{i18n["你现在的算力"]}}</text></block></view>
       </view>
-      <view wx:if="{{balance !== null && balance < 320}}" class="earn-section">
+      <view wx:if="{{balance !== null && balance < price}}" class="earn-section">
         <text class="section-title">{{i18n["算力不够？"]}}</text>
         <view class="earn-card"><view class="earn-summary"><text class="gap">{{i18n["还差 "]}}{{shortfall}}{{i18n[" 算力，两条来路："]}}</text></view>
           <view class="earn-row"><text class="earn-icon earn-icon-feed ri-flashlight-line"></text><view class="earn-content"><view class="earn-headline"><text class="earn-title">{{i18n["请朋友给你的文章「加油」——"]}}</text><text class="earn-reward">{{i18n["一次约得 "]}}{{invite.suanliFeedAuthor || 0}}{{i18n[" 算力"]}}</text></view><text class="earn-sub">{{i18n["把文章分享到 VD社区或发给朋友，读的人点「加油」你就进账"]}}</text></view></view>
@@ -27,6 +27,6 @@
       <text wx:if="{{message}}" class="feature-hint error">{{message}}</text>
     </view>
   </scroll-view>
-  <view class="writing-bottom"><button class="feature-primary" bindtap="start" disabled="{{!canSubmit}}">{{sending ? i18n['提交中…'] : (shortfall > 0 ? i18n['算力不够 · 还差 '] + shortfall : i18n['开始写书 · 320 算力'])}}</button><text class="bottom-hint">{{i18n["AI生成 · 提交后可关闭小程序，10–30 分钟写完并出现在「写书」书架"]}}</text></view>
+  <view class="writing-bottom"><button class="feature-primary" bindtap="start" disabled="{{!canSubmit}}">{{sending ? i18n['提交中…'] : (shortfall > 0 ? i18n['算力不够 · 还差 '] + shortfall : i18n['开始写书 · '] + price + i18n[' 算力'])}}</button><text class="bottom-hint">{{i18n["AI生成 · 提交后可关闭小程序，10–30 分钟写完并出现在「写书」书架"]}}</text></view>
   </block>
 </view>

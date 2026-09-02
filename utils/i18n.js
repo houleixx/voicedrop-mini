@@ -148,7 +148,7 @@ const ENGLISH_COPY = {
   , '你的名字': 'Your name', '已收下': 'Saved', '收下这条提示词': 'Save this prompt'
   , '结束采访': 'End interview', '开始采访': 'Start interview', '停止录音': 'Stop recording', '开始录音': 'Start recording'
   , '验证码 ': 'Verification code ', '停止播放': 'Stop playback', '播放录音': 'Play recording'
-  , '提交中…': 'Submitting…', '算力不够 · 还差 ': 'Not enough credits · Need ', '开始写书 · 320 算力': 'Start writing · 320 credits'
+  , '提交中…': 'Submitting…', '算力不够 · 还差 ': 'Not enough credits · Need ', '开始写书 · ': 'Start writing · ', ' 算力': ' credits'
   , '修改《': 'Edit “', '》': '”'
   , 'Token 已导入': 'Token imported'
   , '图片风格': 'Image styles', '卡通': 'Cartoon', '广告': 'Advertisement', '水彩': 'Watercolor', '素描': 'Sketch', '油画': 'Oil painting', '胶片': 'Film'

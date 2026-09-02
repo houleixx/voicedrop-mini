@@ -8,7 +8,7 @@ const ARTICLE_PLACEHOLDER = '比如：写成给孩子的绘本。（可留空）
 
 Page({
   data: { seed: '', seedArticle: null, seedPlaceholderKey: IDEA_PLACEHOLDER, seedTitleKey: '中心思想', sending: false, submitted: false, message: '', error: false,
-    balance: null, balanceDisplay: '', invite: {}, shortfall: 0, feedTimes: '—', invitePeople: '—', canSubmit: false },
+    price: books.BOOK_SUANLI, balance: null, balanceDisplay: '', invite: {}, shortfall: 0, feedTimes: '—', invitePeople: '—', canSubmit: false },
   async onLoad() {
     const candidate = app.globalData.bookSeedArticle
     app.globalData.bookSeedArticle = null
@@ -19,8 +19,10 @@ Page({
     const context = await books.writingContext()
     const balance = context.balance
     const invite = context.invite || {}
-    const shortfall = books.shortfall(balance)
-    this.setData({ balance, balanceDisplay: books.formatBalance(balance), invite, shortfall,
+    const prices = context.prices || {}
+    const price = Number(prices.book) > 0 ? Number(prices.book) : books.BOOK_SUANLI
+    const shortfall = books.shortfall(balance, price)
+    this.setData({ price, balance, balanceDisplay: books.formatBalance(balance), invite, shortfall,
       feedTimes: invite.suanliFeedAuthor ? Math.ceil(shortfall / invite.suanliFeedAuthor) : '—',
       invitePeople: invite.suanliInviter ? Math.ceil(shortfall / invite.suanliInviter) : '—' })
     this.updateSubmit()
@@ -30,7 +32,7 @@ Page({
   done() { wx.navigateBack() },
   updateSubmit() {
     this.setData({ canSubmit: Boolean(this.data.seed.trim() || this.data.seedArticle) && !this.data.sending && !this.data.submitted &&
-      (this.data.balance == null || this.data.balance >= books.BOOK_SUANLI) })
+      (this.data.balance == null || this.data.balance >= this.data.price) })
   },
   submissionSeed() {
     if (this.data.seedArticle) return articleUtil.bookSeed(this.data.seedArticle, this.data.seed)
@@ -59,7 +61,7 @@ Page({
     const result = books.result(response)
     const balance = response && response.statusCode === 402 && Number(response.data && response.data.suanli)
     const next = { sending: false, submitted: result.accepted, message: result.message, error: !result.accepted }
-    if (Number.isFinite(balance)) { next.balance = balance; next.balanceDisplay = books.formatBalance(balance); next.shortfall = books.shortfall(balance) }
+    if (Number.isFinite(balance)) { next.balance = balance; next.balanceDisplay = books.formatBalance(balance); next.shortfall = books.shortfall(balance, this.data.price) }
     this.setData(next); this.updateSubmit()
   },
   onUnload() { this.hideSubmitLoading() }

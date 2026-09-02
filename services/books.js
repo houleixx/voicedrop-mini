@@ -6,7 +6,9 @@ const i18n = require('../utils/i18n')
 const API = 'https://lab.jianshuo.dev/api/book'
 const HISTORY_API = API + '/history'
 const REVISE_API = API + '/revise'
-const BOOK_SUANLI = 320
+// Display prices are refreshed by usage.prices(); these constants are only
+// safe offline defaults. The server's 402 need_suanli is authoritative.
+const BOOK_SUANLI = 160
 const REVISE_SUANLI = 40
 const CACHE_KEY = 'voicedrop.books.shelf.v1'
 const BOOK_WEB_BASE = 'https://voicedrop.cn/books/'
@@ -261,17 +263,23 @@ async function writingContext(dependencies) {
   const services = dependencies || {}
   const usage = services.usage || require('./usage')
   const referral = services.referral || require('./referral')
+  let prices = { book: BOOK_SUANLI, book_revise: REVISE_SUANLI }
+  try {
+    const value = typeof usage.prices === 'function' ? await usage.prices() : null
+    if (value && Number(value.book) > 0 && Number(value.book_revise) > 0) prices = value
+  } catch (_) {}
+  const bookPrice = Number(prices.book)
   let balance = null
   try {
     const data = await usage.balance()
     const value = Number(data && data.suanli)
     balance = Number.isFinite(value) ? value : null
   } catch (_) {}
-  if (balance == null || balance >= BOOK_SUANLI) return { balance, invite: null }
+  if (balance == null || balance >= bookPrice) return { balance, invite: null, prices }
   try {
-    return { balance, invite: await referral.link() }
+    return { balance, invite: await referral.link(), prices }
   } catch (_) {
-    return { balance, invite: null }
+    return { balance, invite: null, prices }
   }
 }
 
@@ -287,10 +295,11 @@ function formatBalance(value) {
   return String(Math.round(number)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
-function shortfall(balance) {
+function shortfall(balance, price) {
   const number = Number(balance)
   if (!Number.isFinite(number)) return 0
-  return Math.ceil(Math.max(0, BOOK_SUANLI - number))
+  const required = Number(price)
+  return Math.ceil(Math.max(0, (Number.isFinite(required) && required > 0 ? required : BOOK_SUANLI) - number))
 }
 
 function message(statusCode, data) {

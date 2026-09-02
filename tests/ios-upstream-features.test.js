@@ -41,33 +41,33 @@ test('feedback input is trimmed and capped at the backend contract limit', () =>
 test('book endpoint uses accepted, insufficient-credit and invalid-token states', () => {
   assert.match(books.message(202), /可以关闭小程序/)
   assert.match(books.message(401), /身份校验/)
-  const insufficient = books.result({ statusCode: 402, data: { need_suanli: 320, suanli: 12.5 } })
+  const insufficient = books.result({ statusCode: 402, data: { need_suanli: 160, suanli: 12.5 } })
   assert.equal(insufficient.accepted, false)
-  assert.match(insufficient.message, /要 320 算力/)
+  assert.match(insufficient.message, /要 160 算力/)
   assert.match(insufficient.message, /现在有 12\.5/)
   assert.doesNotMatch(books.message(401), /文章/)
   assert.equal(books.formatBalance(1060.6), '1,061')
-  assert.equal(books.shortfall(197.2), 123)
-  assert.equal(books.shortfall(320), 0)
+  assert.equal(books.shortfall(197.2, 320), 123)
+  assert.equal(books.shortfall(160), 0)
 })
 
 test('book writing requests an invite link only after confirming insufficient balance', async () => {
   const enoughCalls = []
   const enough = await books.writingContext({
-    usage: { async balance() { enoughCalls.push('balance'); return { suanli: 320 } } },
+    usage: { async prices() { enoughCalls.push('prices'); return { book: 160, book_revise: 40 } }, async balance() { enoughCalls.push('balance'); return { suanli: 320 } } },
     referral: { async link() { enoughCalls.push('invite'); return { url: 'unexpected' } } }
   })
-  assert.deepEqual(enoughCalls, ['balance'])
-  assert.deepEqual(enough, { balance: 320, invite: null })
+  assert.deepEqual(enoughCalls, ['prices', 'balance'])
+  assert.deepEqual(enough, { balance: 320, invite: null, prices: { book: 160, book_revise: 40 } })
 
   const shortCalls = []
   const invite = { url: 'https://example.test/invite' }
   const insufficient = await books.writingContext({
-    usage: { async balance() { shortCalls.push('balance'); return { suanli: 100 } } },
+    usage: { async prices() { shortCalls.push('prices'); return { book: 160, book_revise: 40 } }, async balance() { shortCalls.push('balance'); return { suanli: 100 } } },
     referral: { async link() { shortCalls.push('invite'); return invite } }
   })
-  assert.deepEqual(shortCalls, ['balance', 'invite'])
-  assert.deepEqual(insufficient, { balance: 100, invite })
+  assert.deepEqual(shortCalls, ['prices', 'balance', 'invite'])
+  assert.deepEqual(insufficient, { balance: 100, invite, prices: { book: 160, book_revise: 40 } })
 })
 
 test('about exposes help while settings does not duplicate the home book shelf', () => {
@@ -118,7 +118,7 @@ test('book writing page matches the current iOS price, seed and pipeline composi
   assert.match(source, /比如：为什么一切都在变乱？\\n或：钱不脏，是我一直躲着它。/)
   assert.match(markup, /中心思想/)
   assert.match(markup, /拆大纲[\s\S]*并行写[\s\S]*独立评审[\s\S]*上你的架/)
-  assert.match(markup, /开始写书 · 320 算力/)
+  assert.match(markup, /i18n\['开始写书 · '\] \+ price \+ i18n\[' 算力'\]/)
   assert.match(css, /\.price-card\s*\{[^}]*padding:\s*32rpx 36rpx;[^}]*border:\s*2rpx solid #ebd9b8;[^}]*border-radius:\s*24rpx;/s)
   assert.match(css, /\.feature-editor\s*\{[^}]*height:\s*316rpx;[^}]*border:\s*3rpx solid #d8593b;/s)
   assert.match(css, /\.book-placeholder\s*\{[^}]*font-size:\s*26rpx;/s)
