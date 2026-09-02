@@ -165,6 +165,12 @@ test('book revise page is registered and exposes the 40-suanli conversation UI',
   assert.match(source, /const POLL_MS = 6000/)
 })
 
+test('book revise reply bubbles wrap long URLs instead of overflowing the conversation width', () => {
+  const styles = fs.readFileSync(path.join(root, 'pages/book-revise/index.wxss'), 'utf8')
+
+  assert.match(styles, /\.instruction-bubble,\s*\.reply-bubble\s*\{[^}]*box-sizing:\s*border-box;[^}]*word-break:\s*break-all;[^}]*overflow-wrap:\s*anywhere;/s)
+})
+
 test('book revise composer follows the keyboard instead of being covered', () => {
   const markup = fs.readFileSync(path.join(root, 'pages/book-revise/index.wxml'), 'utf8')
   const styles = fs.readFileSync(path.join(root, 'pages/book-revise/index.wxss'), 'utf8')

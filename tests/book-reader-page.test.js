@@ -11,7 +11,6 @@ function loadReaderPage() {
     hideLoading() { calls.push(['hideLoading']) },
     showToast(options) { calls.push(['showToast', options]) },
     showShareMenu(options) { calls.push(['showShareMenu', options]) },
-    showActionSheet(options) { calls.push(['showActionSheet', options]) },
     navigateTo(options) { calls.push(['navigateTo', options]) }
   }
   global.Page = (value) => { definition = value }
@@ -120,8 +119,18 @@ test('book reader owns revise and hide actions after server ownership verificati
   const readerMarkup = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxml'), 'utf8')
   const shelfMarkup = fs.readFileSync(path.join(__dirname, '../pages/book-shelf/index.wxml'), 'utf8')
   const recordingsMarkup = fs.readFileSync(path.join(__dirname, '../pages/recordings/index.wxml'), 'utf8')
+  const readerCss = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxss'), 'utf8')
 
   assert.match(readerMarkup, /wx:if="\{\{mine\}\}"[^>]*class="reader-actions"[^>]*bindtap="openActions"/)
+  assert.match(readerMarkup, /class="reader-actions"[^>]*bindtap="openActions"[^>]*>⋯<\/cover-view>/)
+  assert.match(readerMarkup, /wx:if="\{\{mine && moreMenuOpen\}\}" class="reader-menu-layer" bindtap="closeMoreMenu"/)
+  assert.match(readerMarkup, /data-action="revise" bindtap="runMoreMenuAction">修改这本书/)
+  assert.match(readerMarkup, /<cover-view class="reader-menu-separator"><\/cover-view>/)
+  assert.match(readerMarkup, /data-action="visibility" bindtap="runMoreMenuAction">\{\{hidden \? '取消隐藏本书' : '隐藏本书'\}\}/)
+  assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.js'), 'utf8'), /showActionSheet/)
+  assert.match(readerCss, /\.reader-actions\s*\{[^}]*top:\s*5rpx;[^}]*right:\s*20rpx;[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;[^}]*font-size:\s*36rpx;[^}]*line-height:\s*64rpx;[^}]*text-align:\s*center;/s)
+  assert.match(readerCss, /\.reader-menu-card\s*\{[^}]*width:\s*360rpx;/s)
+  assert.match(readerCss, /\.reader-menu-separator\s*\{[^}]*height:\s*1rpx;[^}]*margin:\s*0 30rpx;/s)
   assert.doesNotMatch(shelfMarkup, /editableByAuthor|reviseBook/)
   assert.doesNotMatch(recordingsMarkup, /editableByAuthor|reviseBook/)
   assert.match(shelfMarkup, /wx:if="\{\{item\.hidden\}\}"[^>]*class="book-hidden-badge">\{\{i18n\["隐藏"\]\}\}<\/text>/)

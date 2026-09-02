@@ -7,7 +7,7 @@ function decoded(value) {
 }
 
 Page({
-  data: { url: '', loading: false, title: '', author: '', cover: false, mine: false, hidden: false },
+  data: { url: '', loading: false, title: '', author: '', cover: false, mine: false, hidden: false, moreMenuOpen: false },
   onLoad(options) {
     const slug = String(options.slug || '').replace(/[^A-Za-z0-9_-]/g, '')
     const book = {
@@ -68,17 +68,20 @@ Page({
   },
   openActions() {
     if (!this.data.mine || this._changingHidden) return
-    const hidden = this.data.hidden
-    wx.showActionSheet({
-      itemList: ['修改这本书', hidden ? '取消隐藏本书' : '隐藏本书'],
-      success: (result) => {
-        if (result.tapIndex === 0) {
-          wx.navigateTo({ url: `/pages/book-revise/index?slug=${encodeURIComponent(this.book.slug)}&title=${encodeURIComponent(this.book.main || this.book.title || '')}` })
-          return
-        }
-        this.confirmSetHidden(!hidden)
-      }
-    })
+    this.setData({ moreMenuOpen: true })
+  },
+  closeMoreMenu() {
+    if (this.data.moreMenuOpen) this.setData({ moreMenuOpen: false })
+  },
+  noop() {},
+  runMoreMenuAction(event) {
+    const action = event && event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.action
+    this.closeMoreMenu()
+    if (action === 'revise') {
+      wx.navigateTo({ url: `/pages/book-revise/index?slug=${encodeURIComponent(this.book.slug)}&title=${encodeURIComponent(this.book.main || this.book.title || '')}` })
+      return
+    }
+    if (action === 'visibility') this.confirmSetHidden(!this.data.hidden)
   },
   confirmSetHidden(hidden) {
     wx.showModal({

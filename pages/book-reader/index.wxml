@@ -1,5 +1,12 @@
 <web-view wx:if="{{url}}" src="{{url}}" bindload="onWebLoad" binderror="onWebError"></web-view>
 <cover-view wx:if="{{mine}}" class="reader-actions" bindtap="openActions" aria-label="{{i18n['书籍操作']}}">⋯</cover-view>
+<cover-view wx:if="{{mine && moreMenuOpen}}" class="reader-menu-layer" bindtap="closeMoreMenu">
+  <cover-view class="reader-menu-card" catchtap="noop">
+    <cover-view class="reader-menu-row" data-action="revise" bindtap="runMoreMenuAction">修改这本书</cover-view>
+    <cover-view class="reader-menu-separator"></cover-view>
+    <cover-view class="reader-menu-row reader-menu-row-danger" data-action="visibility" bindtap="runMoreMenuAction">{{hidden ? '取消隐藏本书' : '隐藏本书'}}</cover-view>
+  </cover-view>
+</cover-view>
 <cover-view wx:if="{{loading}}" class="reader-loading">
   <cover-view class="reader-loading-card">
     <cover-view class="reader-loading-spinner"></cover-view>

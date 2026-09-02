@@ -140,7 +140,7 @@
 .write-label { color:#6f685d; font-size:30rpx; font-weight:600; letter-spacing:2rpx; line-height:38rpx; }
 .cloth { display:flex; box-sizing:border-box; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:52rpx 32rpx 30rpx 48rpx; color:#f7f1df; text-align:left; box-shadow:0 14rpx 16rpx rgba(60,45,30,.35),0 4rpx 4rpx rgba(60,45,30,.20); }
 .cover-image { position:absolute; z-index:1; inset:0; width:100%; height:100%; }
-.book-hidden-badge { position:absolute; z-index:4; top:12rpx; left:30rpx; padding:6rpx 14rpx; border-radius:999rpx; background:rgba(0,0,0,.58); color:#fff; font-size:20rpx; font-weight:600; line-height:28rpx; }
+.book-hidden-badge { position:absolute; z-index:4; top:12rpx; right:18rpx; padding:6rpx 14rpx; border-radius:999rpx; background:rgba(0,0,0,.58); color:#fff; font-size:20rpx; font-weight:600; line-height:28rpx; }
 .book-revise { position:absolute; z-index:3; top:8rpx; right:8rpx; display:flex; width:58rpx!important; height:58rpx!important; margin:0!important; padding:0!important; align-items:center; justify-content:center; border:2rpx solid rgba(117,109,99,.42); border-radius:50%; background:rgba(255,253,249,.96); box-shadow:0 5rpx 14rpx rgba(45,34,25,.32); color:#544c44; font-size:28rpx; line-height:58rpx!important; transition:opacity .12s ease,transform .12s ease; }
 .book-revise::after { border:0; }
 .book-revise-active { opacity:.82; transform:scale(.94); }

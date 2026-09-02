@@ -5,18 +5,59 @@
 
 .reader-actions {
   position: fixed;
-  top: 38rpx;
-  right: 30rpx;
+  top: 5rpx;
+  right: 20rpx;
   z-index: 20;
+  display: flex;
   width: 64rpx;
   height: 64rpx;
+  align-items: center;
+  justify-content: center;
   border-radius: 32rpx;
   background: rgba(42, 37, 33, 0.72);
   color: #fff;
-  font-size: 44rpx;
-  line-height: 48rpx;
+  font-size: 36rpx;
+  line-height: 64rpx;
   text-align: center;
 }
+
+.reader-menu-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: transparent;
+}
+
+.reader-menu-card {
+  position: fixed;
+  top: 82rpx;
+  right: 20rpx;
+  width: 360rpx;
+  overflow: hidden;
+  border: 1rpx solid rgba(220, 210, 196, 0.72);
+  border-radius: 22rpx;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18rpx 44rpx rgba(65, 52, 41, 0.16);
+}
+
+.reader-menu-row {
+  position: relative;
+  box-sizing: border-box;
+  height: 88rpx;
+  padding: 0 30rpx;
+  color: #2a2521;
+  font-size: 31rpx;
+  font-weight: 500;
+  line-height: 88rpx;
+}
+
+.reader-menu-separator {
+  height: 1rpx;
+  margin: 0 30rpx;
+  background: rgba(222, 214, 202, 0.82);
+}
+
+.reader-menu-row-danger { color: #d8593b; }
 
 .reader-loading {
   position: fixed;

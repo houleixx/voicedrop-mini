@@ -52,12 +52,15 @@
 
 .instruction-bubble,
 .reply-bubble {
+  box-sizing: border-box;
   display: block;
   padding: 20rpx 26rpx;
   border-radius: 22rpx;
   font-size: 29rpx;
   line-height: 1.55;
   white-space: pre-wrap;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .instruction-bubble {
