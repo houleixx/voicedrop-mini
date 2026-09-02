@@ -36,7 +36,7 @@ const ENGLISH_COPY = {
   '加载中…': 'Loading…', '加载中...': 'Loading…', '正在加载...': 'Loading…',
   '取消': 'Cancel', '完成': 'Done', '删除': 'Delete', '切换': 'Switch', '重试': 'Retry',
   '分享': 'Share', '拍照': 'Take Photo', '相册': 'Photo Album', '隐藏': 'Hidden',
-  'AI生成': 'AI-generated', '提示词': 'Prompts', '回应': 'Reply', '推荐': 'Recommended',
+  'AI生成': 'AI-Generated', '提示词': 'Prompts', '回应': 'Reply', '推荐': 'Recommended',
   '最新': 'Latest', '书籍': 'Book', '写书': 'Write a Book', '写一本新书': 'Write a New Book',
   '正在整理书架…': 'Organizing your bookshelf…', '还没有录音': 'No recordings yet',
   '社区暂无文章': 'No community posts yet', '稍后刷新，或先分享自己的文章。': 'Refresh later, or share one of your articles first.',
@@ -89,15 +89,19 @@ const ENGLISH_COPY = {
   , '开始写了！': 'Writing has started!', '现在可以关掉小程序。书通常 10–30 分钟写完，过稿一章、上架一章——写好就出现在「写书」书架上，下拉刷新就能看到。': 'You can close the mini program now. Books usually take 10–30 minutes; approved chapters appear on your bookshelf as they are ready. Pull down to refresh.'
   , '好': 'OK', '本功能使用人工智能生成书籍内容': 'This feature uses AI to generate book content', '算力': 'Credits'
   , '写一本书的价钱，提交时一次扣清': 'The cost of one book, charged when you submit', '你现在的算力': 'Your current credits', '算力不够？': 'Need more credits?'
+  , '还差 ': 'Need ', ' 算力，两条来路：': ' more credits. Two ways to earn them:', '一次约得 ': 'Earn about ', '装一个约得 ': 'Earn about ', ' 算力': ' credits'
   , '请朋友给你的文章「加油」——': 'Ask friends to boost your article —', '把文章分享到 VD社区或发给朋友，读的人点「加油」你就进账': 'Share an article to VD Community or with friends; when readers boost it, you earn credits.'
   , '邀请朋友装 VoiceDrop——': 'Invite friends to install VoiceDrop —', '朋友通过你的链接安装，双方都到账': 'When friends install through your link, you both receive credits.'
   , '把邀请链接发给朋友': 'Send invite link to friends', '可以补充这本书往哪儿写：比如“写成给孩子的绘本”“扩成一本科普书”“沿着文中第三点展开”。不填就由写书代理自己定。': 'Add any direction for the book, such as making it a children’s picture book or expanding its third point. Leave blank to let the writing agent decide.'
+  , '中心思想': 'Central idea', '补充要求（可选）': 'Additional direction (optional)', '已作为种子': 'is the seed article'
   , '一句话说清这本书要讲明白的那一个问题或主张。想法越聚焦，书越好看；也可以贴一整篇文章当种子。': 'State the one question or idea this book should explain. A focused idea makes a better book; you can also paste a full article as a seed.'
+  , '比如：为什么一切都在变乱？\n或：钱不脏，是我一直躲着它。': 'For example: Why does everything feel chaotic?\nOr: Money is not dirty; I have been avoiding it.'
+  , '比如：写成给孩子的绘本。（可留空）': 'For example: Turn it into a children’s picture book. (Optional)'
   , '怎么写成': 'How it is written', '拆大纲': 'Build outline', 'AI 建筑师把中心思想拆成一环扣一环的章节': 'An AI architect turns the central idea into connected chapters.'
   , '并行写': 'Write in parallel', '每章一个写手，费曼式大白话，名词当场讲人话': 'One writer per chapter, using clear plain language.'
   , '独立评审': 'Independent review', '另一个 AI 只看成稿挑错，不过就打回重写': 'Another AI reviews the draft and sends it back for revision when needed.'
   , '上你的架': 'Publish to your shelf', '过一章发一章到「写书」书架，署你的名字（设置里的「名字」）': 'Each approved chapter goes to your bookshelf under your name from Settings.'
-  , 'AI生成 · 提交后可关闭小程序，10–30 分钟写完并出现在「写书」书架': 'AI-generated · You can close the mini program after submitting; the book appears on your bookshelf in 10–30 minutes.'
+  , 'AI生成 · 提交后可关闭小程序，10–30 分钟写完并出现在「写书」书架': 'AI-Generated · You can close the mini program after submitting; the book appears on your bookshelf in 10–30 minutes.'
   , '一套指令，长按文字或图片时按『适用于』自动筛选。改过的系统项标『已自定义』，自己建的标『自建』，收下别人分享的标『导入』。': 'Prompts are filtered by “Applies to” when you long-press text or images. Changed system prompts are “Customized”, your own are “Created”, and saved shared prompts are “Imported”.'
   , '长按提示词并拖动排序；拖到分组行可收进该组。': 'Long-press and drag prompts to reorder them; drag one to a group row to place it in that group.'
   , '还没有提示词，可点击右上角新建': 'No prompts yet. Tap New in the top right to create one.', '把别人分享的提示词存进你的菜单': 'Save another person’s shared prompt to your menu'
@@ -132,8 +136,8 @@ const ENGLISH_COPY = {
   , '用于同步设备和参与社区': 'Used to sync devices and participate in the community'
   , '社区提示词加载失败，点此重试': 'Could not load community prompts. Tap to retry.'
   , '返回': 'Back', '书籍操作': 'Book actions', '7 位分享码': '7-digit sharing code', '设置': 'Settings'
-  , '投币': 'Boost', '喜欢': 'Like', '更多': 'More', 'AI生成内容': 'AI-generated content', '新建': 'New'
-  , '分组名字': 'Group name', '关闭': 'Close', 'AI生成内容说明': 'AI-generated content notice', '删除照片': 'Delete photo'
+  , '投币': 'Boost', '喜欢': 'Like', '更多': 'More', 'AI生成内容': 'AI-Generated Content', '新建': 'New'
+  , '分组名字': 'Group name', '关闭': 'Close', 'AI生成内容说明': 'AI-Generated Content Notice', '删除照片': 'Delete photo'
   , '搜索社区': 'Search community', '搜索标题、作者或内容': 'Search title, author, or content', '设备登录请求': 'Device sign-in request'
   , '验证码 {{linkRequest.code}}': 'Verification code {{linkRequest.code}}', '上一版': 'Previous version', '下一版': 'Next version'
   , '输入修改要求，例如：把开头改得更直接': 'Enter editing instructions, for example: make the opening more direct'

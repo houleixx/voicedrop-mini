@@ -7,7 +7,7 @@ const IDEA_PLACEHOLDER = '比如：为什么一切都在变乱？\n或：钱不�
 const ARTICLE_PLACEHOLDER = '比如：写成给孩子的绘本。（可留空）'
 
 Page({
-  data: { seed: '', seedArticle: null, seedPlaceholder: IDEA_PLACEHOLDER, sending: false, submitted: false, message: '', error: false,
+  data: { seed: '', seedArticle: null, seedPlaceholderKey: IDEA_PLACEHOLDER, seedTitleKey: '中心思想', sending: false, submitted: false, message: '', error: false,
     balance: null, balanceDisplay: '', invite: {}, shortfall: 0, feedTimes: '—', invitePeople: '—', canSubmit: false },
   async onLoad() {
     const candidate = app.globalData.bookSeedArticle
@@ -15,7 +15,7 @@ Page({
     const seedArticle = candidate && typeof candidate === 'object'
       ? { title: String(candidate.title || '无题').trim() || '无题', body: articleUtil.stripMarkers(candidate.body) }
       : null
-    if (seedArticle) this.setData({ seedArticle, seedPlaceholder: ARTICLE_PLACEHOLDER })
+    if (seedArticle) this.setData({ seedArticle, seedPlaceholderKey: ARTICLE_PLACEHOLDER, seedTitleKey: '补充要求（可选）' })
     const context = await books.writingContext()
     const balance = context.balance
     const invite = context.invite || {}

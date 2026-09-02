@@ -12,8 +12,25 @@ test('book writing page prominently discloses AI-generated content', () => {
 
 test('book writing template keeps its placeholder expression compiler-safe', () => {
   const wxml = fs.readFileSync(path.join(__dirname, '../pages/book-writing/index.wxml'), 'utf8')
-  assert.match(wxml, /placeholder="\{\{seedPlaceholder\}\}"/)
-  assert.doesNotMatch(wxml, /placeholder="\{\{seedArticle \?/)
+  assert.match(wxml, /placeholder="\{\{i18n\[seedPlaceholderKey\]\}\}"/)
+  assert.doesNotMatch(wxml, /placeholder="\{\{seedArticle \?/, 'seed placeholder must not use a ternary')
+})
+
+test('book writing page localizes its dynamic labels and keeps the submit button full-width at a fixed height', () => {
+  const wxml = fs.readFileSync(path.join(__dirname, '../pages/book-writing/index.wxml'), 'utf8')
+  const css = fs.readFileSync(path.join(__dirname, '../pages/book-writing/index.wxss'), 'utf8')
+  const i18n = require('../utils/i18n')
+
+  assert.match(wxml, /i18n\[seedTitleKey\]/)
+  assert.match(wxml, /i18n\[seedPlaceholderKey\]/)
+  assert.match(wxml, /<button class="feature-primary" bindtap="start" disabled="\{\{!canSubmit\}\}">/)
+  assert.equal(i18n.ui('中心思想', 'en'), 'Central idea')
+  assert.equal(i18n.ui('AI生成', 'en'), 'AI-Generated')
+  assert.match(i18n.ui('AI生成 · 提交后可关闭小程序，10–30 分钟写完并出现在「写书」书架', 'en'), /^AI-Generated ·/)
+  assert.match(i18n.ui('比如：为什么一切都在变乱？\n或：钱不脏，是我一直躲着它。', 'en'), /^For example:/)
+  assert.equal(i18n.ui('算力不够 · 还差 ', 'en') + 12, 'Not enough credits · Need 12')
+  assert.match(css, /\.feature-primary\s*\{[^}]*width:\s*100%;[^}]*height:\s*auto;[^}]*min-height:\s*108rpx;[^}]*white-space:\s*normal;[^}]*word-break:\s*break-word;/s)
+  assert.match(css, /\.feature-primary\[disabled\]\s*\{[^}]*border:\s*2rpx solid #d1cac0;[^}]*background:\s*#9b9388;[^}]*box-shadow:\s*none;/s)
 })
 
 function loadWritingPage(start) {
