@@ -19,7 +19,10 @@ Page({
     balance: null,
     capacity: 0,
     shortAnonId: '',
-    accountSubtitle: '匿名 ID 保存在本机',
+    // Keep the first rendered value in sync with the selected app language.
+    // `load()` refreshes this after the account checks complete, but a literal
+    // Chinese fallback visibly flashes before that work finishes in English.
+    accountSubtitle: accountSubtitleFor(false),
     autoShareCommunity: false,
     followUpEnabled: true,
     wechatConfigured: false,

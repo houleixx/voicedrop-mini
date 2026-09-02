@@ -327,6 +327,14 @@ test('settings page shows the backend account prefix and anonymous local-storage
   assert.equal(ctx.data.accountSubtitle, '匿名 ID 保存在本机')
 })
 
+test('settings page localizes the Account subtitle before asynchronous loading completes', () => {
+  const page = freshSettingsPage({}, {
+    getStorageSync: (key) => key === 'appLanguage' ? 'en' : ''
+  })
+
+  assert.equal(page.data.accountSubtitle, 'Your anonymous ID is stored on this device')
+})
+
 test('settings page hides the MCP pairing code for a WeChat session', async () => {
   const page = freshSettingsPage({ wechatAuthenticated: true })
   const ctx = pageContext(page)
