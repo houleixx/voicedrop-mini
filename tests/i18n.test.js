@@ -132,6 +132,18 @@ test('native interface feedback is English without translating user-facing conte
   assert.equal(i18n.ui('我的中文提示词', i18n.ENGLISH), '我的中文提示词')
 })
 
+test('credit activity reasons are translated in English', () => {
+  assert.equal(i18n.ui('投币奖励', i18n.ENGLISH), 'Coin rewards')
+  assert.equal(i18n.ui('收到投币', i18n.ENGLISH), 'Coins received')
+  assert.equal(i18n.ui('注册赠送', i18n.ENGLISH), 'Sign-up bonus')
+  assert.equal(i18n.ui('语音修改', i18n.ENGLISH), 'Voice edits')
+  assert.equal(i18n.ui('修书', i18n.ENGLISH), 'Book revisions')
+  assert.equal(i18n.ui('AI 采访', i18n.ENGLISH), 'AI interviews')
+  assert.equal(i18n.ui('文风蒸馏', i18n.ENGLISH), 'Style distillation')
+  assert.equal(i18n.ui('图片编辑', i18n.ENGLISH), 'Image editing')
+  assert.equal(i18n.ui('小红书分享', i18n.ENGLISH), 'Xiaohongshu sharing')
+})
+
 test('recording state and About privacy copy follow the app language', () => {
   assert.equal(i18n.ui('正在录音', i18n.ENGLISH), 'Recording')
   assert.match(i18n.message('录音、文章、图片、文风和公众号配置会按访问令牌同步到 VoiceDrop 后端。请妥善保存访问令牌。', i18n.ENGLISH), /synced to the VoiceDrop backend/)
