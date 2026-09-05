@@ -1,4 +1,4 @@
-<view class="config-menu" wx:if="{{open && groups.length}}">
+<view class="config-menu" wx:if="{{open && (groups.length || localizedRows.length)}}">
   <view class="config-menu-scrim" bindtap="close"></view>
   <view wx:if="{{anchorType !== 'image'}}" class="config-menu-anchor {{anchorType}}" style="top:{{anchor.top}}px;left:{{anchor.left}}px;width:{{anchor.width}}px;">
     <text>{{anchor.text}}</text>
@@ -25,8 +25,8 @@
           <view wx:else class="config-menu-row" data-zone="custom" data-index="{{index}}" bindtap="pickRoot"><text>{{item.label}}</text></view>
         </block>
       </scroll-view>
-      <view class="config-menu-section-divider" wx:if="{{localRows.length && customNodes.length}}"></view>
-      <view class="config-menu-row" wx:for="{{localRows}}" wx:key="id" data-index="{{index}}" bindtap="pickLocal"><text>{{item.label}}</text></view>
+      <view class="config-menu-section-divider" wx:if="{{localizedRows.length && customNodes.length}}"></view>
+      <view class="config-menu-row" wx:for="{{localizedRows}}" wx:key="id" data-index="{{index}}" bindtap="pickLocal"><text>{{item.label}}</text></view>
     </block>
   </view>
 </view>

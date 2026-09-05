@@ -23,6 +23,7 @@ Component({
     groups: [],
     fixedNodes: [],
     customNodes: [],
+    localizedRows: [],
     rootScrollHeight: 0,
     submenuScrollHeight: 0,
     openNode: null
@@ -40,7 +41,8 @@ Component({
       const boundaryHeight = customNodes.length && localizedRows.length ? 1 : 0
       const rootScrollHeight = Math.min(customNodes.length * 48,
         Math.max(0, maxHeight - fixedHeight - boundaryHeight))
-      this.setData({ groups, fixedNodes, customNodes, localRows: localizedRows, rootScrollHeight, submenuScrollHeight: 0, openNode: null })
+      // Keep derived labels separate from localRows, which this observer watches.
+      this.setData({ groups, fixedNodes, customNodes, localizedRows, rootScrollHeight, submenuScrollHeight: 0, openNode: null })
       try { wx.vibrateShort({ type: 'light' }) } catch (_) {}
     }
   },
@@ -73,7 +75,7 @@ Component({
       this.triggerEvent('pick', { node })
     },
     pickLocal(event) {
-      const row = this.data.localRows[Number(event.currentTarget.dataset.index)]
+      const row = this.data.localizedRows[Number(event.currentTarget.dataset.index)]
       if (!row) return
       this.triggerEvent('localpick', { id: row.id })
     }

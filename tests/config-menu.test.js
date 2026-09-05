@@ -37,6 +37,43 @@ test('config menu enters and returns from a submenu', () => {
   assert.equal(state.data.openNode, null)
 })
 
+test('opening the longpress menu settles without updating its observed inputs', () => {
+  const component = freshComponent()
+  const observerKey = 'open,menu,anchor,localRows,languageRevision'
+  const watched = observerKey.split(',')
+  const localRows = [{ id: 'copy', label: '拷贝' }, { id: 'edit', label: '编辑' }]
+  const state = ctx(component)
+  Object.assign(state.data, component.data, {
+    open: false,
+    menu: { groups: [[{ id: 'rewrite', label: '改写', instruction: '改写' }]] },
+    anchor: { menuMaxHeight: 320 },
+    localRows,
+    languageRevision: 0
+  })
+  let updates = 0
+  state.setData = function (update) {
+    assert.ok(++updates <= 20, 'longpress menu observer must settle instead of looping')
+    Object.assign(this.data, update)
+    // Miniapp observers run again when setData writes a watched field.
+    if (Object.keys(update).some((key) => watched.includes(key))) {
+      component.observers[observerKey].call(this, ...watched.map((key) => this.data[key]))
+    }
+  }
+
+  state.setData({ open: true })
+  assert.equal(updates, 2)
+  assert.equal(state.data.localRows, localRows)
+  component.methods.pickLocal.call(state, { currentTarget: { dataset: { index: 1 } } })
+  component.methods.close.call(state)
+  assert.deepEqual(state.events, [
+    { name: 'localpick', detail: { id: 'edit' } },
+    { name: 'close', detail: undefined }
+  ])
+  state.setData({ open: false })
+  state.setData({ open: true })
+  assert.equal(updates, 5)
+})
+
 test('config menu emits a picked leaf and lets the parent close after consuming it', () => {
   const component = freshComponent()
   const state = ctx(component)
@@ -45,6 +82,25 @@ test('config menu emits a picked leaf and lets the parent close after consuming 
   assert.equal(state.events[0].name, 'pick')
   assert.equal(state.events[0].detail.node.id, 'cartoon')
   assert.equal(state.events.length, 1)
+})
+
+test('text longpress shows local actions even without configured menu groups', () => {
+  const component = freshComponent()
+  const wxml = fs.readFileSync(path.join(__dirname, '../components/config-menu/index.wxml'), 'utf8')
+  const visibility = wxml.match(/class="config-menu" wx:if="\{\{(.*?)\}\}"/)[1]
+  const evaluateVisibility = (data) => require('node:vm').runInNewContext(visibility, data)
+  for (const menu of [null, { groups: [] }]) {
+    const state = ctx(component)
+    state.data = Object.assign({}, component.data, { open: true })
+    component.observers['open,menu,anchor,localRows,languageRevision'].call(state, true, menu,
+      { menuMaxHeight: 320 }, [{ id: 'copy', label: '拷贝' }, { id: 'edit', label: '编辑' }])
+    assert.ok(evaluateVisibility(state.data), 'local copy/edit actions must make the menu visible')
+    assert.deepEqual(state.data.localizedRows.map((row) => row.id), ['copy', 'edit'])
+    component.methods.pickLocal.call(state, { currentTarget: { dataset: { index: 0 } } })
+    assert.deepEqual(state.events[0], { name: 'localpick', detail: { id: 'copy' } })
+    assert.ok(!evaluateVisibility(Object.assign({}, state.data, { open: false })))
+  }
+  assert.ok(!evaluateVisibility(Object.assign({}, component.data, { open: true })), 'empty menus stay hidden')
 })
 
 test('config menu keeps system rows fixed and allocates overflow only to custom rows', () => {
