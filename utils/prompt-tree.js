@@ -119,7 +119,7 @@ function menuNode(node, anchor) {
     return children.length ? { id: node.id, label: node.label, type: 'submenu', origin: node.origin || 'user', children } : null
   }
   return (node.appliesTo || []).includes(anchor)
-    ? { id: node.id, label: node.label, origin: node.origin || 'user', instruction: node.prompt || '' }
+    ? { id: node.id, label: node.label, origin: node.origin || 'user', instruction: node.prompt || '', ...(node.kind ? { kind: node.kind } : {}) }
     : null
 }
 

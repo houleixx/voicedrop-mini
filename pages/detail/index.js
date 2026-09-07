@@ -7,6 +7,7 @@ const settings = require('../../services/settings')
 const articleUtil = require('../../utils/article')
 const recording = require('../../utils/recording')
 const photoInsert = require('../../utils/photo-insert')
+const photoProgress = require('../../utils/detail-photo-progress')
 const playbackState = require('../../utils/audio-playback-state')
 const communityTerms = require('../../utils/community-terms')
 const styleRewrite = require('../../utils/style-rewrite')
@@ -608,6 +609,7 @@ Page({
       return
     }
     this.longpressQuerySeq = (this.longpressQuerySeq || 0) + 1
+    this.photoLoadSeq = (this.photoLoadSeq || 0) + 1
     const pendingPhotoEdits = Object.keys(this.photoMakingTasks || {}).map((key) => {
       const block = (this.data.blocks || []).find((item) => item && item.type === 'photo' && item.key === key)
       const task = this.photoMakingTasks[key]
@@ -615,7 +617,10 @@ Page({
         key,
         imageNo: block.imageNo,
         photoState: block.photoState,
-        deadline: task && task.deadline
+        deadline: task && task.deadline,
+        intent: task && task.intent || 'generated',
+        shouldPoll: task && task.shouldPoll,
+        articleIndex: task && task.articleIndex
       } : null
     }).filter(Boolean)
     if (this.stopPhotoMaking) this.stopPhotoMaking()
@@ -633,7 +638,12 @@ Page({
     const rawBlocks = body ? articleUtil.bodyBlocks(body) : []
     const deferPhotos = Boolean(options && options.deferPhotos)
     const scope = doc.owner || photoScope || (deferPhotos ? '' : this.data.photoScope) || ''
+    const photoHints = photoProgress.observe(this, doc, scope)
     const previousBlocks = this.data.photoScope === scope ? (this.data.blocks || []) : []
+    const currentKeys = rawBlocks.filter(block => block.type === 'photo').map(block => articleUtil.resolvePhotoKey(block.key, doc.photos || []) || block.key)
+    const pendingFor = (key, ordinal) => pendingPhotoEdits.find(item => item.key === key) || pendingPhotoEdits.find(item =>
+      item.shouldPoll !== true && !currentKeys.includes(item.key) && item.imageNo === ordinal &&
+      (item.articleIndex == null || item.articleIndex === articleIndex))
     let lineNo = 0
     let imageNo = 0
     const blocks = rawBlocks.map((block) => {
@@ -641,7 +651,8 @@ Page({
       if (block.type !== 'photo') return Object.assign({}, block, { lineNo })
       imageNo += 1
       const key = articleUtil.resolvePhotoKey(block.key, doc.photos || []) || block.key
-      const pending = pendingPhotoEdits.find((item) => item.imageNo === imageNo && item.key !== key)
+      const pending = pendingFor(key, imageNo)
+      const hint = photoHints[key]
       const previous = previousBlocks.find((item) =>
         item && item.type === 'photo' && item.key === key && item.imageNo === imageNo)
       const next = Object.assign({}, block, {
@@ -651,10 +662,12 @@ Page({
         url: '',
         previewUrl: '',
         imageVariant: '',
+        photoIntent: pending && pending.intent || hint && hint.intent || 'unknown',
+        photoDeadline: pending && pending.deadline || hint && hint.deadline,
         remoteUrl: deferPhotos ? '' : library.photoUrl(key, scope),
         loading: true,
         loaded: false,
-        photoState: pending && pending.photoState === 'making' ? 'making' : (pending ? 'grace' : 'loading')
+        photoState: pending && pending.photoState === 'making' ? 'making' : (pending || hint && hint.deadline > Date.now() ? 'grace' : 'loading')
       })
       if (!pending && previous && previous.url && previous.loaded && previous.photoState === 'loaded') {
         Object.assign(next, {
@@ -686,17 +699,21 @@ Page({
       Object.assign(update, hiddenPhotoInsertPromptData())
     }
     this.setData(update)
-    if (!deferPhotos && this.loadArticlePhotos) this.loadArticlePhotos(blocks, scope)
-    pendingPhotoEdits.forEach((pending) => {
-      const replacement = blocks.find((block) => block.type === 'photo' && block.imageNo === pending.imageNo && block.key !== pending.key)
-      if (replacement) {
-        this.startPhotoMaking(replacement.key, {
-          poll: true,
-          skipGrace: pending.photoState === 'making',
-          deadline: pending.deadline
+    if (!deferPhotos) {
+      // Start per-key waits before ordinary downloads; a task must never cancel
+      // another photo's in-flight request by changing the page-wide load sequence.
+      blocks.filter(block => block.type === 'photo' && ['grace', 'making'].includes(block.photoState)).forEach(block => {
+        const pending = pendingFor(block.key, block.imageNo)
+        this.startPhotoMaking(block.key, {
+          poll: !pending || pending.key !== block.key || pending.shouldPoll !== false,
+          skipGrace: block.photoState === 'making',
+          deadline: block.photoDeadline,
+          intent: block.photoIntent
         })
-      }
-    })
+      })
+      if (this.loadArticlePhotos) this.loadArticlePhotos(this.data.blocks, scope)
+    }
+
   },
 
   loadArticlePhotos(blocks, scope) {
@@ -761,6 +778,7 @@ Page({
     return library.downloadPhotoTemp(block.key, scope)
       .then((tempPath) => {
         if (!tempPath) throw new Error('empty photo path')
+        if (seq !== this.photoLoadSeq || this.photoMakingTasks && this.photoMakingTasks[block.key]) return
         this.articlePhotoCache[cacheKey] = tempPath
         if (this.inspectDownloadedArticlePhoto) this.inspectDownloadedArticlePhoto(tempPath, block.key, scope)
         this.updateArticlePhotoBlock(seq, block.index, {
@@ -775,11 +793,10 @@ Page({
       })
       .catch((error) => {
         logPhotoInsert('render-download-fail', { key: block.key, scope, error })
-        this.updateArticlePhotoBlock(seq, block.index, {
-          loading: false,
-          failed: true,
-          photoState: 'loadFailed'
-        }, block.key)
+        if (seq !== this.photoLoadSeq) return
+        const current = (this.data.blocks || [])[block.index]
+        if (!current || current.key !== block.key || this.photoMakingTasks && this.photoMakingTasks[block.key]) return
+        this.retryArticlePhotoLoad(block.key)
       })
   },
 
@@ -860,15 +877,17 @@ Page({
 
   startPhotoMakingForInstruction(instruction) {
     const match = /\[\[photo:([^\]]+)\]\]/.exec(String(instruction || ''))
-    if (match) this.startPhotoMaking(match[1], { poll: false })
+    if (match) this.startPhotoMaking(match[1], { poll: false, intent: 'generated' })
   },
 
   startPhotoMaking(key, options) {
     const shouldPoll = !options || options.poll !== false
     const skipGrace = Boolean(options && options.skipGrace)
-    this.photoLoadSeq = (this.photoLoadSeq || 0) + 1
+    const block = (this.data.blocks || []).find(item => item.type === 'photo' && item.key === key)
+    const intent = options && options.intent || block && block.photoIntent || 'generated'
     if (!key || !this.updatePhotoMakingBlock(key, {
-      photoState: skipGrace ? 'making' : 'grace',
+      photoState: skipGrace ? (intent === 'generated' ? 'making' : 'fetching') : 'grace',
+      photoIntent: intent,
       url: '',
       previewUrl: '',
       imageVariant: '',
@@ -884,27 +903,36 @@ Page({
     this.photoMakingGeneration = generation
     const task = {
       generation,
-      deadline: Number(options && options.deadline) || Date.now() + 300000,
+      intent,
+      articleIndex: this.data.articleIndex || 0,
+      deadline: Number(options && options.deadline) || Date.now() + (intent === 'loaded' ? 15000 : 300000),
       timer: null,
       shouldPoll
     }
     this.photoMakingTasks[key] = task
+    photoProgress.remember(this, key, { intent, deadline: task.deadline })
+    this.updatePhotoMakingBlock(key, { photoDeadline: task.deadline })
+    const expire = () => {
+      task.expiryTimer = setTimeout(() => {
+        if (!this.photoMakingTasks || this.photoMakingTasks[key] !== task) return
+        this.updatePhotoMakingBlock(key, { url: '', photoState: 'failed', failed: true, loaded: false })
+        this.stopPhotoMaking(key)
+      }, Math.max(0, task.deadline - Date.now()))
+      if (task.expiryTimer && task.expiryTimer.unref) task.expiryTimer.unref()
+    }
     if (skipGrace) {
+      expire()
       if (task.shouldPoll) this.pollMakingPhoto(key, generation)
       return
     }
     task.timer = setTimeout(() => {
       if (this.photoMakingTasks && this.photoMakingTasks[key] === task) {
-        this.updatePhotoMakingBlock(key, { photoState: 'making' })
+        this.updatePhotoMakingBlock(key, { photoState: intent === 'generated' ? 'making' : 'fetching' })
         if (task.shouldPoll) this.pollMakingPhoto(key, generation)
-        else task.timer = setTimeout(() => {
-          if (this.photoMakingTasks && this.photoMakingTasks[key] === task) {
-            this.updatePhotoMakingBlock(key, { photoState: 'failed', failed: true })
-            this.stopPhotoMaking(key)
-          }
-        }, Math.max(0, task.deadline - Date.now()))
       }
     }, 900)
+    if (task.timer && task.timer.unref) task.timer.unref()
+    expire()
   },
 
   async pollMakingPhoto(key, generation) {
@@ -936,17 +964,41 @@ Page({
         loaded: false,
         failed: false
       })
-      this.stopPhotoMaking(key)
+      current.intent = 'loaded'
+      photoProgress.remember(this, key, { intent: 'loaded', deadline: current.deadline })
+      this.updatePhotoMakingBlock(key, { photoIntent: 'loaded' })
+      // Keep the task until the image component confirms decoding/rendering.
+      current.timer = setTimeout(() => this.retryArticlePhotoLoad(key), Math.min(15000, Math.max(0, current.deadline - Date.now())))
+      if (current.timer && current.timer.unref) current.timer.unref()
     } catch (_) {
       const current = this.photoMakingTasks && this.photoMakingTasks[key]
       if (!current || current.generation !== generation) return
       current.timer = setTimeout(() => this.pollMakingPhoto(key, generation), 3000)
+      if (current.timer && current.timer.unref) current.timer.unref()
     }
+  },
+
+  retryArticlePhotoLoad(key) {
+    const block = (this.data.blocks || []).find(item => item.type === 'photo' && item.key === key)
+    if (!block) return
+    const task = this.photoMakingTasks && this.photoMakingTasks[key]
+    const hint = photoProgress.journal(this).photos[key]
+    const intent = task && task.intent || block.photoIntent || hint && hint.intent || 'unknown'
+    const deadline = task && task.deadline || block.photoDeadline || hint && hint.deadline || Date.now() + (intent === 'loaded' ? 15000 : 300000)
+    if (Date.now() >= deadline) {
+      this.stopPhotoMaking(key)
+      this.updatePhotoMakingBlock(key, { url: '', photoState: 'failed', failed: true, loaded: false })
+      return
+    }
+    this.startPhotoMaking(key, { poll: true, intent, deadline })
   },
 
   retryMakingPhoto(event) {
     const key = event && event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.key
-    if (key) this.startPhotoMaking(key, { poll: true })
+    if (key) {
+      const block = (this.data.blocks || []).find(item => item.key === key)
+      this.startPhotoMaking(key, { poll: true, intent: block && block.photoIntent === 'loaded' ? 'loaded' : 'unknown' })
+    }
   },
 
   stopPhotoMaking(key) {
@@ -955,6 +1007,7 @@ Page({
     keys.forEach((itemKey) => {
       const task = tasks[itemKey]
       if (task && task.timer != null) clearTimeout(task.timer)
+      if (task && task.expiryTimer != null) clearTimeout(task.expiryTimer)
       delete tasks[itemKey]
     })
   },
@@ -973,10 +1026,14 @@ Page({
     if (!block) return
     if (dataset.key && dataset.key !== block.key) return
     if (dataset.url && dataset.url !== block.url) return
+    this.stopPhotoMaking(block.key)
+    photoProgress.remember(this, block.key, { intent: 'loaded' })
     const retryKey = `${block.key || ''}|${block.remoteUrl || ''}`
     if (this.articlePhotoTriedRemote) delete this.articlePhotoTriedRemote[retryKey]
     this.updateArticlePhotoBlock(this.photoLoadSeq, index, {
       photoState: 'loaded',
+      photoIntent: 'loaded',
+      photoDeadline: null,
       loading: false,
       loaded: true,
       failed: false,
@@ -1026,13 +1083,7 @@ Page({
       return
     }
     delete this.articlePhotoTriedRemote[retryKey]
-    this.updateArticlePhotoBlock(this.photoLoadSeq, index, {
-      url: '',
-      photoState: 'loadFailed',
-      loading: false,
-      loaded: false,
-      failed: true
-    })
+    this.retryArticlePhotoLoad(block.key)
   },
 
   selectArticle(event) {
@@ -1697,7 +1748,7 @@ Page({
   submitEdit() {
     const session = this.ensureEditSession()
     if (!session || !this.data.editText.trim()) return
-    session.enqueue(this.data.editText, this.data.articleIndex || 0)
+    this.enqueueInstruction(this.data.editText, this.data.articleIndex || 0)
     this.setData({ editText: '', editPanelOpen: false })
   },
 
@@ -2067,7 +2118,7 @@ Page({
       ? { type: 'image', key: target.block.key }
       : { type: 'line', line: target.block.lineNo, text: target.block.text }
     this.closeLongpressMenu()
-    this.enqueueInstruction(instruction, articleIndex, null, anchor, node.id)
+    this.enqueueInstruction(instruction, articleIndex, null, anchor, node.id, node.kind)
   },
 
   onLongpressLocalPick(event) {
@@ -2174,15 +2225,16 @@ Page({
     }
   },
 
-  enqueueInstruction(instruction, articleIndex, images, anchor, itemId) {
+  enqueueInstruction(instruction, articleIndex, images, anchor, itemId, kind) {
     const session = this.ensureEditSession()
     if (!session || !instruction) {
       logPhotoInsert('enqueue-skip', { hasSession: !!session, hasInstruction: !!instruction })
       return
     }
+    photoProgress.enqueue(this, articleIndex || 0, kind || (anchor && anchor.type === 'image' ? 'image' : 'unknown'), images, instruction)
     session.enqueue(instruction, articleIndex != null ? articleIndex : 0, images, anchor, itemId)
     if (anchor && anchor.type === 'image' && anchor.key && this.startPhotoMaking) {
-      this.startPhotoMaking(anchor.key, { poll: false })
+      this.startPhotoMaking(anchor.key, { poll: false, intent: 'generated' })
     } else if (this.startPhotoMakingForInstruction) {
       this.startPhotoMakingForInstruction(instruction)
     }
@@ -2377,6 +2429,7 @@ Page({
       const instruction = photoInsert.instructionForKeys(keys)
       const session = this.ensureEditSession()
       if (!session) throw new Error('文章编辑器未连接')
+      photoProgress.enqueue(this, this.data.articleIndex || 0, 'uploaded', images, instruction)
       session.enqueue(instruction, this.data.articleIndex || 0, images)
       logPhotoInsert('upload-detail-photos-enqueued', {
         recStem: this.data.rec && this.data.rec.stem,

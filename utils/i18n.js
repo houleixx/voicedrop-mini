@@ -55,7 +55,7 @@ const ENGLISH_COPY = {
   '暂无历史版本': 'No version history', '插入图片': 'Insert image', '换个风格重写': 'Rewrite in another style',
   '文章还没生成': 'Your article is not ready yet', '正在制作中': 'Creating', '暂时无法显示': 'Unavailable for now',
   '写回应': 'Write a reply', '举报': 'Report', '屏蔽此用户': 'Block this user',
-  '图片加载失败': 'Image failed to load', '继续阅读 ↓': 'Continue reading ↓', '怎么用': 'How to use',
+  '正在获取图片': 'Fetching image', '图片加载中...': 'Loading image...', '图片加载失败': 'Image failed to load', '继续阅读 ↓': 'Continue reading ↓', '怎么用': 'How to use',
   '正在检查连接状态...': 'Checking connection…', '已授权账号': 'Authorized account',
   '生成并复制授权链接': 'Create and copy authorization link', '取消连接': 'Disconnect', '连接方法': 'How to connect',
   '电脑打开': 'Open on a computer', '手机打开': 'Open on your phone',

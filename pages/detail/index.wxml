@@ -73,9 +73,13 @@
         <view wx:else class="photo-block" data-index="{{index}}" bindtouchstart="startImageLongpress" bindtouchmove="moveImageLongpress" bindtouchend="finishImageLongpress" bindtouchcancel="finishImageLongpress">
           <text class="photo-line-locator" wx:if="{{holdEditLocatorsVisible}}">{{item.lineNo}}</text>
           <text class="photo-image-locator" wx:if="{{holdEditLocatorsVisible && item.imageNo}}">图{{item.imageNo}}</text>
-          <image wx:if="{{item.url}}" id="article-photo-{{index}}" class="article-image {{item.photoState !== 'loaded' ? 'preloading' : ''}}" src="{{item.url}}" mode="widthFix" lazy-load data-index="{{index}}" data-key="{{item.key}}" data-url="{{item.url}}" bindload="onArticleImageLoad" binderror="onArticleImageError" />
+          <image wx:if="{{item.url}}" id="article-photo-{{index}}" class="article-image {{item.photoState !== 'loaded' ? 'preloading' : ''}}" src="{{item.url}}" mode="widthFix" lazy-load="{{!item.photoDeadline}}" data-index="{{index}}" data-key="{{item.key}}" data-url="{{item.url}}" bindload="onArticleImageLoad" binderror="onArticleImageError" />
           <view wx:if="{{item.photoState === 'loading' || item.photoState === 'grace'}}" class="photo-placeholder photo-loading {{item.photoState === 'grace' ? 'photo-making grace' : ''}}">
             <view class="photo-loading-spinner" aria-hidden="true"></view>
+          </view>
+          <view wx:elif="{{item.photoState === 'fetching'}}" class="photo-placeholder photo-loading">
+            <view class="photo-loading-spinner" aria-hidden="true"></view>
+            <text>{{item.photoIntent === 'loaded' ? i18n['图片加载中...'] : i18n['正在获取图片']}}</text>
           </view>
           <view wx:elif="{{item.photoState === 'making'}}" class="photo-placeholder photo-making">
             <text class="photo-making-icon ri-image-line"></text>

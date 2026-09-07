@@ -77,7 +77,7 @@ function renderableNode(raw) {
   }
   if (raw.type) return null
   const instruction = String(raw.instruction || '')
-  return instruction ? { id, label, origin, instruction } : null
+  return instruction ? { id, label, origin, instruction, ...(raw.kind ? { kind: String(raw.kind) } : {}) } : null
 }
 
 function renderableGroups(menuConfig) {

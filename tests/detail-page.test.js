@@ -704,7 +704,7 @@ test('detail ignores a stale image event after an image instruction replaces its
   assert.equal(ctx.data.blocks[0].loaded, false)
 })
 
-test('detail keeps loading during the remote image fallback and ends in a failure state', () => {
+test('detail retries after both local rendering and remote fallback fail', () => {
   const page = freshDetailPage()
   const ctx = Object.assign({}, page, {
     photoLoadSeq: 3,
@@ -732,8 +732,10 @@ test('detail keeps loading during the remote image fallback and ends in a failur
     currentTarget: { dataset: { index: 0, key: 'photos/a.jpg', url: 'https://example.com/a.jpg' } }
   })
   assert.equal(ctx.data.blocks[0].url, '')
-  assert.equal(ctx.data.blocks[0].photoState, 'loadFailed')
-  assert.equal(ctx.data.blocks[0].failed, true)
+  assert.equal(ctx.data.blocks[0].photoState, 'grace')
+  assert.equal(ctx.data.blocks[0].failed, false)
+  assert.ok(ctx.photoMakingTasks['photos/a.jpg'])
+  ctx.stopPhotoMaking()
 })
 
 test('detail longpress actions fill exact image key and real text line', () => {
@@ -876,7 +878,7 @@ test('detail page renders iOS making and failed photo placeholders', () => {
   assert.match(css, /#ece4d6/i)
 })
 
-test('detail making photo poll replaces the image and stops its task', async () => {
+test('detail making photo poll finishes only after the image renders', async () => {
   const page = freshDetailPage({ downloadPhotoTemp: async () => 'wxfile://fresh.jpg' })
   const ctx = Object.assign({}, page, {
     data: { photoScope: 'users/anon/', blocks: [{ type: 'photo', key: 'photos/a.jpg', photoState: 'making', url: '' }] },
@@ -888,7 +890,7 @@ test('detail making photo poll replaces the image and stops its task', async () 
 
   assert.equal(ctx.data.blocks[0].photoState, 'loading')
   assert.equal(ctx.data.blocks[0].url, 'wxfile://fresh.jpg')
-  assert.equal(ctx.photoMakingTasks['photos/a.jpg'], undefined)
+  assert.ok(ctx.photoMakingTasks['photos/a.jpg'])
 
   page.onArticleImageLoad.call(ctx, { currentTarget: { dataset: { index: 0 } }, detail: { width: 640, height: 640 } })
   assert.equal(ctx.data.blocks[0].photoState, 'loaded')
@@ -937,6 +939,7 @@ test('detail transfers making state from backend old key to replacement key', ()
     options: {
       poll: true,
       skipGrace: true,
+      intent: 'generated',
       deadline
     }
   }])
@@ -1136,7 +1139,9 @@ test('detail page downloads own uploaded photo markers with owner scope like And
       remoteUrl: 'users/anon-owner/photos/2026-06-28-103217/0-lc1.jpg',
       loading: true,
       loaded: false,
-      photoState: 'loading'
+      photoState: 'loading',
+      photoIntent: 'unknown',
+      photoDeadline: undefined
     }
   ])
   await new Promise((resolve) => setImmediate(resolve))
@@ -3171,4 +3176,204 @@ test('detail page falls back to original photo when rendered upload path is unre
 
   assert.equal(uploadedOk, true)
   assert.deepEqual(uploaded, ['http://tmp/rendered-photo.jpg', 'http://tmp/source-photo.png'])
+})
+
+test('new generated illustrations wait through a missing file without blocking text updates', async () => {
+  const page = freshDetailPage({ downloadPhotoTemp: async () => { throw new Error('photo download HTTP 404') } })
+  const ctx = Object.assign({}, page, {
+    data: { rec: { stem: 'new-photo-test' }, photoScope: 'users/test/', articleIndex: 0, blocks: [], doc: { articles: [{ body: '旧正文' }] } },
+    setData(patch) { Object.assign(this.data, patch) },
+    ensureEditSession() { return { enqueue() {} } }
+  })
+  try {
+    const render = require('../utils/ui-config').renderableGroups
+    const insertionMenu = render(page.data.menus.text).flat().find(node => node.id === 'sys_insert')
+    const node = insertionMenu.children.find(node => node.id === 'sys_cartoon_explainer')
+    ctx.data.longpressTarget = { kind: 'text', block: { text: '旧正文', lineNo: 1 } }
+    ctx.onLongpressPick({ detail: { node } })
+    ctx.applyRealtimeDoc({ owner: 'users/test/', articles: [{ body: '新正文\n[[photo:photos/test/new.jpg]]' }] })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(ctx.data.blocks[0].text, '新正文')
+    assert.ok(['grace', 'making'].includes(ctx.data.blocks[1].photoState))
+    assert.equal(ctx.photoMakingTasks['photos/test/new.jpg'].intent, 'generated')
+  } finally { ctx.stopPhotoMaking() }
+})
+
+function photoProgressContext(page, doc) {
+  return Object.assign({}, page, {
+    data: { rec: { stem: 'photo-progress-test' }, photoScope: 'users/test/', articleIndex: 0, blocks: [], doc },
+    setData(patch) { Object.assign(this.data, patch) },
+    ensureEditSession() { return { enqueue() {} } }
+  })
+}
+
+test('all built-in image menus preserve generation intent while text menus do not', () => {
+  const page = freshDetailPage()
+  const flatten = groups => groups.flatMap(group => Array.isArray(group) ? flatten(group) : group.children ? flatten(group.children) : [group])
+  const menus = page.data.menus
+  const render = require('../utils/ui-config').renderableGroups
+  const actions = flatten(render(menus.text))
+  for (const id of ['sys_wechat_cover', 'sys_cartoon_explainer']) {
+    assert.equal(actions.find(item => item.id === id).kind, 'image')
+  }
+  assert.notEqual(actions.find(item => item.id === 'sys_concise').kind, 'image')
+  for (const item of flatten(render(menus.image))) assert.equal(item.kind, 'image')
+})
+
+test('voice/custom new photos get neutral retry and text-only changes create no photo tasks', async () => {
+  const page = freshDetailPage({ downloadPhotoTemp: async () => { throw new Error('404') } })
+  const ctx = photoProgressContext(page, { articles: [{ body: '原文' }] })
+  try {
+    ctx.enqueueInstruction('改写这段', 0)
+    ctx.applyRealtimeDoc({ owner: 'users/test/', articles: [{ body: '改写完成' }] })
+    assert.equal(ctx.data.blocks[0].text, '改写完成')
+    assert.equal(Object.keys(ctx.photoMakingTasks || {}).length, 0)
+    ctx.enqueueInstruction('画任意类型的图', 0)
+    ctx.applyRealtimeDoc({ owner: 'users/test/', articles: [{ body: '正文\n[[photo:photos/new.jpg]]' }] })
+    const task = ctx.photoMakingTasks['photos/new.jpg']
+    assert.equal(task.intent, 'unknown')
+    await ctx.pollMakingPhoto('photos/new.jpg', task.generation)
+    assert.equal(ctx.data.blocks[1].failed, false)
+    assert.equal(ctx.data.blocks[1].photoIntent, 'unknown')
+  } finally { ctx.stopPhotoMaking() }
+})
+
+test('uploaded insertions use ordinary loading rather than generation waiting', async () => {
+  const page = freshDetailPage()
+  const ctx = photoProgressContext(page, { articles: [{ body: '正文' }] })
+  try {
+    ctx.enqueueInstruction('插入 [[photo:photos/upload.jpg]]', 0, [{ key: 'photos/upload.jpg' }])
+    ctx.applyRealtimeDoc({ owner: 'users/test/', articles: [{ body: '正文\n[[photo:photos/upload.jpg]]' }] })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(ctx.data.blocks[1].photoIntent, 'loaded')
+    assert.equal(ctx.data.blocks[1].photoState, 'loading')
+    assert.equal(Object.keys(ctx.photoMakingTasks || {}).length, 0)
+  } finally { ctx.stopPhotoMaking() }
+})
+
+test('generation context survives reopening before and after the new photo marker arrives', () => {
+  const storage = new Map()
+  const page = freshDetailPage({}, {
+    getStorageSync: key => storage.has(key) ? JSON.parse(storage.get(key)) : '',
+    setStorageSync: (key, value) => storage.set(key, JSON.stringify(value))
+  })
+  const original = { owner: 'users/test/', articles: [{ body: '正文' }] }
+  const updated = { owner: 'users/test/', articles: [{ body: '正文\n[[photo:photos/new.jpg]]' }] }
+  const first = photoProgressContext(page, original)
+  first.enqueueInstruction('生成横幅', 0, null, null, 'custom', 'image')
+  const reopened = photoProgressContext(page, original)
+  const again = photoProgressContext(page, updated)
+  try {
+    reopened.applyDoc(updated)
+    const deadline = reopened.photoMakingTasks['photos/new.jpg'].deadline
+    reopened.stopPhotoMaking()
+    again.applyDoc(updated)
+    assert.equal(again.photoMakingTasks['photos/new.jpg'].intent, 'generated')
+    assert.equal(again.photoMakingTasks['photos/new.jpg'].deadline, deadline)
+    const other = photoProgressContext(page, updated)
+    other.data.photoScope = 'users/another/'
+    other.applyDoc({ ...updated, owner: 'users/another/' })
+    assert.equal(other.data.blocks[1].photoIntent, 'unknown')
+    other.stopPhotoMaking()
+  } finally { first.stopPhotoMaking(); reopened.stopPhotoMaking(); again.stopPhotoMaking() }
+})
+
+test('multiple generated images and an ordinary in-flight image complete independently', async () => {
+  const resolvers = {}
+  const page = freshDetailPage({ downloadPhotoTemp: key => new Promise(resolve => { resolvers[key] = resolve }) })
+  const ctx = photoProgressContext(page, { articles: [{ body: '正文\n[[photo:photos/old.jpg]]' }] })
+  try {
+    ctx.applyDoc(ctx.data.doc)
+    const seq = ctx.photoLoadSeq
+    ctx.data.blocks.push({ type: 'photo', key: 'photos/a.jpg' }, { type: 'photo', key: 'photos/b.jpg' })
+    ctx.startPhotoMaking('photos/a.jpg', { poll: false, intent: 'generated' })
+    ctx.startPhotoMaking('photos/b.jpg', { poll: false, intent: 'generated' })
+    assert.equal(ctx.photoLoadSeq, seq)
+    resolvers['photos/old.jpg']('wxfile://old.jpg')
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(ctx.data.blocks[1].url, 'wxfile://old.jpg')
+    assert.ok(ctx.photoMakingTasks['photos/a.jpg'])
+    assert.ok(ctx.photoMakingTasks['photos/b.jpg'])
+  } finally { ctx.stopPhotoMaking() }
+})
+
+test('decode failure keeps the deadline and successful rendering clears both task and pending hint', async () => {
+  const page = freshDetailPage({ downloadPhotoTemp: async () => 'wxfile://new.jpg' })
+  const ctx = photoProgressContext(page, { articles: [] })
+  ctx.data.blocks = [{ type: 'photo', key: 'photos/new.jpg', photoIntent: 'generated' }]
+  try {
+    ctx.startPhotoMaking('photos/new.jpg', { poll: false, intent: 'generated' })
+    const first = ctx.photoMakingTasks['photos/new.jpg']
+    await ctx.pollMakingPhoto('photos/new.jpg', first.generation)
+    ctx.onArticleImageError({ currentTarget: { dataset: { index: 0, key: 'photos/new.jpg', url: 'wxfile://new.jpg' } } })
+    const retry = ctx.photoMakingTasks['photos/new.jpg']
+    assert.equal(retry.deadline, first.deadline)
+    assert.equal(ctx.data.blocks[0].failed, false)
+    await ctx.pollMakingPhoto('photos/new.jpg', retry.generation)
+    ctx.onArticleImageLoad({ currentTarget: { dataset: { index: 0, key: 'photos/new.jpg', url: 'wxfile://new.jpg' } }, detail: { width: 100, height: 50 } })
+    assert.equal(ctx.photoMakingTasks['photos/new.jpg'], undefined)
+    assert.deepEqual(ctx.photoJournal.photos['photos/new.jpg'], { intent: 'loaded' })
+    assert.equal(ctx.data.blocks[0].photoState, 'loaded')
+  } finally { ctx.stopPhotoMaking() }
+})
+
+test('an expired persisted task still attempts a late completed image on reopening', async () => {
+  const page = freshDetailPage()
+  const ctx = photoProgressContext(page, { owner: 'users/test/', articles: [{ body: '[[photo:photos/late.jpg]]' }] })
+  const progress = require('../utils/detail-photo-progress')
+  progress.remember(ctx, 'photos/late.jpg', { intent: 'generated', deadline: Date.now() - 1 })
+  ctx.applyDoc(ctx.data.doc)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(ctx.data.blocks[0].url, 'wxfile://users/test/photos/late.jpg')
+  assert.equal(Object.keys(ctx.photoMakingTasks || {}).length, 0)
+})
+
+test('a text update preserves the generation deadline for every newly inserted image', () => {
+  const page = freshDetailPage()
+  const ctx = photoProgressContext(page, { articles: [{ body: '旧正文' }] })
+  try {
+    ctx.enqueueInstruction('生成两张插图', 0, null, null, 'two-images', 'image')
+    const body = '正文\n[[photo:photos/a.jpg]]\n[[photo:photos/b.jpg]]'
+    ctx.applyDoc({ owner: 'users/test/', articles: [{ body }] })
+    const deadlines = Object.fromEntries(Object.entries(ctx.photoMakingTasks).map(([key, task]) => [key, task.deadline]))
+    ctx.applyRealtimeDoc({ owner: 'users/test/', articles: [{ body: body.replace('正文', '更新后的文字') }] })
+    assert.equal(ctx.data.blocks[0].text, '更新后的文字')
+    assert.equal(Object.keys(ctx.photoMakingTasks).length, 2)
+    for (const [key, task] of Object.entries(ctx.photoMakingTasks)) {
+      assert.equal(task.intent, 'generated')
+      assert.equal(task.deadline, deadlines[key])
+    }
+  } finally { ctx.stopPhotoMaking() }
+})
+
+test('a removed photo ignores a late download and does not change the new text document', async () => {
+  let resolve
+  const page = freshDetailPage({ downloadPhotoTemp: () => new Promise(done => { resolve = done }) })
+  const ctx = photoProgressContext(page, { articles: [{ body: '[[photo:photos/old.jpg]]' }] })
+  ctx.applyDoc(ctx.data.doc)
+  ctx.applyDoc({ articles: [{ body: '只有新文字' }] })
+  resolve('wxfile://stale.jpg')
+  await new Promise(done => setImmediate(done))
+  assert.deepEqual(ctx.data.blocks, [{ type: 'paragraph', text: '只有新文字', lineNo: 1 }])
+})
+
+test('generation timeout rejects a late network result and retry does not enqueue a new generation', async () => {
+  let resolve
+  const page = freshDetailPage({ downloadPhotoTemp: () => new Promise(done => { resolve = done }) })
+  const ctx = photoProgressContext(page, { articles: [] })
+  ctx.data.blocks = [{ type: 'photo', key: 'photos/slow.jpg' }]
+  try {
+    ctx.startPhotoMaking('photos/slow.jpg', { poll: false, intent: 'generated' })
+    const task = ctx.photoMakingTasks['photos/slow.jpg']
+    const request = ctx.pollMakingPhoto('photos/slow.jpg', task.generation)
+    task.deadline = Date.now() - 1
+    resolve('wxfile://late.jpg')
+    await request
+    assert.equal(ctx.data.blocks[0].photoState, 'failed')
+    assert.equal(ctx.photoMakingTasks['photos/slow.jpg'], undefined)
+    ctx.ensureEditSession = () => { throw new Error('reload must not submit another generation') }
+    ctx.retryMakingPhoto({ currentTarget: { dataset: { key: 'photos/slow.jpg' } } })
+    assert.equal(ctx.photoMakingTasks['photos/slow.jpg'].intent, 'unknown')
+    assert.ok(ctx.photoMakingTasks['photos/slow.jpg'].deadline > Date.now())
+  } finally { ctx.stopPhotoMaking() }
 })
