@@ -15,7 +15,7 @@ test('VD detail keeps its standard back tap outside a dedicated vertical scrolle
   assert.match(back, /bindtap="goBack"/)
   assert.equal(config.disableScroll, true)
   assert.ok(scroller > toolbarEnd)
-  assert.match(wxml.slice(scroller), /<scroll-view class="detail-scroll" scroll-y enhanced show-scrollbar="\{\{false\}\}">/)
+  assert.match(wxml.slice(scroller), /<scroll-view class="detail-scroll" scroll-y enhanced bounces="\{\{true\}\}" show-scrollbar="\{\{false\}\}">/)
 })
 
 function freshCommunityDetailPage(routes, currentCommunityPost, sharedStorage) {
@@ -292,10 +292,7 @@ test('community detail has custom actions and loading markup', () => {
   const wxss = fs.readFileSync(path.join(__dirname, '../pages/community-detail/index.wxss'), 'utf8')
   const toolbarActionsRule = wxss.match(/\.toolbar-actions\s*\{([^}]*)\}/)[1]
   const toolButtonRule = wxss.match(/\.tool-button\s*\{([^}]*)\}/)[1]
-  const iconButtonRule = wxss.match(/\.icon-only-button\s*\{([^}]*)\}/)[1]
-  const compactIconButtonRule = wxss.match(/\.toolbar-actions \.icon-only-button \+ \.icon-only-button\s*\{([^}]*)\}/)?.[1] || ''
   const actionIconRule = wxss.match(/\.action-icon\s*\{([^}]*)\}/)[1]
-  const moreButtonRule = wxss.match(/\.toolbar-actions \.tool-button\.more-button\s*\{([^}]*)\}/)[1]
   const moreIconRule = wxss.match(/\.more-icon\s*\{([^}]*)\}/)[1]
   const loadingRule = wxss.match(/\.loading-card\s*\{([^}]*)\}/)[1]
   const loadingSpinnerRule = wxss.match(/\.loading-spinner\s*\{([^}]*)\}/)?.[1] || ''
@@ -334,13 +331,10 @@ test('community detail has custom actions and loading markup', () => {
   assert.doesNotMatch(wxml, /ri-share-forward-line/)
   assert.match(wxml, /ri-flag-line/)
   assert.match(wxml, /ri-hand/)
-  assert.match(toolbarActionsRule, /gap:\s*0;/)
+  assert.match(toolbarActionsRule, /gap:\s*8px;/)
   assert.doesNotMatch(toolbarActionsRule, /column-gap|margin-(left|right):/)
   assert.match(toolButtonRule, /width:\s*32px;/)
   assert.match(toolButtonRule, /height:\s*32px;/)
-  assert.doesNotMatch(iconButtonRule, /margin-(left|right):/)
-  assert.match(compactIconButtonRule, /margin-left:\s*0;/)
-  assert.match(moreButtonRule, /margin-left:\s*8px;/)
   assert.match(actionIconRule, /width:\s*21px;/)
   assert.match(actionIconRule, /height:\s*21px;/)
   assert.match(actionIconRule, /font-size:\s*21px;/)
@@ -379,6 +373,8 @@ test('community article detail shares the list gutter and audio-detail reading r
 
   assert.match(wxml, /padding-top: calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 54rpx\)/)
   assert.doesNotMatch(wxml, /padding-top: 115px/)
+  assert.match(wxss, /\.detail-scroll-content\s*\{[^}]*min-height:\s*calc\(100% \+ 1px\);/s)
+  assert.match(wxml, /class="detail-scroll" scroll-y enhanced bounces="\{\{true\}\}"/)
   assert.match(wxss, /\.detail-scroll-content\s*\{[^}]*padding:\s*0 32rpx 72rpx;/s)
   assert.match(wxss, /\.detail-toolbar\s*\{[^}]*padding:\s*0 0 0 32rpx;/s)
   assert.match(wxss, /\.article-head\s*\{[^}]*padding:\s*0 0 20rpx;/s)
@@ -956,4 +952,68 @@ test('community detail block stores author locally and leaves detail page like A
   assert.deepEqual(global.wx.getStorageSync('vd.blockedAuthors'), ['Alice'])
   assert.deepEqual(toasts, [{ title: '已屏蔽，TA 的内容将不再显示' }])
   assert.deepEqual(backs, ['back'])
+})
+
+test('community toolbar retains button surfaces and exposes press, selected and pending feedback', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/community-detail/index.wxml'), 'utf8')
+  const wxss = fs.readFileSync(path.join(root, 'pages/community-detail/index.wxss'), 'utf8')
+  assert.doesNotMatch(wxml + wxss, /icon-only-button/)
+  assert.match(wxml, /hover-class="\{\{fed \|\| feeding \? 'none' : 'tool-button-pressed'\}\}"/)
+  assert.match(wxml, /disabled="\{\{fed \|\| feeding\}\}"/)
+  assert.match(wxml, /feeding \? 'ri-loader-4-line is-spinning'/)
+  assert.match(wxml, /aria-pressed="\{\{liked\}\}"/)
+  assert.match(wxml, /aria-expanded="\{\{moreMenuOpen\}\}"/)
+  assert.match(wxss, /\.engagement-button\.fed\[disabled\]\s*\{[^}]*color:\s*#b77b18;[^}]*opacity:\s*1;/)
+  assert.match(wxss, /\.toolbar-actions \.tool-button-pressed\s*\{[^}]*transform:\s*scale\(0\.94\)/)
+  assert.match(wxss, /\.action-icon\.is-spinning\s*\{[^}]*animation:\s*loading-spin/)
+  for (const selector of ['.engagement-button.liked', '.engagement-button.fed[disabled]', '.engagement-button.is-feeding[disabled]', '.toolbar-actions .tool-button-pressed']) {
+    const rule = wxss.slice(wxss.indexOf(selector)).split('{')[1].split('}')[0]
+    assert.doesNotMatch(rule, /background|border|box-shadow/, selector + ' should keep the shared frame')
+  }
+  assert.match(wxss, /\.toolbar-actions \.engagement-button\[disabled\]\s*\{[^}]*background:\s*#fffdf9;/)
+
+})
+
+test('coin feedback blocks repeat taps while pending and stays selected after success', async () => {
+  const page = freshCommunityDetailPage([], null)
+  const community = require('../services/community')
+  let finish
+  let calls = 0
+  community.feed = () => {
+    calls += 1
+    return new Promise((resolve) => { finish = resolve })
+  }
+  const ctx = {
+    data: { shareId: 'share-feedback', fed: false, feeding: false },
+    setData(update) { Object.assign(this.data, update) }
+  }
+  const pending = page.tip.call(ctx)
+  assert.equal(ctx.data.feeding, true)
+  await page.tip.call(ctx)
+  assert.equal(calls, 1)
+  finish({ ok: true, feederSuanli: 2, authorSuanli: 3 })
+  await pending
+  assert.equal(ctx.data.feeding, false)
+  assert.equal(ctx.data.fed, true)
+  await page.tip.call(ctx)
+  assert.equal(calls, 1)
+})
+
+test('coin failure clears pending feedback and permits retry', async () => {
+  const page = freshCommunityDetailPage([], null)
+  const community = require('../services/community')
+  let calls = 0
+  community.feed = async () => {
+    calls += 1
+    throw new Error('offline')
+  }
+  const ctx = {
+    data: { shareId: 'share-feedback', fed: false, feeding: false },
+    setData(update) { Object.assign(this.data, update) }
+  }
+  await page.tip.call(ctx)
+  assert.equal(ctx.data.feeding, false)
+  assert.equal(ctx.data.fed, false)
+  await page.tip.call(ctx)
+  assert.equal(calls, 2)
 })

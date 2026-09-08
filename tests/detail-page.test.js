@@ -15,7 +15,7 @@ test('audio detail keeps its standard back tap outside a dedicated vertical scro
   assert.match(back, /bindtap="goBack"/)
   assert.equal(config.disableScroll, true)
   assert.ok(scroller > toolbarEnd)
-  assert.match(wxml.slice(scroller), /<scroll-view class="detail-scroll" scroll-y enhanced show-scrollbar="\{\{false\}\}">/)
+  assert.match(wxml.slice(scroller), /<scroll-view class="detail-scroll" scroll-y enhanced bounces="\{\{true\}\}" show-scrollbar="\{\{false\}\}">/)
 })
 
 test('audio detail loading state shows a spinner above the text', () => {
@@ -663,6 +663,8 @@ test('detail page keeps a compact readable rhythm and responsive safe-area toolb
   assert.doesNotMatch(wxml, /padding-top: 115px/)
   assert.match(wxml, /class="hold-edit-button \{\{holdEditState\}\}"[^>]*aria-label="\{\{holdEditButtonText\}\}"/s)
   assert.match(js, /holdEditButtonText: '按住说话，修改文章'/)
+  assert.match(css, /\.detail-scroll-content\s*\{[^}]*min-height:\s*calc\(100% \+ 1px\);/s)
+  assert.match(wxml, /class="detail-scroll" scroll-y enhanced bounces="\{\{true\}\}"/)
   assert.match(css, /\.detail-scroll-content\s*\{[^}]*padding:\s*0 32rpx 204rpx;/s)
   assert.match(css, /\.detail-toolbar\s*\{[^}]*padding-left:\s*32rpx;/s)
   assert.match(css, /\.toolbar-actions\s*\{[^}]*gap:\s*14rpx;/s)

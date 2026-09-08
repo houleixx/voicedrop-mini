@@ -4,19 +4,19 @@
       <text class="back-icon ri-arrow-left-s-line"></text>
     </view>
     <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;">
-      <button class="tool-button icon-only-button feed-button {{fed ? 'fed' : ''}}" bindtap="tip" disabled="{{fed || feeding}}" aria-label="{{i18n['投币']}}">
-        <text class="action-icon {{fed ? 'ri-flashlight-fill' : 'ri-flashlight-line'}}"></text>
+      <button class="tool-button engagement-button feed-button {{fed ? 'fed' : ''}} {{feeding ? 'is-feeding' : ''}}" bindtap="tip" hover-class="{{fed || feeding ? 'none' : 'tool-button-pressed'}}" hover-stay-time="80" disabled="{{fed || feeding}}" aria-label="{{i18n['投币']}}">
+        <text class="action-icon {{feeding ? 'ri-loader-4-line is-spinning' : (fed ? 'ri-flashlight-fill' : 'ri-flashlight-line')}}"></text>
       </button>
-      <button class="tool-button icon-only-button {{liked ? 'liked' : ''}}" bindtap="toggleLike" aria-label="{{i18n['喜欢']}}">
+      <button class="tool-button engagement-button {{liked ? 'liked' : ''}}" bindtap="toggleLike" hover-class="tool-button-pressed" hover-stay-time="80" aria-pressed="{{liked}}" aria-label="{{i18n['喜欢']}}">
         <text class="action-icon {{liked ? 'ri-heart-fill' : 'ri-heart-line'}}"></text>
       </button>
-      <button class="tool-button more-button {{post.isPrompt ? 'prompt-more-button' : ''}}" bindtap="showMoreActions" aria-label="{{i18n['更多']}}">
+      <button class="tool-button more-button {{post.isPrompt ? 'prompt-more-button' : ''}}" bindtap="showMoreActions" hover-class="tool-button-pressed" hover-stay-time="80" aria-expanded="{{moreMenuOpen}}" aria-label="{{i18n['更多']}}">
         <text class="more-icon ri-more-fill"></text>
       </button>
     </view>
   </view>
 
-  <scroll-view class="detail-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+  <scroll-view class="detail-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}">
     <view class="detail-scroll-content">
       <view class="detail-body" style="padding-top: calc({{toolbarTop + toolbarHeight}}px + 54rpx);">
     <view class="article-head">

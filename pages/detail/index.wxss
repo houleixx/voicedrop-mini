@@ -12,7 +12,8 @@
 }
 
 .detail-scroll-content {
-  min-height: 100%;
+  /* Keep a scroll range even when the article is shorter than the viewport. */
+  min-height: calc(100% + 1px);
   box-sizing: border-box;
   padding: 0 32rpx 204rpx;
 }

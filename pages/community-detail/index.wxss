@@ -12,7 +12,8 @@
 }
 
 .detail-scroll-content {
-  min-height: 100%;
+  /* Keep a scroll range even when the article is shorter than the viewport. */
+  min-height: calc(100% + 1px);
   box-sizing: border-box;
   padding: 0 32rpx 72rpx;
 }
@@ -32,7 +33,7 @@
 .toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 8px;
 }
 
 .tool-button {
@@ -86,22 +87,37 @@
   box-shadow: none;
 }
 
-.icon-only-button {
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
+/* Keep engagement controls on the same surface as the audio detail toolbar. */
+.toolbar-actions .tool-button {
+  transition: transform 120ms ease;
 }
 
-.toolbar-actions .icon-only-button + .icon-only-button {
-  margin-left: 0;
-}
-
-.icon-only-button.liked {
+.engagement-button.liked {
   color: #d8593b;
 }
 
-.icon-only-button.fed {
-  color: #d49b37;
+.engagement-button.fed,
+.engagement-button.fed[disabled] {
+  color: #b77b18;
+  opacity: 1;
+}
+
+.engagement-button.is-feeding[disabled] {
+  color: #9b8f7f;
+}
+
+.toolbar-actions .tool-button-pressed {
+  transform: scale(0.94);
+}
+
+/* Override the native disabled surface while preserving the shared button frame. */
+.toolbar-actions .engagement-button[disabled] {
+  background: #fffdf9;
+  opacity: 1;
+}
+
+.action-icon.is-spinning {
+  animation: loading-spin 0.8s linear infinite;
 }
 
 .action-icon {
@@ -111,14 +127,6 @@
   font-size: 21px;
   line-height: 21px;
   text-align: center;
-}
-
-.feed-button .action-icon {
-  transform: none;
-}
-
-.toolbar-actions .tool-button.more-button {
-  margin-left: 8px;
 }
 
 .more-icon {

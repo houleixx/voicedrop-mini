@@ -32,7 +32,7 @@
     </view>
   </view>
 
-  <scroll-view class="detail-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+  <scroll-view class="detail-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}">
     <view class="detail-scroll-content">
       <view wx:if="{{loading}}" class="loading-state">
         <view class="loading-spinner" aria-hidden="true"></view>
