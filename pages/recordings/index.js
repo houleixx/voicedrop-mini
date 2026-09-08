@@ -514,7 +514,8 @@ Page({
     const refreshingTabs = this._refreshingTabs || (this._refreshingTabs = Object.create(null))
     const refreshingBooks = tab === 'books'
     const options = { silent: true, keepDataOnError: true }
-    if (refreshingBooks) options.forceRefresh = true
+    if (refreshingBooks || tab === 'recordings') options.forceRefresh = true
+    if (tab === 'recordings') library.retryFailedPhotoDownloads()
     refreshingTabs[tab] = true
     if (this.scrollTab(this.data.activeTab) === tab) this.setData({ refreshing: true })
     const refreshPromise = Promise.all([
@@ -647,6 +648,7 @@ Page({
           ? queued.skipPhotoRepair && Boolean(incoming.skipPhotoRepair)
           : Boolean(incoming.skipPhotoRepair)
       }
+      if (incoming.forceRefresh || (queued && queued.forceRefresh)) this._libraryLoadQueuedOptions.forceRefresh = true
       return this._libraryLoadPromise
     }
     const task = (async () => {
@@ -699,7 +701,8 @@ Page({
         error: ''
       })
       this.loadRecordingCovers(recordsWithRefs, recordCoverLoadId)
-      this.enrichRecordingMeta(records, recordMetaLoadId)
+      const metadata = this.enrichRecordingMeta(records, recordMetaLoadId, options)
+      if (options && options.forceRefresh) await metadata
       this.publishPendingReplies(records)
       if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
       return true
@@ -731,10 +734,10 @@ Page({
     return pending.concat(records || [])
   },
 
-  async enrichRecordingMeta(records, loadId) {
+  async enrichRecordingMeta(records, loadId, options) {
     if (!library.enrichArticleMeta) return
     try {
-      await library.enrichArticleMeta(records)
+      await library.enrichArticleMeta(records, options)
       if (loadId !== this.recordMetaLoadId) return
       const enrichedByStem = new Map((records || []).map((rec) => [rec.stem, rec]))
       const currentRecords = (this.data.allRecords || []).map((current) => {
@@ -785,10 +788,11 @@ Page({
   },
 
   async loadRecordingCovers(records, loadId) {
-    const candidates = (records || []).filter((rec) => rec && !rec.coverPhotoUrl &&
-      ((rec.hasArticles && recordingUtil.coverKeyForStem(rec.stem || rec.audioName)) || rec.coverPhotoKey))
+    const candidates = (records || []).filter((rec) => rec && (
+      (!(rec.coverPhotoUrl && rec.coverPhotoIsBook) && rec.hasArticles &&
+        recordingUtil.coverKeyForStem(rec.stem || rec.audioName)) ||
+      (!rec.coverPhotoUrl && rec.coverPhotoKey)))
     if (!candidates.length) return
-    if (!this.recordCoverMissingKeys) this.recordCoverMissingKeys = new Set()
     let scope = ''
     try {
       scope = await library.ownerScope()
@@ -798,8 +802,8 @@ Page({
     if (!scope || loadId !== this.recordCoverLoadId) return
     await Promise.all(candidates.map(async (rec) => {
       const dedicatedKey = rec.hasArticles ? recordingUtil.coverKeyForStem(rec.stem || rec.audioName) : ''
-      const dedicatedMissingKey = dedicatedKey ? `${scope}${dedicatedKey}` : ''
-      if (dedicatedKey && !this.recordCoverMissingKeys.has(dedicatedMissingKey)) {
+      // A timeout or a cover still being generated must not suppress future refreshes.
+      if (dedicatedKey) {
         try {
           const dedicatedUrl = await library.downloadPhotoTemp(dedicatedKey, scope, { preferThumb: true })
           if (dedicatedUrl && loadId === this.recordCoverLoadId) {
@@ -808,12 +812,9 @@ Page({
             this.updateRecordingCover(rec.stem, dedicatedUrl, true, false)
             return
           }
-          this.recordCoverMissingKeys.add(dedicatedMissingKey)
-        } catch (_) {
-          this.recordCoverMissingKeys.add(dedicatedMissingKey)
-        }
+        } catch (_) {}
       }
-      if (!rec.coverPhotoKey) return
+      if (loadId !== this.recordCoverLoadId || rec.coverPhotoUrl || !rec.coverPhotoKey) return
       try {
         const fallbackUrl = await library.downloadPhotoTemp(rec.coverPhotoKey, scope, { preferThumb: true })
         if (!fallbackUrl || loadId !== this.recordCoverLoadId) return
@@ -826,7 +827,11 @@ Page({
     const current = new Map((this.data.allRecords || []).map((rec) => [rec.stem, rec]))
     return (records || []).map((rec) => {
       const cached = current.get(rec.stem)
-      if (!cached || !cached.coverPhotoUrl || cached.coverPhotoKey !== rec.coverPhotoKey) return rec
+      if (!cached) return rec
+      if (cached.coverPhotoKey !== rec.coverPhotoKey && !cached.coverPhotoIsBook) {
+        return Object.assign({}, rec, { coverPhotoUrl: '', coverPhotoIsBook: false, coverPhotoLoaded: false })
+      }
+      if (!cached.coverPhotoUrl) return rec
       return Object.assign({}, rec, {
         coverPhotoUrl: cached.coverPhotoUrl,
         coverPhotoIsBook: Boolean(cached.coverPhotoIsBook),
@@ -868,6 +873,7 @@ Page({
     if (!stem) return
     const record = (this.data.allRecords || []).find((rec) => rec.stem === stem)
     if (!record || (url && record.coverPhotoUrl !== url)) return
+    library.removeCachedPhotoPath(url)
     const wasDedicatedCover = Boolean(record.coverPhotoIsBook)
     this.updateRecordingCover(stem, '', false, false)
     if (!wasDedicatedCover || !record.coverPhotoKey) return
@@ -878,8 +884,6 @@ Page({
     try {
       const scope = await library.ownerScope()
       if (!scope || loadId !== this.recordCoverLoadId) return
-      if (!this.recordCoverMissingKeys) this.recordCoverMissingKeys = new Set()
-      if (dedicatedKey) this.recordCoverMissingKeys.add(`${scope}${dedicatedKey}`)
       const fallbackUrl = await library.downloadPhotoTemp(record.coverPhotoKey, scope, { preferThumb: true })
       if (!fallbackUrl || loadId !== this.recordCoverLoadId) return
       this.updateRecordingCover(stem, fallbackUrl, false, true)
@@ -1056,7 +1060,7 @@ Page({
         if (updated && status === 'ready') {
           const loadId = (this.recordMetaLoadId || 0) + 1
           this.recordMetaLoadId = loadId
-          this.enrichRecordingMeta([updated], loadId)
+          this.enrichRecordingMeta([updated], loadId, { forceRefresh: true })
         }
       },
       onLinkRequest: (request) => {

@@ -104,8 +104,9 @@
                   <view class="record-wave-line record-wave-line-mid record-wave-line-last"></view>
                 </view>
               </view>
+              <!-- Local files must load while transparent; bindload reveals the dedicated cover. -->
               <image wx:if="{{item.coverPhotoUrl}}" class="record-cover {{item.coverPhotoIsBook ? 'book-cover-image' : ''}} {{item.coverPhotoIsBook && !item.coverPhotoLoaded ? 'record-cover-preloading' : ''}}"
-                     src="{{item.coverPhotoUrl}}" mode="aspectFill" lazy-load
+                     src="{{item.coverPhotoUrl}}" mode="aspectFill"
                      data-stem="{{item.stem}}" data-url="{{item.coverPhotoUrl}}"
                      bindload="onRecordCoverLoad" binderror="onRecordCoverError" />
               <view wx:if="{{commandTalking && item._commandRef}}" class="command-badge">

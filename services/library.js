@@ -149,9 +149,9 @@ async function fetchDocByArticleKey(articleKey) {
   return fetchDoc(stem)
 }
 
-async function enrichArticleMeta(records) {
+async function enrichArticleMeta(records, options) {
   ensureMetaCache()
-  const pending = (records || []).filter((rec) => rec && rec.hasArticles && !hasCompleteArticleMeta(rec))
+  const pending = (records || []).filter((rec) => rec && rec.hasArticles && ((options && options.forceRefresh) || !hasCompleteArticleMeta(rec)))
   if (!pending.length) return records || []
   await mapLimit(pending, META_CONCURRENCY, async (rec) => {
     const key = recording.articleKey(rec.stem)
@@ -406,6 +406,24 @@ function cachedPhotoPath(key, scope, options) {
     persistPhotoCacheIndex(entries.filter((item) => item.key !== fullKey))
     return ''
   }
+}
+
+// Failed decoding must not leave a bad file available for the next refresh.
+function removeCachedPhotoPath(filePath) {
+  if (!filePath) return
+  const entries = photoCacheIndex()
+  const removed = entries.filter((item) => item.path === filePath)
+  removed.forEach((item) => {
+    photoCacheGenerations[item.key] = Number(photoCacheGenerations[item.key] || 0) + 1
+  })
+  if (removed.length) {
+    deleteCachedPhotoFile(filePath)
+    persistPhotoCacheIndex(entries.filter((item) => item.path !== filePath))
+  }
+}
+
+function retryFailedPhotoDownloads() {
+  missingPhotoThumbnails.clear()
 }
 
 function removeCachedPhotos(fullKeys) {
@@ -801,6 +819,34 @@ function downloadAudioFile(key) {
   })
 }
 
+// Native download callbacks can be delayed indefinitely on a device. Bound each
+// attempt so one in-flight entry cannot block every subsequent list refresh.
+function downloadPhotoAttempt(options, timeout) {
+  let settled = false
+  let task
+  const finish = (callback, value) => {
+    if (settled) return
+    settled = true
+    clearTimeout(timer)
+    callback(value)
+  }
+  const timer = setTimeout(() => {
+    if (settled) return
+    settled = true
+    try { if (task && task.abort) task.abort() } catch (_) {}
+    options.fail({ errMsg: 'downloadFile:fail photo timeout', timeout })
+  }, timeout)
+  try {
+    task = wx.downloadFile(Object.assign({}, options, {
+      timeout,
+      success: (response) => finish(options.success, response),
+      fail: (error) => finish(options.fail, error)
+    }))
+  } catch (error) {
+    finish(options.fail, error)
+  }
+}
+
 function downloadPhotoTemp(key, scope, options) {
   const scopedKey = scopedPhotoKey(key, scope)
   const preferThumb = Boolean(options && options.preferThumb)
@@ -821,7 +867,7 @@ function downloadPhotoTemp(key, scope, options) {
     const attempt = (index, previousError) => {
       const url = urls[index]
       logPhotoUpload('download-photo-start', { key, scope, scopedKey, url, authenticated: false, fallback: index > 0 })
-      wx.downloadFile({
+      downloadPhotoAttempt({
         url,
         // 照片读取是公开接口。不要把用户 Token 带到 CDN，避免鉴权头降低缓存命中率；
         // 保留平台标识用于后端诊断。
@@ -844,7 +890,7 @@ function downloadPhotoTemp(key, scope, options) {
           if (index + 1 < urls.length) attempt(index + 1, error)
           else reject(previousError || error)
         }
-      })
+      }, index < thumbnailUrls.length ? 8000 : 15000)
     }
     attempt(0)
   })
@@ -1056,5 +1102,7 @@ module.exports = {
   downloadPhotoTemp,
   cachedPhotoPath,
   removeCachedPhotos,
+  removeCachedPhotoPath,
+  retryFailedPhotoDownloads,
   photoUrl
 }

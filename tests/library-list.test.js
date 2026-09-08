@@ -1164,3 +1164,56 @@ test('library saveArticles preserves unknown top-level fields from the server', 
     articles: [{ title: 'A', body: '精修后的正文', style: 4, futureArticleField: '保留' }]
   })
 })
+
+test('photo download leaves a stalled thumbnail and ignores its late callback', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const calls = []
+  let aborted = 0
+  const library = freshLibraryWithWx([], {
+    downloadFile(options) {
+      calls.push(options)
+      if (calls.length > 1) options.success({ statusCode: 200, tempFilePath: 'wxfile://original.jpg' })
+      return { abort() { aborted += 1 } }
+    }
+  })
+  const pending = library.downloadPhotoTemp('photos/stalled.jpg', 'users/test/', { preferThumb: true })
+  t.mock.timers.tick(8000)
+  for (let i = 0; i < 8; i += 1) await Promise.resolve()
+  assert.equal(calls.length, 2, 'a missing native callback must not block original-image fallback')
+  assert.equal(await pending, 'wxfile://original.jpg')
+  assert.equal(aborted, 1)
+  calls[0].success({ statusCode: 200, tempFilePath: 'wxfile://late.jpg' })
+  assert.equal(await pending, 'wxfile://original.jpg')
+})
+
+test('a stalled original download releases its in-flight cache so refresh can retry', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  let attempts = 0
+  let available = false
+  const library = freshLibraryWithWx([], {
+    downloadFile(options) {
+      attempts += 1
+      if (available) options.success({ statusCode: 200, tempFilePath: 'wxfile://recovered.jpg' })
+      return { abort() { options.fail({ errMsg: 'downloadFile:fail abort' }) } }
+    }
+  })
+  const pending = library.downloadPhotoTemp('photos/stalled-original.jpg', 'users/test/')
+  const rejected = assert.rejects(pending, (error) => /photo timeout/.test(error.errMsg))
+  t.mock.timers.tick(15000)
+  await rejected
+  available = true
+  assert.equal(await library.downloadPhotoTemp('photos/stalled-original.jpg', 'users/test/'), 'wxfile://recovered.jpg')
+  assert.equal(attempts, 2)
+})
+
+test('explicit metadata refresh discovers a first photo added after the empty cover was cached', async () => {
+  const stem = 'VoiceDrop-2026-09-08-114110-0m13s-Tue-Morning-Shanghai-Changning'
+  const docRoute = { path: `/articles/${stem}`, data: { articles: [{ title: 'old', body: 'text' }] } }
+  const library = freshLibraryWithWx([docRoute])
+  await library.enrichArticleMeta([{ stem, hasArticles: true }])
+  docRoute.data = { articles: [{ title: 'updated', body: 'text [[photo:photos/session/first.jpg]]' }] }
+  const refreshed = [{ stem, hasArticles: true, coverPhotoKey: '' }]
+  await library.enrichArticleMeta(refreshed, { forceRefresh: true })
+  assert.equal(refreshed[0].coverPhotoKey, 'photos/session/first.jpg')
+  assert.equal(refreshed[0].articleTitle, 'updated')
+})

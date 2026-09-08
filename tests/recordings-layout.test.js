@@ -242,7 +242,7 @@ test('recordings load starts photo marker repair in the background before enrich
   assert.doesNotMatch(loadSource, /await (?:this\.)?repairPhotoMarkers/)
   assert.ok(
     loadSource.indexOf('this.repairPhotoMarkers(records)') <
-      loadSource.indexOf('this.enrichRecordingMeta(records, recordMetaLoadId)')
+      loadSource.indexOf('this.enrichRecordingMeta(records, recordMetaLoadId, options)')
   )
 })
 
@@ -610,7 +610,7 @@ test('recording rows keep the square waveform until the dedicated article cover 
   assert.match(css, /\.record-cover\.record-cover-preloading\s*\{[^}]*position:\s*absolute;[^}]*opacity:\s*0;/s)
 })
 
-test('recording rows prefer the dedicated cover and remember misses before using the first photo', async () => {
+test('recording rows retry the dedicated cover on refresh before using the first photo', async () => {
   const library = require('../services/library')
   const originalOwnerScope = library.ownerScope
   const originalDownloadPhotoTemp = library.downloadPhotoTemp
@@ -649,7 +649,7 @@ test('recording rows prefer the dedicated cover and remember misses before using
     ctx.data = Object.assign({}, ctx.data, { allRecords: [refreshed], records: [refreshed] })
     ctx.recordCoverLoadId = 2
     await page.loadRecordingCovers.call(ctx, [refreshed], 2)
-    assert.deepEqual(calls, ['photos/2026-08-13-091500/3-abc.jpg'])
+    assert.deepEqual(calls, ['photos/2026-08-13-091500/cover.jpg', 'photos/2026-08-13-091500/3-abc.jpg'])
   } finally {
     library.ownerScope = originalOwnerScope
     library.downloadPhotoTemp = originalDownloadPhotoTemp
@@ -823,7 +823,7 @@ test('pull refresh keeps current content visible and forwards silent options to 
   await pending
 
   assert.equal(ctx.data.refreshing, false)
-  assert.deepEqual(seen, [{ silent: true, keepDataOnError: true }])
+  assert.deepEqual(seen, [{ silent: true, keepDataOnError: true, forceRefresh: true }])
   assert.deepEqual(toasts, [])
 
   const routed = []
@@ -1445,3 +1445,122 @@ test('home voice command waits for recorder stop and final ASR text before sendi
   assert.deepEqual(enqueued, ['删除第二篇文章'])
   assert.equal(events.at(-1), 'close')
 })
+
+for (const fallback of ['', 'photos/2026-08-13-091500/first.jpg']) {
+  test(`recording cover recovers on refresh after a failed download (fallback: ${Boolean(fallback)})`, async () => {
+    const library = require('../services/library')
+    const originalOwnerScope = library.ownerScope
+    const originalDownload = library.downloadPhotoTemp
+    let available = false
+    library.ownerScope = async () => 'users/test/'
+    library.downloadPhotoTemp = async (key) => {
+      if (!key.endsWith('/cover.jpg')) return 'wxfile://fallback.jpg'
+      if (!available) throw new Error('downloadFile:fail timeout')
+      return 'wxfile://recovered-cover.jpg'
+    }
+    try {
+      const { page } = freshRecordingsPage()
+      const record = { stem: 'VoiceDrop-2026-08-13-091500-3m20s-Wed-Morning-Shanghai', hasArticles: true, coverPhotoKey: fallback }
+      const ctx = Object.assign({}, page, {
+        recordCoverLoadId: 1,
+        data: Object.assign({}, page.data, { allRecords: [record], records: [record] }),
+        setData(update) { Object.assign(this.data, update) }
+      })
+      await ctx.loadRecordingCovers([record], 1)
+      available = true
+      const refreshed = ctx.preserveRecordingCovers([record])
+      ctx.setData({ allRecords: refreshed, records: refreshed })
+      ctx.recordCoverLoadId = 2
+      await ctx.loadRecordingCovers(refreshed, 2)
+      assert.equal(ctx.data.records[0].coverPhotoUrl, 'wxfile://recovered-cover.jpg')
+      assert.equal(ctx.data.records[0].coverPhotoIsBook, true)
+    } finally {
+      library.ownerScope = originalOwnerScope
+      library.downloadPhotoTemp = originalDownload
+    }
+  })
+}
+
+test('an obsolete cover download cannot suppress the next refresh or replace its result', async () => {
+  const library = require('../services/library')
+  const originalOwnerScope = library.ownerScope
+  const originalDownload = library.downloadPhotoTemp
+  let finishOld
+  let started
+  const oldStarted = new Promise((resolve) => { started = resolve })
+  let calls = 0
+  library.ownerScope = async () => 'users/test/'
+  library.downloadPhotoTemp = async () => {
+    calls += 1
+    if (calls > 1) return 'wxfile://new.jpg'
+    started()
+    return new Promise((resolve) => { finishOld = resolve })
+  }
+  try {
+    const { page } = freshRecordingsPage()
+    const record = { stem: 'VoiceDrop-2026-08-13-091500-3m20s-Wed-Morning-Shanghai', hasArticles: true }
+    const ctx = Object.assign({}, page, {
+      recordCoverLoadId: 1,
+      data: Object.assign({}, page.data, { allRecords: [record], records: [record] }),
+      setData(update) { Object.assign(this.data, update) }
+    })
+    const oldLoad = ctx.loadRecordingCovers([record], 1)
+    await oldStarted
+    ctx.recordCoverLoadId = 2
+    finishOld('wxfile://old.jpg')
+    await oldLoad
+    assert.equal(ctx.data.records[0].coverPhotoUrl, undefined)
+    await ctx.loadRecordingCovers([record], 2)
+    assert.equal(ctx.data.records[0].coverPhotoUrl, 'wxfile://new.jpg')
+    // Successful dedicated covers still survive refresh without more downloads.
+    await ctx.loadRecordingCovers(ctx.data.records, 2)
+    assert.equal(calls, 2)
+  } finally {
+    library.ownerScope = originalOwnerScope
+    library.downloadPhotoTemp = originalDownload
+  }
+})
+
+test('downloaded recording covers load immediately even while the dedicated cover is transparent', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
+  const image = wxml.match(/<image[^>]*class="record-cover [^>]*>/s)
+  assert.ok(image, 'the recording cover image must be mounted')
+  assert.doesNotMatch(image[0], /\blazy-load(?:\s|=|>)/,
+    'local cover decoding must not depend on visibility before bindload removes opacity: 0')
+  assert.match(image[0], /bindload="onRecordCoverLoad"/)
+  assert.match(image[0], /binderror="onRecordCoverError"/)
+})
+
+test('a queued user refresh retains forced article metadata refresh', async () => {
+  const { page } = freshRecordingsPage()
+  let finishFirst
+  const calls = []
+  const ctx = Object.assign({}, page, {
+    fetchLibrary(options) {
+      calls.push(options)
+      if (calls.length === 1) return new Promise((resolve) => { finishFirst = resolve })
+      return Promise.resolve(true)
+    }
+  })
+  const first = ctx.load({ silent: true })
+  const refresh = ctx.load({ silent: true, forceRefresh: true })
+  ctx.load({ silent: true })
+  finishFirst(true)
+  await Promise.all([first, refresh])
+  assert.equal(calls.length, 2)
+  assert.equal(calls[1].forceRefresh, true)
+})
+
+for (const nextKey of ['', 'photos/new.jpg']) {
+  test(`refreshed article does not retain the previous first-photo image (${nextKey || 'removed'})`, () => {
+    const { page } = freshRecordingsPage()
+    const cached = { stem: 'VoiceDrop-row', coverPhotoKey: 'photos/old.jpg', coverPhotoUrl: 'wxfile://old.jpg', coverPhotoIsBook: false, coverPhotoLoaded: true }
+    const ctx = { data: { allRecords: [cached] } }
+    // Enrichment merges into the current row, so it initially contains the old URL.
+    const updated = Object.assign({}, cached, { coverPhotoKey: nextKey })
+    const result = page.preserveRecordingCovers.call(ctx, [updated])[0]
+    assert.equal(result.coverPhotoKey, nextKey)
+    assert.equal(result.coverPhotoUrl, '')
+    assert.equal(result.coverPhotoLoaded, false)
+  })
+}
