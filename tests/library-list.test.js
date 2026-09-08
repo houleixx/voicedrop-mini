@@ -1217,3 +1217,20 @@ test('explicit metadata refresh discovers a first photo added after the empty co
   assert.equal(refreshed[0].coverPhotoKey, 'photos/session/first.jpg')
   assert.equal(refreshed[0].articleTitle, 'updated')
 })
+
+test('manual photo retry releases failed thumbnail suppression', async () => {
+  let recovered = false
+  const calls = []
+  const library = freshLibraryWithWx([], {
+    downloadFile: (options) => {
+      calls.push(options.url)
+      options.success({ statusCode: recovered ? 200 : 404, tempFilePath: 'wxfile://recovered.jpg' })
+    }
+  })
+  await library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/', { preferThumb: true }).catch(() => {})
+  recovered = true
+  library.retryFailedPhotoDownloads()
+  const path = await library.downloadPhotoTemp('photos/a.jpg', 'users/anon-1/', { preferThumb: true })
+  assert.equal(path, 'wxfile://recovered.jpg')
+  assert.ok(calls.at(-1).includes('/cdn-cgi/image/'))
+})
