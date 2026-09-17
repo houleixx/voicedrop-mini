@@ -1,0 +1,44 @@
+/* Match the VD Community filter row, including its fixed search-state height. */
+.book-filter-bar {
+  display: flex;
+  box-sizing: border-box;
+  height: 88rpx;
+  padding: 0 32rpx;
+  align-items: center;
+  background: #f3efe7;
+}
+.book-filter-scroll { flex: 1; min-width: 0; width: 0; height: 88rpx; white-space: nowrap; }
+.book-filter {
+  display: inline-flex;
+  box-sizing: border-box;
+  height: 88rpx;
+  margin-right: 36rpx;
+  align-items: center;
+  vertical-align: top;
+  color: #8a8175;
+  font-size: 30rpx;
+  font-weight: 400;
+}
+.book-filter-label { display: block; height: 30rpx; line-height: 30rpx; white-space: nowrap; }
+.book-filter.active { color: #27231f; font-weight: 800; }
+.book-search-button { flex: none; width: 72rpx; color: #8a8175; font-size: 34rpx; text-align: center; }
+.book-search-slot { display: flex; box-sizing: border-box; height: 88rpx; min-width: 0; align-items: center; flex: 1; }
+.book-search-box {
+  position: relative;
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  height: 64rpx;
+  align-items: center;
+  padding: 0 20rpx;
+  border: 2rpx solid #ded5c8;
+  border-radius: 32rpx;
+  background: #fff;
+}
+.book-search-leading { height: 60rpx; margin-right: 10rpx; color: #8a8175; font-size: 28rpx; line-height: 60rpx; }
+.book-search-input { box-sizing: border-box; height: 60rpx; min-height: 0; min-width: 0; flex: 1; padding: 0; color: #27231f; font-size: 28rpx; line-height: 60rpx; }
+.book-search-cancel { display: flex; box-sizing: border-box; width: 92rpx; height: 88rpx; margin-left: 20rpx; flex: none; align-items: center; justify-content: flex-end; }
+.book-search-cancel-label { display: block; height: 30rpx; color: #27231f; font-size: 28rpx; line-height: 30rpx; white-space: nowrap; }
+.book-search-status, .book-search-scope { padding: 8rpx 18rpx 16rpx; color: #8a8175; font-size: 24rpx; }
+.book-meta.book-chapter-hit { display: block; color: #a44b34; font-size: 23rpx; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.book-shelf-empty { padding: 40rpx 24rpx; text-align: center; color: #8a8175; font-size: 28rpx; }

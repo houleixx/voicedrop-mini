@@ -334,3 +334,14 @@ test('a fast second refresh remains visible for a minimum feedback window', asyn
     global.setTimeout = originalSetTimeout
   }
 })
+
+
+test('failed shelf refresh still resumes a current chapter query', async () => {
+  const { context } = loadShelfPage(async () => { throw new Error('offline') })
+  let resumed = 0
+  context.resumeBookSearch = () => { resumed += 1 }
+  context.data.bookQuery = '章节'
+  await context.load({ keepData: true, forceRefresh: true })
+  assert.equal(resumed, 1)
+  assert.equal(context.data.bookQuery, '章节')
+})

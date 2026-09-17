@@ -146,7 +146,7 @@ test('opening a shelf book preserves its full title for WeChat sharing', () => {
     cover: true
   }
   const shelf = loadShelfPage([book])
-  shelf.page.openBook({ currentTarget: { dataset: { index: 0 } } })
+  shelf.page.openBook({ currentTarget: { dataset: { slug: 'sample-book' } } })
   const route = shelf.calls.find(([name]) => name === 'navigateTo')[1].url
   const query = Object.fromEntries(new URLSearchParams(route.split('?')[1]))
 

@@ -1,4 +1,5 @@
 const books = require('../../services/books')
+const bookSearch = require('../../utils/book-shelf-search')
 const bookCoverCache = require('../../services/book-cover-cache')
 const MIN_REFRESH_FEEDBACK_MS = 600
 
@@ -7,7 +8,9 @@ function wait(milliseconds) {
 }
 
 Page({
+  ...bookSearch.pageMethods(books, 'items'),
   data: {
+    ...bookSearch.initialData,
     tabs: [
       { key: 'recordings', label: '我的录音' },
       { key: 'community', label: 'VD社区' },
@@ -23,18 +26,24 @@ Page({
     const cached = books.cachedShelf()
     const items = this.prepareBookItems(cached)
     this.setData({ items, loading: cached.length === 0 })
+    this.refreshBookSearch()
     this._bookCoverSession.load(items)
     this.load({ keepData: true })
   },
+
+  onLanguageChanged() { this.refreshBookSearch() },
 
   onShow() {
     const identity = books.cacheIdentity()
     if (identity !== this._shelfIdentity) {
       this._shelfIdentity = identity
+      this.setData({ bookFilter: 'all', bookQuery: '', bookSearching: false })
+      this.invalidateBookSearch()
       this._shelfRequestId = (this._shelfRequestId || 0) + 1
       const cached = books.cachedShelf()
       const items = this.prepareBookItems(cached)
       this.setData({ items, loading: cached.length === 0, error: '' })
+      this.refreshBookSearch()
       this._bookCoverSession.load(items)
       this.load({ keepData: cached.length > 0 })
       return
@@ -45,11 +54,13 @@ Page({
     const requestId = (this._shelfRequestId || 0) + 1
     this._shelfRequestId = requestId
     const forceRefresh = Boolean(options && options.forceRefresh)
+    if (forceRefresh) this.invalidateBookSearch()
     try {
       const items = await books.shelf({ forceRefresh })
       if (this._shelfRequestId !== requestId) return
       const prepared = this.prepareBookItems(items)
       this.setData({ items: prepared, error: '' })
+      this.resumeBookSearch()
       this._bookCoverSession.load(prepared)
     } catch (_) {
       if (this._shelfRequestId !== requestId) return
@@ -61,6 +72,7 @@ Page({
         const state = { loading: false }
         if (!forceRefresh) state.refreshing = false
         this.setData(state)
+        this.resumeBookSearch()
       }
     }
   },
@@ -79,6 +91,7 @@ Page({
   },
   onUnload() {
     this._shelfActive = false
+    if (this._bookSearch) this._bookSearch.dispose()
     this._shelfRequestId = (this._shelfRequestId || 0) + 1
     if (this._bookCoverSession) this._bookCoverSession.dispose()
   },
@@ -92,7 +105,7 @@ Page({
         changed = true
         return Object.assign({}, book, { coverDisplayUrl: filePath })
       })
-      if (changed) this.setData({ items })
+      if (changed) { this.setData({ items }); this.refreshBookSearch() }
     })
     return this._bookCoverSession
   },
@@ -107,6 +120,7 @@ Page({
     this.setData({ items: this.data.items.map((item) => item.slug === slug
       ? Object.assign({}, item, { coverDisplayUrl: '' })
       : item) })
+    this.refreshBookSearch()
     this.ensureBookCoverSession().retry(book)
   },
   switchTab(event) {
@@ -120,7 +134,7 @@ Page({
   },
   writeBook() { wx.navigateTo({ url: '/pages/book-writing/index' }) },
   openBook(event) {
-    const book = this.data.items[event.currentTarget.dataset.index]
+    const book = this.data.items.find((item) => item.slug === event.currentTarget.dataset.slug)
     if (!book) return
     wx.navigateTo({
       url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.title)}&main=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author)}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}&mine=${book.mine ? '1' : '0'}&hidden=${book.hidden ? '1' : '0'}`,

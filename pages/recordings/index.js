@@ -10,6 +10,7 @@ const libraryCommand = require('../../services/library-command')
 const asrDictation = require('../../services/asr-dictation')
 const community = require('../../services/community')
 const books = require('../../services/books')
+const bookSearch = require('../../utils/book-shelf-search')
 const bookCoverCache = require('../../services/book-cover-cache')
 const blockStore = require('../../utils/block-store')
 const pendingReplies = require('../../utils/pending-replies')
@@ -38,8 +39,8 @@ function layoutOffsets(headerBottom, windowWidth) {
   }
 }
 
-function bookRowsFor(items) {
-  const cells = [{ key: 'write', kind: 'write' }].concat((items || []).map((book) => Object.assign({
+function bookRowsFor(items, showWrite = true) {
+  const cells = (showWrite ? [{ key: 'write', kind: 'write' }] : []).concat((items || []).map((book) => Object.assign({
     key: `book:${book.slug}`,
     kind: 'book'
   }, book)))
@@ -49,7 +50,9 @@ function bookRowsFor(items) {
 }
 
 Page({
+  ...bookSearch.pageMethods(books, 'bookItems', bookRowsFor),
   data: {
+    ...bookSearch.initialData,
     activeTab: 'recordings',
     currentHomeTab: 'recordings',
     homeTabs: [
@@ -147,6 +150,7 @@ Page({
 
   onLanguageChanged() {
     this._updateDockHint()
+    if (this.refreshBookSearch) this.refreshBookSearch()
   },
 
   measureHomeTabsBottom() {
@@ -281,6 +285,7 @@ Page({
     this._communityLoadGeneration = (this._communityLoadGeneration || 0) + 1
     this.recordCoverLoadId = (this.recordCoverLoadId || 0) + 1
     this.recordMetaLoadId = (this.recordMetaLoadId || 0) + 1
+    if (this._bookSearch) this._bookSearch.dispose()
     if (this._bookCoverSession) this._bookCoverSession.dispose()
     if (this.statusSession) this.statusSession.close()
     if (this.commandSession) this.commandSession.close()
@@ -431,6 +436,7 @@ Page({
     if (!items.length) return false
     const bookItems = this.prepareBookItems(items)
     this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksLoading: false, booksError: '', booksLoaded: true })
+    this.resumeBookSearch()
     this._bookCoverSession.load(bookItems)
     return true
   },
@@ -445,7 +451,7 @@ Page({
         changed = true
         return Object.assign({}, book, { coverDisplayUrl: filePath })
       })
-      if (changed) this.setData({ bookItems, bookRows: bookRowsFor(bookItems) })
+      if (changed) { this.setData({ bookItems }); this.refreshBookSearch() }
     })
     return this._bookCoverSession
   },
@@ -463,10 +469,12 @@ Page({
       ? Object.assign({}, item, { coverDisplayUrl: '' })
       : item)
     this.setData({ bookItems, bookRows: bookRowsFor(bookItems) })
+    this.refreshBookSearch()
     this.ensureBookCoverSession().retry(book)
   },
 
   async loadBooks(options) {
+    if (options && options.forceRefresh) this.invalidateBookSearch()
     const silent = Boolean(options && options.silent)
     const keepDataOnError = Boolean(options && options.keepDataOnError)
     const forceRefresh = Boolean(options && options.forceRefresh)
@@ -478,6 +486,7 @@ Page({
       if (this._pageUnloaded || this._bookLoadRequestId !== requestId) return true
       const bookItems = this.prepareBookItems(items)
       this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksError: '', booksLoaded: true })
+      this.resumeBookSearch()
       this._bookCoverSession.load(bookItems)
       return true
     } catch (_) {
@@ -489,6 +498,7 @@ Page({
     } finally {
       if (!this._pageUnloaded && this._bookLoadRequestId === requestId) {
         this.setData({ booksLoading: false })
+        this.resumeBookSearch()
       }
     }
   },
@@ -1126,6 +1136,8 @@ Page({
     if (!accountState.identityChanged(this._socketBearer, currentBearer)) return false
     this._socketBearer = currentBearer
     this._bookLoadRequestId = (this._bookLoadRequestId || 0) + 1
+    this.setData({ bookFilter: 'all', bookQuery: '', bookSearching: false })
+    this.invalidateBookSearch()
     const cachedBooks = books.cachedShelf()
     const bookItems = this.prepareBookItems(cachedBooks)
     if (this.statusSession) this.statusSession.close()
@@ -1142,6 +1154,7 @@ Page({
       booksLoaded: cachedBooks.length > 0,
       booksError: ''
     })
+    this.resumeBookSearch()
     this._bookCoverSession.load(bookItems)
     this.createStatusSession()
     this.deviceLinkApproval = this.createDeviceLinkApproval()

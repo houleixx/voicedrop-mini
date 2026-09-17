@@ -1,0 +1,22 @@
+<template name="book-shelf-controls">
+  <view class="book-filter-bar">
+    <block wx:if="{{!bookSearching}}">
+      <scroll-view class="book-filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="book-filter {{bookFilter === item.key ? 'active' : ''}}" wx:for="{{bookFilters}}" wx:key="key" data-filter="{{item.key}}" bindtap="selectBookFilter"><text class="book-filter-label">{{item.label}}</text></view>
+      </scroll-view>
+      <view class="book-search-button ri-search-line" bindtap="openBookSearch" aria-label="{{i18n['搜索书架']}}"></view>
+    </block>
+    <block wx:else>
+      <view class="book-search-slot">
+        <view class="book-search-box">
+          <text class="ri-search-line book-search-leading"></text>
+          <input class="book-search-input" value="{{bookQuery}}" placeholder="{{i18n['搜书名、作者、章节']}}" focus bindinput="onBookSearchInput" confirm-type="search" />
+        </view>
+      </view>
+      <view class="book-search-cancel" bindtap="closeBookSearch"><text class="book-search-cancel-label">{{i18n['取消']}}</text></view>
+    </block>
+  </view>
+  <view wx:if="{{bookHasQuery && bookFilter !== 'all'}}" class="book-search-scope">{{i18n['当前筛选']}} · {{bookFilter === 'mine' ? i18n['我的'] : (i18n[bookFilter] || bookFilter)}}</view>
+  <view wx:if="{{bookHasQuery && bookSearchError}}" class="book-search-status" bindtap="retryBookSearch">{{i18n['章节搜索暂不可用，已搜索书名和作者。点此重试']}}</view>
+  <view wx:elif="{{bookHasQuery && bookSearchLoading}}" class="book-search-status">{{i18n['正在翻章节…']}}</view>
+</template>

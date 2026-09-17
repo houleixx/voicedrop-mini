@@ -33,6 +33,14 @@ const ENGLISH_UI = {
 // Do not put article bodies, transcripts, titles, comments, or server errors
 // here: those are user content and must remain in their original language.
 const ENGLISH_COPY = {
+  '全部': 'All', '我的': 'Mine', '搜索书架': 'Search bookshelf',
+  '商业': 'Business', '投资': 'Investing', 'AI': 'AI', '科学': 'Science',
+  '人文': 'Humanities', '身心': 'Wellness', '生活': 'Lifestyle', '故事': 'Stories',
+  '搜书名、作者、章节': 'Title, author or chapter', '当前筛选': 'Filter',
+  '正在翻章节…': 'Searching chapters…', '没有找到匹配的书': 'No matching books',
+  '还没有你写的书': 'You have not written a book yet', '书架暂无书籍': 'No books yet',
+  '这个分类还没有书': 'No books in this category',
+  '章节搜索暂不可用，已搜索书名和作者。点此重试': 'Chapter search unavailable. Showing local matches. Tap to retry.',
   '加载中…': 'Loading…', '加载中...': 'Loading…', '正在加载...': 'Loading…',
   '取消': 'Cancel', '完成': 'Done', '删除': 'Delete', '切换': 'Switch', '重试': 'Retry',
   '分享': 'Share', '拍照': 'Take Photo', '相册': 'Photo Album', '隐藏': 'Hidden',

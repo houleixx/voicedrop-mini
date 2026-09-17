@@ -1,3 +1,4 @@
+@import "../../utils/book-shelf-controls.wxss";
 @import '../../styles/remixicon.wxss';
 
 .shelf-page { height: 100vh; background: #faf6ef; }

@@ -11,7 +11,10 @@ function freshRecordingsPage(wxOverrides) {
   const app = { globalData: {} }
   global.getApp = () => app
   global.Page = (definition) => { page = definition }
+  const storage = new Map()
   global.wx = Object.assign({
+    getStorageSync(key) { return storage.get(key) },
+    setStorageSync(key, value) { storage.set(key, value) },
     showLoading() {},
     hideLoading() {},
     showToast() {},

@@ -134,6 +134,7 @@ function normalizeBook(item) {
     chapters: Math.max(0, Number(book.chapters) || 0),
     author: String(book.author || ''), createdAt: Math.max(0, Number(book.createdAt) || 0),
     hidden: book.hidden === true,
+    category: typeof book.category === 'string' ? book.category : '',
     mine: book.mine === true
   }
   normalized.coverUrl = normalized.cover ? coverUrl(normalized) : ''
@@ -259,6 +260,29 @@ async function shelf(options) {
   return list
 }
 
+// Search is intentionally memory-only: the authenticated index can contain private books.
+async function searchIndex() {
+  const identity = cacheIdentity()
+  const res = await http.get(`${routedShelfBase()}?format=search&_refresh=${Date.now()}`, auth.bearer(), {
+    timeout: 20000, header: { 'Cache-Control': 'no-cache' }
+  })
+  if (cacheIdentity() !== identity) throw new Error('books account changed')
+  if (res.statusCode !== 200 || !res.data || !Array.isArray(res.data.books)) {
+    throw new Error('book search unavailable')
+  }
+  const index = Object.create(null)
+  for (const entry of res.data.books) {
+    if (!entry || typeof entry.slug !== 'string' || !Array.isArray(entry.toc)) continue
+    index[entry.slug] = {
+      sub: String(entry.sub || ''), intro: String(entry.intro || ''),
+      toc: entry.toc.filter(Boolean).map((chapter) => ({ t: String(chapter.t || ''), b: String(chapter.b || '') }))
+    }
+  }
+  // Older deployments may return the ordinary shelf for an unknown format.
+  if (res.data.books.length && !Object.keys(index).length) throw new Error('book search unavailable')
+  return index
+}
+
 async function writingContext(dependencies) {
   const services = dependencies || {}
   const usage = services.usage || require('./usage')
@@ -337,7 +361,7 @@ module.exports = {
   API, HISTORY_API, REVISE_API, BOOK_SUANLI, REVISE_SUANLI,
   shelfWebUrl, indexUrl, hiddenUrl, CACHE_KEY, cacheIdentity, cacheKeyFor,
   start, history, revise, shelf, shelfRequestUrl, cachedShelf, normalizeIndex, refreshCoverUrls,
-  ownership, setHidden,
+  ownership, setHidden, searchIndex,
   normalizeThread, formatThreadStamp, reviseMessage, readerUrl, coverUrl,
   shareTitle, readerPageUrl, writingContext, formatBalance, shortfall, message, result
 }

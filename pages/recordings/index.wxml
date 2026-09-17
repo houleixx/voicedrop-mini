@@ -1,3 +1,4 @@
+<import src="../../utils/book-shelf-controls.wxml" />
 <template name="community-card">
   <view class="community-card {{item.coverPhotoUrl ? 'has-photo' : item.paletteClass}}"
         data-share-id="{{item.shareId}}" bindtap="openPost" bindlongpress="confirmCommunityUnshare">
@@ -155,12 +156,14 @@
     </block>
 
     <view hidden="{{activeTab !== 'books'}}" class="books-tab-panel">
+      <template is="book-shelf-controls" data="{{bookFilter, bookSearching, bookFilters, bookQuery, bookHasQuery, bookSearchError, bookSearchLoading, i18n}}" />
       <view wx:if="{{booksError && !bookItems.length}}" class="shelf-state">{{booksError}}</view>
       <view wx:elif="{{!booksLoaded && !bookItems.length}}" class="shelf-state loading-notice">
         <view class="loading-spinner" aria-hidden="true"></view>
         <text>{{i18n["正在整理书架…"]}}</text>
       </view>
       <view wx:else class="shelf-rows books-shelf-inner">
+        <view wx:if="{{bookEmptyText}}" class="book-shelf-empty">{{bookEmptyText}}</view>
         <view class="shelf-row-group" wx:for="{{bookRows}}" wx:key="index" wx:for-item="row">
           <view class="shelf-row">
             <block wx:for="{{row}}" wx:key="key" wx:for-item="cell">
@@ -174,7 +177,7 @@
                   <image wx:if="{{cell.coverDisplayUrl}}" class="cover-image" src="{{cell.coverDisplayUrl}}" mode="aspectFill" data-slug="{{cell.slug}}" binderror="onBookCoverError" />
                   <text wx:if="{{cell.hidden}}" class="book-hidden-badge">{{i18n["隐藏"]}}</text>
                 </view>
-                <view class="book-caption-stack"><text class="book-caption">{{cell.main}}</text><text class="book-meta">{{cell.chapters ? cell.chapters + ' 章' : (cell.sub || ' ')}}</text></view>
+                <view class="book-caption-stack"><text class="book-caption">{{cell.main}}</text><text class="book-meta {{cell.chapterHit ? 'book-chapter-hit' : ''}}">{{cell.chapterHit || cell.shelfMeta || ' '}}</text></view>
               </view>
             </block>
             <view wx:if="{{row.length === 1}}" class="shelf-cell shelf-cell-placeholder"></view>
