@@ -1,5 +1,6 @@
 const books = require('../../services/books')
 const bookSearch = require('../../utils/book-shelf-search')
+const filterTabLayout = require('../../utils/filter-tab-layout')
 const bookCoverCache = require('../../services/book-cover-cache')
 const MIN_REFRESH_FEEDBACK_MS = 600
 
@@ -11,6 +12,7 @@ Page({
   ...bookSearch.pageMethods(books, 'items'),
   data: {
     ...bookSearch.initialData,
+    filterBaselineClass: '',
     tabs: [
       { key: 'recordings', label: '我的录音' },
       { key: 'community', label: 'VD社区' },
@@ -20,6 +22,7 @@ Page({
   },
 
   onLoad() {
+    this.setData({ filterBaselineClass: filterTabLayout.currentBaselineClass() })
     this._shelfActive = true
     this._shelfIdentity = books.cacheIdentity()
     this.ensureBookCoverSession()

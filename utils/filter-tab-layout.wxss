@@ -1,0 +1,3 @@
+/* Shared optical correction for community and bookshelf text, not input/icon fonts. */
+.filter-baseline-default .filter-tab-label { transform: translateY(9rpx); }
+.filter-baseline-harmony .filter-tab-label { transform: translateY(14rpx); }

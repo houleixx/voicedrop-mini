@@ -11,6 +11,7 @@ const asrDictation = require('../../services/asr-dictation')
 const community = require('../../services/community')
 const books = require('../../services/books')
 const bookSearch = require('../../utils/book-shelf-search')
+const filterTabLayout = require('../../utils/filter-tab-layout')
 const bookCoverCache = require('../../services/book-cover-cache')
 const blockStore = require('../../utils/block-store')
 const pendingReplies = require('../../utils/pending-replies')
@@ -53,6 +54,7 @@ Page({
   ...bookSearch.pageMethods(books, 'bookItems', bookRowsFor),
   data: {
     ...bookSearch.initialData,
+    filterBaselineClass: '',
     activeTab: 'recordings',
     currentHomeTab: 'recordings',
     homeTabs: [
@@ -112,7 +114,7 @@ Page({
     this._scrollPositions = { recordings: 0, community: 0, books: 0 }
     this._refreshPromises = Object.create(null)
     this._refreshingTabs = Object.create(null)
-    this.setData({ activeTab, currentHomeTab: activeTab })
+    this.setData({ activeTab, currentHomeTab: activeTab, filterBaselineClass: filterTabLayout.currentBaselineClass() })
     try {
       const info = wx.getSystemInfoSync()
       const pxPerRpx = info.windowWidth / 750

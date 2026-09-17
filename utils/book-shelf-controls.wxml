@@ -1,8 +1,8 @@
 <template name="book-shelf-controls">
-  <view class="book-filter-bar">
+  <view class="book-filter-bar {{filterBaselineClass}}">
     <block wx:if="{{!bookSearching}}">
       <scroll-view class="book-filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-        <view class="book-filter {{bookFilter === item.key ? 'active' : ''}}" wx:for="{{bookFilters}}" wx:key="key" data-filter="{{item.key}}" bindtap="selectBookFilter"><text class="book-filter-label">{{item.label}}</text></view>
+        <view class="book-filter {{bookFilter === item.key ? 'active' : ''}}" wx:for="{{bookFilters}}" wx:key="key" data-filter="{{item.key}}" bindtap="selectBookFilter"><text class="book-filter-label filter-tab-label">{{item.label}}</text></view>
       </scroll-view>
       <view class="book-search-button ri-search-line" bindtap="openBookSearch" aria-label="{{i18n['搜索书架']}}"></view>
     </block>
