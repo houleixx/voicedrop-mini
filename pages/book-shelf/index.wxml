@@ -4,7 +4,7 @@
   <view class="book-filter-fixed" style="top: {{scrollContentTop}}px;">
     <template is="book-shelf-controls" data="{{filterBaselineClass, bookFilter, bookSearching, bookFilters, bookQuery, i18n}}" />
   </view>
-  <scroll-view class="shelf-scroll" style="top: {{filteredScrollContentTop}}px;" scroll-y enhanced bounces refresher-enabled refresher-triggered="{{refreshing}}" bindrefresherrefresh="refresh">
+  <scroll-view class="shelf-scroll" style="top: {{filteredScrollContentTop}}px;" scroll-y scroll-top="{{scrollTop}}" bindscroll="onScroll" enhanced bounces refresher-enabled refresher-triggered="{{refreshing}}" bindrefresherrefresh="refresh">
     <template is="book-shelf-search-status" data="{{bookFilter, bookHasQuery, bookSearchError, bookSearchLoading, i18n}}" />
     <view wx:if="{{error && !items.length}}" class="shelf-state">{{error}}</view>
     <view wx:elif="{{loading && !items.length}}" class="shelf-state">{{i18n["正在整理书架…"]}}</view>

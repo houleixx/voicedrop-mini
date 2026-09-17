@@ -345,3 +345,28 @@ test('failed shelf refresh still resumes a current chapter query', async () => {
   assert.equal(resumed, 1)
   assert.equal(context.data.bookQuery, '章节')
 })
+
+test('standalone shelf resets scroll after category results render, including repeated taps', () => {
+  const { context } = loadShelfPage(async () => [])
+  context.data.items = [{ slug: 'ai', category: 'AI' }, { slug: 'business', category: '商业' }]
+  const callbacks = [], scrollWrites = []
+  context.setData = function (patch, afterRender) {
+    Object.assign(this.data, patch)
+    if (Object.hasOwn(patch, 'scrollTop')) scrollWrites.push(patch.scrollTop)
+    if (afterRender) callbacks.push(afterRender)
+  }
+  for (const filter of ['AI', '商业', '商业']) {
+    context.onScroll({ detail: { scrollTop: 350 } })
+    scrollWrites.length = 0
+    context.selectBookFilter({ currentTarget: { dataset: { filter } } })
+    assert.equal(context.data.visibleBooks[0].category, filter)
+    assert.deepEqual(scrollWrites, [])
+    callbacks.shift()()
+    assert.deepEqual(scrollWrites, [350])
+    callbacks.shift()()
+    assert.deepEqual(scrollWrites, [350, 0])
+    assert.equal(context._bookScrollTop, 0)
+  }
+  const markup = require('node:fs').readFileSync(require.resolve('../pages/book-shelf/index.wxml'), 'utf8')
+  assert.match(markup, /<scroll-view[^>]*scroll-top="\{\{scrollTop\}\}"[^>]*bindscroll="onScroll"/)
+})

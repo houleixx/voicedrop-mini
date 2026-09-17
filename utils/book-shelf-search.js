@@ -72,7 +72,7 @@ function pageMethods(service, itemsKey, rowsFor) {
       this._bookSearch.syncIdentity()
       return this._bookSearch
     },
-    refreshBookSearch() {
+    refreshBookSearch(afterRender) {
       const session = this.ensureBookSearch()
       const items = this.data[itemsKey] || []
       const present = CATEGORY_ORDER.filter((category) => items.some((book) => book.category === category))
@@ -94,7 +94,7 @@ function pageMethods(service, itemsKey, rowsFor) {
         bookEmptyText: empty
       }
       if (rowsFor) patch.bookRows = rowsFor(visibleBooks, !hasQuery)
-      this.setData(patch)
+      this.setData(patch, afterRender)
     },
     invalidateBookSearch() { this.ensureBookSearch().invalidate(); this.refreshBookSearch() },
     resumeBookSearch() {
@@ -103,7 +103,9 @@ function pageMethods(service, itemsKey, rowsFor) {
     },
     selectBookFilter(event) {
       this.setData({ bookFilter: event.currentTarget.dataset.filter })
-      this.refreshBookSearch()
+      this.refreshBookSearch(() => {
+        if (this.resetBookScroll) this.resetBookScroll()
+      })
     },
     openBookSearch() { this.setData({ bookSearching: true }) },
     closeBookSearch() {

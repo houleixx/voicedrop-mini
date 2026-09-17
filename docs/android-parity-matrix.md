@@ -83,6 +83,8 @@ for f in $(rg --files -g '*.js'); do node --check "$f" || exit 1; done
 Required before claiming full parity:
 
 - Import the project in WeChat Developer Tools.
+- In Developer Tools and on a real device, select a bookshelf category, open a book, and return repeatedly: the selected category, book positions, and cached covers should stay stable without flashing. Repeat with Mine and a search query, then pull to refresh to confirm new data still appears.
+- Scroll down the bookshelf, then tap a category (including the current category, All, and Mine): the results should start at the top. Repeat on both bookshelf entry points; returning from a book should preserve the position, and other home tabs should retain their own scroll positions.
 - Configure both `https://voicedrop.cn` and `https://jianshuo.dev` as request/download/upload legal domains, and `wss://jianshuo.dev` as the socket legal domain. The HTTP route selector probes both public backends for data and cover requests; configure `voicedrop.cn` as the business domain because bookshelf and reader `web-view` pages stay on that host.
 - Test recording upload on a real device.
 - Test first-use audio agreement view/decline/agree actions and confirm that merely viewing does not grant consent.

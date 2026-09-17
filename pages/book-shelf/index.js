@@ -14,6 +14,7 @@ Page({
   data: {
     ...bookSearch.initialData,
     filterBaselineClass: '',
+    scrollTop: 0,
     scrollContentTop: 0,
     filteredScrollContentTop: 0,
     tabs: [
@@ -41,6 +42,18 @@ Page({
   onReady() { homeFilterLayout.measure(this) },
 
   onResize() { homeFilterLayout.measure(this) },
+
+  onScroll(event) {
+    this._bookScrollTop = Math.max(0, Number(event.detail.scrollTop) || 0)
+  },
+
+  resetBookScroll() {
+    this.setData({ scrollTop: this._bookScrollTop || 0 }, () => {
+      if (this._shelfActive === false) return
+      this._bookScrollTop = 0
+      this.setData({ scrollTop: 0 })
+    })
+  },
 
   onLanguageChanged() {
     this.refreshBookSearch()

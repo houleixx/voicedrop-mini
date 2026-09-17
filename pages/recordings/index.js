@@ -396,6 +396,17 @@ Page({
     return Boolean(this._refreshingTabs && this._refreshingTabs[this.scrollTab(tab)])
   },
 
+  resetBookScroll() {
+    if (this._pageUnloaded || this.data.activeTab !== 'books') return
+    // Manual scrolling does not update the bound value. Sync it first so a
+    // second category tap can issue another effective scroll-to-zero command.
+    this.setData({ scrollTop: this.scrollPositionFor('books') }, () => {
+      if (this._pageUnloaded || this.data.activeTab !== 'books') return
+      this.scrollPositions().books = 0
+      this.setData({ scrollTop: 0 })
+    })
+  },
+
   refreshCurrent(options, tab) {
     const requested = tab || this.data.activeTab
     const target = requested === 'community' || requested === 'books' ? requested : 'recordings'
@@ -408,7 +419,7 @@ Page({
     const items = books.cachedShelf()
     if (!items.length) return false
     const bookItems = this.prepareBookItems(items)
-    this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksLoading: false, booksError: '', booksLoaded: true })
+    this.setData({ bookItems, booksLoading: false, booksError: '', booksLoaded: true })
     this.resumeBookSearch()
     this._bookCoverSession.load(bookItems)
     return true
@@ -441,7 +452,7 @@ Page({
     const bookItems = this.data.bookItems.map((item) => item.slug === slug
       ? Object.assign({}, item, { coverDisplayUrl: '' })
       : item)
-    this.setData({ bookItems, bookRows: bookRowsFor(bookItems) })
+    this.setData({ bookItems })
     this.refreshBookSearch()
     this.ensureBookCoverSession().retry(book)
   },
@@ -458,7 +469,9 @@ Page({
       const items = await books.shelf({ forceRefresh })
       if (this._pageUnloaded || this._bookLoadRequestId !== requestId) return true
       const bookItems = this.prepareBookItems(items)
-      this.setData({ bookItems, bookRows: bookRowsFor(bookItems), booksError: '', booksLoaded: true })
+      // Only the search projection publishes rows; unfiltered rows would remount
+      // covers before the selected category is restored on return from a book.
+      this.setData({ bookItems, booksError: '', booksLoaded: true })
       this.resumeBookSearch()
       this._bookCoverSession.load(bookItems)
       return true
@@ -1123,7 +1136,6 @@ Page({
       commandReplyOk: true,
       commandState: '',
       bookItems,
-      bookRows: bookRowsFor(bookItems),
       booksLoaded: cachedBooks.length > 0,
       booksError: ''
     })
