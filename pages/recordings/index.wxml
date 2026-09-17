@@ -58,6 +58,10 @@
     </block>
   </view>
 
+  <view hidden="{{activeTab !== 'books'}}" class="book-filter-fixed" style="top: {{scrollContentTop}}px;">
+    <template is="book-shelf-controls" data="{{filterBaselineClass, bookFilter, bookSearching, bookFilters, bookQuery, i18n}}" />
+  </view>
+
   <scroll-view
     class="scroll-content"
     scroll-y
@@ -71,7 +75,7 @@
     bindrefresherrefresh="onRefresherRefresh"
     scroll-top="{{scrollTop}}"
     bindscroll="onScroll"
-    style="top: {{activeTab === 'community' ? communityScrollContentTop : scrollContentTop}}px;"
+    style="top: {{activeTab === 'recordings' ? scrollContentTop : filteredScrollContentTop}}px;"
     bindtouchstart="onScreenTouchStart"
   >
     <view slot="refresher" class="pull-refresh-indicator">
@@ -156,7 +160,7 @@
     </block>
 
     <view hidden="{{activeTab !== 'books'}}" class="books-tab-panel">
-      <template is="book-shelf-controls" data="{{filterBaselineClass, bookFilter, bookSearching, bookFilters, bookQuery, bookHasQuery, bookSearchError, bookSearchLoading, i18n}}" />
+      <template is="book-shelf-search-status" data="{{bookFilter, bookHasQuery, bookSearchError, bookSearchLoading, i18n}}" />
       <view wx:if="{{booksError && !bookItems.length}}" class="shelf-state">{{booksError}}</view>
       <view wx:elif="{{!booksLoaded && !bookItems.length}}" class="shelf-state loading-notice">
         <view class="loading-spinner" aria-hidden="true"></view>

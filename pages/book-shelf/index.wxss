@@ -2,7 +2,8 @@
 @import '../../styles/remixicon.wxss';
 
 .shelf-page { height: 100vh; background: #faf6ef; }
-.shelf-scroll { position: fixed; inset: 198rpx 0 0; box-sizing: border-box; }
+.shelf-page home-tabs { position: fixed; top: 0; left: 0; right: 0; z-index: 10; background: #faf6ef; }
+.shelf-scroll { position: fixed; left: 0; right: 0; bottom: 0; box-sizing: border-box; }
 .shelf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 34rpx 28rpx; padding: 24rpx 38rpx 80rpx; }
 .shelf-cell { position: relative; min-width: 0; padding-bottom: 20rpx; border-bottom: 20rpx solid #8b5f3d; box-shadow: 0 8rpx 0 #5f3e29; }
 .book-cover { position: relative; overflow: hidden; aspect-ratio: 0.7; border-radius: 5rpx 13rpx 13rpx 5rpx; box-shadow: 7rpx 10rpx 18rpx rgba(58,39,27,.24); }

@@ -127,8 +127,6 @@
   padding-bottom: 230rpx;
 }
 
-/* The books panel sits inside the padded scroll body; extend its filter surface edge to edge. */
-.books-tab-panel .book-filter-bar { margin: 0 -32rpx; }
 .shelf-rows { width: auto; margin: 0 8rpx; padding: 16rpx 0 40rpx; }
 .shelf-row-group { width: 100%; }
 .shelf-row { display: flex; width: 100%; align-items: flex-start; gap: 44rpx; }

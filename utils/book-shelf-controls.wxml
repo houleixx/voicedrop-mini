@@ -16,6 +16,9 @@
       <view class="book-search-cancel" bindtap="closeBookSearch"><text class="book-search-cancel-label">{{i18n['取消']}}</text></view>
     </block>
   </view>
+</template>
+
+<template name="book-shelf-search-status">
   <view wx:if="{{bookHasQuery && bookFilter !== 'all'}}" class="book-search-scope">{{i18n['当前筛选']}} · {{bookFilter === 'mine' ? i18n['我的'] : (i18n[bookFilter] || bookFilter)}}</view>
   <view wx:if="{{bookHasQuery && bookSearchError}}" class="book-search-status" bindtap="retryBookSearch">{{i18n['章节搜索暂不可用，已搜索书名和作者。点此重试']}}</view>
   <view wx:elif="{{bookHasQuery && bookSearchLoading}}" class="book-search-status">{{i18n['正在翻章节…']}}</view>

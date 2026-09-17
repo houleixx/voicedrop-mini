@@ -1,5 +1,6 @@
 const books = require('../../services/books')
 const bookSearch = require('../../utils/book-shelf-search')
+const homeFilterLayout = require('../../utils/home-filter-layout')
 const filterTabLayout = require('../../utils/filter-tab-layout')
 const bookCoverCache = require('../../services/book-cover-cache')
 const MIN_REFRESH_FEEDBACK_MS = 600
@@ -13,6 +14,8 @@ Page({
   data: {
     ...bookSearch.initialData,
     filterBaselineClass: '',
+    scrollContentTop: 0,
+    filteredScrollContentTop: 0,
     tabs: [
       { key: 'recordings', label: '我的录音' },
       { key: 'community', label: 'VD社区' },
@@ -24,6 +27,7 @@ Page({
   onLoad() {
     this.setData({ filterBaselineClass: filterTabLayout.currentBaselineClass() })
     this._shelfActive = true
+    this.setData(homeFilterLayout.initialOffsets())
     this._shelfIdentity = books.cacheIdentity()
     this.ensureBookCoverSession()
     const cached = books.cachedShelf()
@@ -34,7 +38,14 @@ Page({
     this.load({ keepData: true })
   },
 
-  onLanguageChanged() { this.refreshBookSearch() },
+  onReady() { homeFilterLayout.measure(this) },
+
+  onResize() { homeFilterLayout.measure(this) },
+
+  onLanguageChanged() {
+    this.refreshBookSearch()
+    homeFilterLayout.measure(this)
+  },
 
   onShow() {
     const identity = books.cacheIdentity()

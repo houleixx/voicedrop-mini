@@ -11,6 +11,8 @@ const asrDictation = require('../../services/asr-dictation')
 const community = require('../../services/community')
 const books = require('../../services/books')
 const bookSearch = require('../../utils/book-shelf-search')
+const homeFilterLayout = require('../../utils/home-filter-layout')
+const { layoutOffsets } = homeFilterLayout
 const filterTabLayout = require('../../utils/filter-tab-layout')
 const bookCoverCache = require('../../services/book-cover-cache')
 const blockStore = require('../../utils/block-store')
@@ -29,15 +31,6 @@ const MIN_BOOK_REFRESH_FEEDBACK_MS = 600
 
 function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds))
-}
-
-function layoutOffsets(headerBottom, windowWidth) {
-  const pxPerRpx = Math.max(1, Number(windowWidth) || 375) / 750
-  const scrollContentTop = Math.max(0, Number(headerBottom) || 0)
-  return {
-    scrollContentTop,
-    communityScrollContentTop: scrollContentTop + 88 * pxPerRpx
-  }
 }
 
 function bookRowsFor(items, showWrite = true) {
@@ -102,7 +95,7 @@ Page({
     audioConsentVisible: false,
     scrollTop: 0,
     scrollContentTop: 0,
-    communityScrollContentTop: 0
+    filteredScrollContentTop: 0
   },
 
   onLoad(options) {
@@ -115,15 +108,7 @@ Page({
     this._refreshPromises = Object.create(null)
     this._refreshingTabs = Object.create(null)
     this.setData({ activeTab, currentHomeTab: activeTab, filterBaselineClass: filterTabLayout.currentBaselineClass() })
-    try {
-      const info = wx.getSystemInfoSync()
-      const pxPerRpx = info.windowWidth / 750
-      const fallbackHeaderBottom = Number(info.statusBarHeight || 0) + 200 * pxPerRpx
-      this.setData(layoutOffsets(fallbackHeaderBottom, info.windowWidth))
-    } catch (_) {
-      const pxPerRpx = (wx.getSystemInfoSync?.().windowWidth || 375) / 750
-      this.setData(layoutOffsets(200 * pxPerRpx + 20, wx.getSystemInfoSync?.().windowWidth))
-    }
+    this.setData(homeFilterLayout.initialOffsets())
     this.bindRecorder()
     this._socketBearer = auth.bearer()
     this.createStatusSession()
@@ -153,25 +138,11 @@ Page({
   onLanguageChanged() {
     this._updateDockHint()
     if (this.refreshBookSearch) this.refreshBookSearch()
+    homeFilterLayout.measure(this)
   },
 
   measureHomeTabsBottom() {
-    if (typeof wx.createSelectorQuery !== 'function') return
-    const measure = () => {
-      if (this._pageUnloaded) return
-      wx.createSelectorQuery()
-        .select('#home-tabs')
-        .boundingClientRect((rect) => {
-          if (!rect || !Number.isFinite(rect.bottom) || rect.bottom <= 0) return
-          const width = wx.getWindowInfo?.().windowWidth || wx.getSystemInfoSync?.().windowWidth || 375
-          const offsets = layoutOffsets(rect.bottom, width)
-          if (Math.abs(offsets.scrollContentTop - this.data.scrollContentTop) < 0.5) return
-          this.setData(offsets)
-        })
-        .exec()
-    }
-    if (typeof wx.nextTick === 'function') wx.nextTick(measure)
-    else setTimeout(measure, 0)
+    homeFilterLayout.measure(this)
   },
 
   onShow() {

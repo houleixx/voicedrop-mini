@@ -1,5 +1,7 @@
 @import "./filter-tab-layout.wxss";
 
+.book-filter-fixed { position: fixed; left: 0; right: 0; z-index: 9; }
+
 /* Match the VD Community filter row, including its fixed search-state height. */
 .book-filter-bar {
   display: flex;

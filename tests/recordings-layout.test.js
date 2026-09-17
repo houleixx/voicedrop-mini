@@ -330,11 +330,11 @@ test('community layout offsets follow the measured home tabs bottom', () => {
 
   assert.deepEqual(helpers.layoutOffsets(147, 375), {
     scrollContentTop: 147,
-    communityScrollContentTop: 191
+    filteredScrollContentTop: 191
   })
   assert.deepEqual(helpers.layoutOffsets(-1, 750), {
     scrollContentTop: 0,
-    communityScrollContentTop: 88
+    filteredScrollContentTop: 88
   })
 })
 
@@ -685,8 +685,7 @@ test('recordings content offset follows the rendered home header', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
 
   assert.match(wxml, /<home-tabs id="home-tabs"/)
-  assert.match(source, /\.select\('#home-tabs'\)[\s\S]*\.boundingClientRect/)
-  assert.match(source, /layoutOffsets\(rect\.bottom, width\)/)
+  assert.match(source, /homeFilterLayout\.measure\(this\)/)
   assert.doesNotMatch(source, /topRpx\s*=\s*184/)
 })
 
@@ -754,9 +753,8 @@ test('community feed mirrors Android masonry tabs and keeps filters above pull r
   assert.doesNotMatch(ruleBody(css, '.community-search-box'), /(?:^|;)\s*top\s*:|transform:/)
   assert.match(css, /\.community-search-input\s*\{[^}]*height:\s*60rpx;[^}]*min-height:\s*0;[^}]*padding:\s*0;[^}]*line-height:\s*60rpx;/s)
   assert.match(css, /\.community-search-cancel-label\s*\{[^}]*display:\s*block;[^}]*height:\s*30rpx;[^}]*line-height:\s*30rpx;/s)
-  assert.match(js, /\.select\('#home-tabs'\)[\s\S]*boundingClientRect/)
-  assert.match(js, /communityScrollContentTop:\s*scrollContentTop \+ 88 \* pxPerRpx/)
-  assert.match(wxml, /top: \{\{activeTab === 'community' \? communityScrollContentTop : scrollContentTop\}\}px/)
+  assert.match(js, /homeFilterLayout\.measure\(this\)/)
+  assert.match(wxml, /top: \{\{activeTab === 'recordings' \? scrollContentTop : filteredScrollContentTop\}\}px/)
   assert.match(wxml, /class="community-card-image"/)
   assert.match(wxml, /class="community-like-icon ri-heart-fill"/)
   assert.match(wxml, /<text class="community-reply-icon ri-chat-2-line"><\/text>/)
