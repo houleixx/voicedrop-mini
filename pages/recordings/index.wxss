@@ -703,9 +703,13 @@
   margin-top: 18rpx;
   color: #756f66;
   font-size: 24rpx;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 32rpx;
-  text-shadow: 0 2rpx 6rpx rgba(250, 246, 239, 0.9), 0 0 2rpx #faf6ef;
+  text-shadow:
+    0 0 4rpx #faf6ef,
+    0 0 8rpx #faf6ef,
+    0 4rpx 8rpx rgba(60, 45, 30, 0.28),
+    0 0 16rpx rgba(60, 45, 30, 0.16);
   transition: color 0.2s;
 }
 

@@ -114,9 +114,6 @@
                      src="{{item.coverPhotoUrl}}" mode="aspectFill"
                      data-stem="{{item.stem}}" data-url="{{item.coverPhotoUrl}}"
                      bindload="onRecordCoverLoad" binderror="onRecordCoverError" />
-              <view wx:if="{{commandTalking && item._commandRef}}" class="command-badge">
-                {{item._commandRef}}
-              </view>
             </view>
             <view class="record-main">
               <text class="record-name">{{item.rowTitle}}</text>
@@ -194,12 +191,7 @@
   </scroll-view>
 
   <view wx:if="{{activeTab === 'recordings'}}" class="record-dock">
-    <!-- iOS VoiceFeedbackStack colors: transcript / queue / reply / error -->
-    <view wx:if="{{commandStatusText}}" class="fab-status {{commandStatusKind}}">
-      {{commandStatusText}}
-    </view>
-
-    <view class="mic-button-wrapper {{commandTalking ? 'talking' : ''}} {{commandCanceled ? 'canceled' : ''}}">
+    <view class="mic-button-wrapper">
       <view class="mic-button {{recording ? 'recording' : ''}}"
             bindtouchstart="onMicTouchStart"
             bindtouchmove="onMicTouchMove"
@@ -215,7 +207,7 @@
     </view>
 
     <!-- Hint text below button (Android: fabLabel) -->
-    <text class="dock-hint {{commandTalking ? 'talking' : ''}} {{commandCanceled ? 'canceled' : ''}}">{{dockHint}}</text>
+    <text class="dock-hint">{{dockHint}}</text>
   </view>
   <audio-consent-dialog
     visible="{{audioConsentVisible}}"

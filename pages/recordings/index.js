@@ -6,7 +6,6 @@ const recordingUploads = require('../../services/recording-upload-queue')
 const photoMarkerRepair = require('../../services/photo-marker-repair')
 const statusSession = require('../../services/status-session')
 const deviceLinkApproval = require('../../services/device-link-approval')
-const libraryCommand = require('../../services/library-command')
 const asrDictation = require('../../services/asr-dictation')
 const community = require('../../services/community')
 const books = require('../../services/books')
@@ -75,7 +74,7 @@ Page({
     commandStatusOk: true,
     commandTalking: false,
     commandCanceled: false,
-    dockHint: i18n.ui('轻点录音 · 长按说话'),
+    dockHint: i18n.ui('轻点录音'),
     linkRequest: null,
     communityLoading: false,
     communityPosts: [],
@@ -113,7 +112,6 @@ Page({
     this._socketBearer = auth.bearer()
     this.createStatusSession()
     this.deviceLinkApproval = this.createDeviceLinkApproval()
-    this.createCommandSession()
     const restored = this.restoreCachedRecordings()
     this.load(restored ? { silent: true, keepDataOnError: true } : undefined)
     this.drainPendingRecordingUploads()
@@ -147,14 +145,11 @@ Page({
 
   onShow() {
     this.showPendingRecordingUploads()
+    this._recordPageHidden = false
     this.drainPendingRecordingUploads()
     this.resetAccountSessionsIfNeeded()
     if (this.statusSession) this.statusSession.connect()
     if (this.deviceLinkApproval) this.deviceLinkApproval.recover()
-    if (this.commandSession) {
-      this.commandSession.setRefs(this.currentCommandRefs())
-      this.commandSession.connect()
-    }
     this.applyPendingHomeTab()
     if (this._awaitingInitialShow) {
       this._awaitingInitialShow = false
@@ -247,12 +242,14 @@ Page({
   },
 
   onHide() {
+    this.cancelRecordLaunch()
     if (this.statusSession) this.statusSession.close()
     if (this.commandSession) this.commandSession.close()
   },
 
   onUnload() {
     audioConsentFlow.dispose(this)
+    this.cancelRecordLaunch()
     this._pageUnloaded = true
     this._bookLoadRequestId = (this._bookLoadRequestId || 0) + 1
     this._communityLoadGeneration = (this._communityLoadGeneration || 0) + 1
@@ -325,6 +322,8 @@ Page({
   },
 
   switchHomeTab(event) {
+    this.onMicTouchCancel()
+    this._recordLaunch = null
     const key = event.detail && event.detail.key
     if (!key || key === this.data.currentHomeTab) return
     if (key.startsWith('tag:')) {
@@ -1090,33 +1089,6 @@ Page({
 
   preventDeviceLinkTouchMove() {},
 
-  createCommandSession() {
-    this.commandSession = libraryCommand.createSession({
-      onQueueChanged: (queue) => {
-        this.setData({ commandQueue: queue })
-        this.refreshCommandStatus({ commandQueue: queue })
-      },
-      onReply: (text, ok) => {
-        this.setData({ commandReply: text, commandReplyOk: ok })
-        this.refreshCommandStatus({ commandReply: text, commandReplyOk: ok })
-      },
-      onConfirm: (id, text) => {
-        this.confirmLibraryCommand(id, text)
-      },
-      onUpdate: (stems) => {
-        if (library.invalidateArticleCaches) library.invalidateArticleCaches(stems)
-        this.load({ silent: true, keepDataOnError: true })
-      },
-      onState: (state) => {
-        this.setData({ commandState: state })
-      },
-      onError: (message) => {
-        this.setData({ commandReply: message, commandReplyOk: false })
-        this.refreshCommandStatus({ commandReply: message, commandReplyOk: false })
-      }
-    })
-  },
-
   resetAccountSessionsIfNeeded() {
     const currentBearer = auth.bearer()
     if (!accountState.identityChanged(this._socketBearer, currentBearer)) return false
@@ -1143,7 +1115,6 @@ Page({
     this._bookCoverSession.load(bookItems)
     this.createStatusSession()
     this.deviceLinkApproval = this.createDeviceLinkApproval()
-    this.createCommandSession()
     return true
   },
 
@@ -1308,77 +1279,87 @@ Page({
     wx.navigateTo({ url: '/pages/audio-consent/index' })
   },
 
-  async startRecord() {
-    if (!await this.requestAudioConsent()) return
-    if (!await recordPermission.ensure(wx)) return
-    if (this.data.selectedTag) app.globalData.pendingRecordTag = this.data.selectedTag
-    wx.navigateTo({ url: '/pages/record/index' })
+  async startRecord(haptic = false) {
+    if (this._recordLaunch || this._recordPageHidden || this._pageUnloaded || this.data.activeTab !== 'recordings') return
+    const launch = {}
+    this._recordLaunch = launch
+    if (haptic && wx.vibrateShort) {
+      try { wx.vibrateShort({ type: 'medium' }) } catch (_) { /* Haptics are optional. */ }
+    }
+    let navigating = false
+    try {
+      if (!await this.requestAudioConsent()) return
+      if (this._recordLaunch !== launch) return
+      if (!await recordPermission.ensure(wx)) return
+      if (this._recordLaunch !== launch || this._recordPageHidden || this._pageUnloaded) return
+      if (this.data.selectedTag) app.globalData.pendingRecordTag = this.data.selectedTag
+      navigating = true
+      wx.navigateTo({
+        url: '/pages/record/index',
+        fail: () => { if (this._recordLaunch === launch) this._recordLaunch = null }
+      })
+    } finally {
+      if (!navigating && this._recordLaunch === launch) this._recordLaunch = null
+    }
   },
 
   stopRecord() {
     audio.stop()
   },
 
-  // MARK: - FAB tap/longpress
-  CANCEL_DISTANCE_PX: 60,
-  LONG_PRESS_MS: 350,
+  // Match iOS: a hold opens the normal recorder before touch-up.
+  LONG_PRESS_MS: 400,
+  RECORD_MOVE_DISTANCE_PX: 24,
 
   onMicTouchStart(event) {
-    this._micStartY = event.touches[0].pageY
-    this._micMovedToCancel = false
-    this._micTouchStartedAt = Date.now()
-    this._micLongPressActive = false
-    this._micTouchEndedBeforeCommandStart = false
+    if (this._micTouchActive || this._recordLaunch || this._recordPageHidden || this._pageUnloaded) return
+    if (this.data.activeTab !== 'recordings' || !event.touches || !event.touches.length) return
     this._clearMicLongPressTimer()
+    this._micOrigin = event.touches[0]
+    this._micTouchActive = true
+    this._micHoldLaunched = false
     this._micLongPressTimer = setTimeout(() => {
-      this._micLongPressActive = true
-      this._startLibraryCommandTalk()
+      this._micLongPressTimer = null
+      if (!this._micTouchActive) return
+      this._micHoldLaunched = true
+      this.startRecord(true)
     }, this.LONG_PRESS_MS)
   },
 
   onMicTouchMove(event) {
-    if (!this.data.commandTalking) return
-    const shouldCancel = holdToTalk.shouldCancel(this._micStartY, event.touches[0].pageY, this.CANCEL_DISTANCE_PX)
-    if (shouldCancel !== this._micMovedToCancel) {
-      this._micMovedToCancel = shouldCancel
-      this.setData({ commandCanceled: shouldCancel })
-      this.refreshCommandStatus({ commandCanceled: shouldCancel })
-      this._updateDockHint()
+    const point = event.touches[0]
+    if (!this._micTouchActive || !point || !this._micOrigin) return
+    if (Math.hypot(point.pageX - this._micOrigin.pageX, point.pageY - this._micOrigin.pageY) > this.RECORD_MOVE_DISTANCE_PX) {
+      this.onMicTouchCancel()
     }
   },
 
   onMicTouchEnd() {
     this._clearMicLongPressTimer()
-    if (this._micLongPressActive || this.data.commandTalking || this._pendingCommandTalkStart) {
-      this._lastCommandTouchEndAt = Date.now()
-      if (this.data.commandTalking) this._finishLibraryCommandTalk(this._micMovedToCancel)
-      else this._micTouchEndedBeforeCommandStart = true
-      this._micLongPressActive = false
-      return
-    }
-    this.startRecord()
+    const launch = this._micTouchActive && !this._micHoldLaunched
+    this._micTouchActive = false
+    if (launch) this.startRecord()
   },
 
   onMicTouchCancel() {
     this._clearMicLongPressTimer()
-    if (this.data.commandTalking) this._finishLibraryCommandTalk(true)
-    else if (this._pendingCommandTalkStart) this._micTouchEndedBeforeCommandStart = true
-    this._micLongPressActive = false
+    this._micTouchActive = false
   },
 
   _clearMicLongPressTimer() {
-    if (!this._micLongPressTimer) return
+    if (this._micLongPressTimer == null) return
     clearTimeout(this._micLongPressTimer)
     this._micLongPressTimer = null
   },
 
+  cancelRecordLaunch() {
+    this.onMicTouchCancel()
+    this._recordPageHidden = true
+    this._recordLaunch = null
+  },
+
   _updateDockHint() {
-    if (this.data.commandTalking) {
-      const hint = this.data.commandCanceled ? '上滑取消 · 松开放弃' : '松开发送 · 上滑取消'
-      this.setData({ dockHint: i18n.ui(hint) })
-    } else {
-      this.setData({ dockHint: i18n.ui('轻点录音 · 长按说话') })
-    }
+    this.setData({ dockHint: i18n.ui('轻点录音') })
   },
 
   async _startLibraryCommandTalk() {

@@ -15,7 +15,7 @@ Source: the VoiceDrop Android client implementation.
 | Auto upload and trigger mining | Implemented with `PUT /files/api/upload/<name>` and `POST /files/api/mine` | `services/audio` |
 | Recording list states | Implemented: uploading, pending, ASR, mining, ready, empty, blocked | `utils/recording`, `services/status-session` |
 | Resume refresh policy | Implemented: top-level pages avoid redraw once rendered and refresh silently on resume | `utils/resume-refresh`, `pages/recordings` |
-| Dynamic home tag tabs | Implemented with Mini Program scroll tabs; selected tag filters recordings and library command targets | `pages/recordings`, `utils/recording.tagsFromRecords`, `utils/recording.filterByTag` |
+| Dynamic home tag tabs | Implemented with Mini Program scroll tabs; selected tag filters recordings | `pages/recordings`, `utils/recording.tagsFromRecords`, `utils/recording.filterByTag` |
 | Real-time status sync | Implemented with `/agent/status` WebSocket | `services/status-session`, `pages/recordings` |
 | Article detail | Implemented with article JSON parsing, body rendering, transcript, tags | `pages/detail`, `utils/article` |
 | Play original audio | Implemented with authorized download, `InnerAudioContext`, loading guard, stop behavior, and playback progress | `services/library.downloadTempFile`, `utils/audio-playback-state`, `pages/detail` |
@@ -45,7 +45,7 @@ Source: the VoiceDrop Android client implementation.
 | Community report/block | Implemented | `pages/community-detail`, `utils/block-store`, `pages/about` |
 | Community replies | Implemented list, continuation previews, click-through reading, parent reply chip, plus pending reply auto-publish after recording is ready | `utils/pending-replies`, `utils/community-reply`, `pages/recordings`, `pages/community-detail` |
 | Community visibility and terms gate | Implemented: detects shared state, shares, hides, prompts community terms, and handles WeChat-login-required responses | `pages/detail`, `services/community`, `utils/community-terms` |
-| Library natural-language command | Implemented with `/agent/command` WebSocket | `services/library-command`, `pages/recordings` |
+| Home recording button | Aligned with iOS: tap opens recording; a 400 ms hold opens recording immediately with haptic feedback. No home library-command entry or connection. | `pages/recordings` |
 | Account token display/import | Implemented | `services/auth`, `pages/account` |
 | WeChat login session exchange | Implemented with `wx.login` and `/files/api/auth/wechat` | `services/wechat-auth`, `pages/account` |
 | Device link start/verify/cancel | Service retained; account-page entry removed by product decision | `services/device-link`, `services/status-session` |
@@ -88,7 +88,7 @@ Required before claiming full parity:
 - Configure both `https://voicedrop.cn` and `https://jianshuo.dev` as request/download/upload legal domains, and `wss://jianshuo.dev` as the socket legal domain. The HTTP route selector probes both public backends for data and cover requests; configure `voicedrop.cn` as the business domain because bookshelf and reader `web-view` pages stay on that host.
 - Test recording upload on a real device.
 - Test first-use audio agreement view/decline/agree actions and confirm that merely viewing does not grant consent.
-- Test main recording, home voice commands, article voice editing, and community voice replies all remain blocked before agreement.
+- Test main recording (tap and hold), article voice editing, and community voice replies all remain blocked before agreement.
 - Test microphone permission denial, recovery through settings, local withdrawal, and agreement re-consent on a real device.
 - Test article generation status WebSocket.
 - Test article edit WebSocket.

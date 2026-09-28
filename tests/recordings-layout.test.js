@@ -57,25 +57,15 @@ test('community starts in loading state instead of showing its empty state befor
   assert.match(wxml, /wx:elif="\{\{communityPosts\.length === 0\}\}"/)
 })
 
-test('language changes refresh the recording dock hint in every hold-to-talk state', () => {
+test('language changes refresh the recording dock hint', () => {
   const { page } = freshRecordingsPage({ getStorageSync: () => 'en' })
   const ctx = {
-    data: Object.assign({}, page.data, { commandTalking: false, commandCanceled: false }),
+    data: Object.assign({}, page.data),
     setData(update) { Object.assign(this.data, update) },
     _updateDockHint: page._updateDockHint
   }
-
   page.onLanguageChanged.call(ctx)
-  assert.equal(ctx.data.dockHint, 'Tap to record · Hold to speak')
-
-  ctx.data.commandTalking = true
-  ctx.data.commandCanceled = false
-  page.onLanguageChanged.call(ctx)
-  assert.equal(ctx.data.dockHint, 'Release to send · Swipe up to cancel')
-
-  ctx.data.commandCanceled = true
-  page.onLanguageChanged.call(ctx)
-  assert.equal(ctx.data.dockHint, 'Swipe up to cancel · Release to discard')
+  assert.equal(ctx.data.dockHint, 'Tap to record')
 })
 
 test('recordings restores a cached snapshot before starting its silent refresh', () => {
@@ -313,8 +303,7 @@ test('home recreates authenticated sockets after the account bearer changes', ()
       'close-status',
       'close-command',
       'load-books:1',
-      'create-status',
-      'create-command'
+      'create-status'
     ])
     assert.deepEqual(ctx._libraryCommandConfirms, [])
     assert.equal(ctx._activeLibraryCommandConfirm, null)
@@ -524,36 +513,23 @@ test('pull refresh rebound does not overwrite tab scroll positions or leak its i
   assert.equal(ctx.data.scrollTop, 240)
 })
 
-test('voice-command list refresh leaves the recordings scroll position untouched', () => {
-  const libraryCommand = require('../services/library-command')
-  const library = require('../services/library')
-  const originalCreateSession = libraryCommand.createSession
-  const originalInvalidateArticleCaches = library.invalidateArticleCaches
-  let callbacks
-  library.invalidateArticleCaches = () => {}
-  libraryCommand.createSession = (options) => {
-    callbacks = options
-    return { connect() {}, close() {}, setRefs() {} }
-  }
-  try {
-    const { page } = freshRecordingsPage()
-    const loads = []
-    const ctx = Object.assign({}, page, {
-      data: Object.assign({}, page.data, { activeTab: 'recordings', scrollTop: 275 }),
-      _scrollPositions: { recordings: 275, community: 0, books: 0 },
-      load(options) { loads.push(options) }
-    })
-
-    page.createCommandSession.call(ctx)
-    callbacks.onUpdate(['VoiceDrop-example'])
-
-    assert.deepEqual(loads, [{ silent: true, keepDataOnError: true }])
-    assert.equal(ctx.data.scrollTop, 275)
-    assert.equal(ctx._scrollPositions.recordings, 275)
-  } finally {
-    libraryCommand.createSession = originalCreateSession
-    library.invalidateArticleCaches = originalInvalidateArticleCaches
-  }
+test('home resume does not construct or reconnect a library command session', () => {
+  const { page } = freshRecordingsPage()
+  let statusConnections = 0
+  let commandConnections = 0
+  const ctx = Object.assign({}, page, {
+    _awaitingInitialShow: true,
+    showPendingRecordingUploads() {},
+    drainPendingRecordingUploads() {},
+    resetAccountSessionsIfNeeded() {},
+    applyPendingHomeTab() {},
+    statusSession: { connect() { statusConnections++ } },
+    commandSession: { connect() { commandConnections++ }, setRefs() {} }
+  })
+  page.onShow.call(ctx)
+  assert.equal(page.createCommandSession, undefined)
+  assert.equal(statusConnections, 1)
+  assert.equal(commandConnections, 0)
 })
 
 test('recording rows keep the square waveform until the dedicated article cover renders', async () => {
@@ -1205,56 +1181,12 @@ test('record button floats only on the recordings tab', () => {
   assert.match(dock, /pointer-events:\s*none;/)
 })
 
-test('record button status shows active command feedback above the button', () => {
+test('home record button has no library command interface or session startup', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
   const js = fs.readFileSync(path.join(root, 'pages/recordings/index.js'), 'utf8')
-  const css = fs.readFileSync(path.join(root, 'pages/recordings/index.wxss'), 'utf8')
-
-  assert.match(wxml, /wx:if="\{\{commandStatusText\}\}"/)
-  assert.match(wxml, /\{\{commandStatusText\}\}/)
-  assert.match(wxml, /class="fab-status \{\{commandStatusKind\}\}"/)
-  assert.doesNotMatch(wxml, /wx:if="\{\{commandTalking && commandReply\}\}"/)
-  assert.doesNotMatch(wxml, /bindtap="onMicTap"/)
-  assert.doesNotMatch(wxml, /bindlongpress="onMicLongPress"/)
+  assert.doesNotMatch(wxml, /commandStatus|commandTalking|commandCanceled|_commandRef/)
+  assert.doesNotMatch(js, /this\.createCommandSession\(\)/)
   assert.match(wxml, /bindtouchcancel="onMicTouchCancel"/)
-  assert.match(js, /commandStatusText:\s*''/)
-  assert.match(js, /commandStatusKind:\s*''/)
-  assert.match(js, /refreshCommandStatus\(/)
-  assert.match(js, /this\.commandSession\.connect\(\)/)
-  assert.match(js, /stopRecorderAndWait\(recorder,\s*500\)/)
-  assert.match(js, /waitForFinalText\(1500\)/)
-  assert.doesNotMatch(js, /waitForBestText\(3000\)/)
-  assert.match(js, /this\.confirmLibraryCommand\(id, text\)/)
-  assert.match(js, /LONG_PRESS_MS:\s*350/)
-  assert.match(js, /this\._micLongPressTimer = setTimeout/)
-  assert.match(js, /this\._micTouchEndedBeforeCommandStart/)
-  assert.match(js, /this\._skipRecorderStopCount/)
-  assert.match(js, /active\.type === 'asr'/)
-  assert.match(js, /active\.type !== 'recordings'/)
-  assert.match(js, /app\.globalData\.activeRecorderSession = \{ type: 'asr', id: sessionId \}/)
-  assert.match(js, /this\._activeAsrSessionId !== sessionId/)
-  assert.doesNotMatch(js, /onMicTap\(\)/)
-  assert.doesNotMatch(js, /onMicLongPress\(\)/)
-  assert.doesNotMatch(js, /this\.commandTranscript\.accept\(text, isFinal\)/)
-  assert.match(js, /title:\s*'确认操作'/)
-  assert.match(js, /confirmText:\s*'删除'/)
-  assert.match(js, /cancelText:\s*'取消'/)
-  assert.match(js, /onUpdate:\s*\(stems\)\s*=>\s*\{[\s\S]*library\.invalidateArticleCaches\(stems\)[\s\S]*this\.load\(\{\s*silent:\s*true,\s*keepDataOnError:\s*true\s*\}\)/)
-  const transcriptStatus = ruleBody(css, '.fab-status.transcript')
-  const transcriptArrow = ruleBody(css, '.fab-status.transcript::after')
-  const queueStatus = ruleBody(css, '.fab-status.queue')
-  const replyStatus = ruleBody(css, '.fab-status.reply')
-  const errorStatus = ruleBody(css, '.fab-status.error')
-  assert.match(transcriptStatus, /background:\s*#2e2823;/)
-  assert.match(transcriptStatus, /color:\s*#fbf6ee;/)
-  assert.match(transcriptArrow, /left:\s*50%;/)
-  assert.match(transcriptArrow, /transform:\s*translateX\(-50%\);/)
-  assert.match(queueStatus, /background:\s*#f6e4dc;/)
-  assert.match(queueStatus, /border-color:\s*rgba\(216, 89, 59, 0\.5\);/)
-  assert.match(replyStatus, /background:\s*#ffffff;/)
-  assert.match(replyStatus, /color:\s*#2a2521;/)
-  assert.match(errorStatus, /background:\s*#ffffff;/)
-  assert.match(errorStatus, /border-color:\s*rgba\(192, 57, 43, 0\.7\);/)
 })
 
 test('library command confirmation waits for the destructive choice', () => {
@@ -1372,7 +1304,7 @@ test('both home microphone paths require audio consent and platform record permi
   assert.match(wxml, /bind:agree="onAudioConsentAgree"/)
   assert.match(wxml, /bind:decline="onAudioConsentDecline"/)
   assert.match(wxml, /bind:viewagreement="onAudioConsentViewAgreement"/)
-  assert.match(js, /async startRecord\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\) return[\s\S]*if \(!await recordPermission\.ensure\(wx\)\) return[\s\S]*wx\.navigateTo/)
+  assert.match(js, /async startRecord\(haptic = false\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\) return[\s\S]*if \(!await recordPermission\.ensure\(wx\)\) return[\s\S]*wx\.navigateTo/)
   assert.match(js, /async _startLibraryCommandTalk\(\)\s*\{[\s\S]*if \(!await this\.requestAudioConsent\(\)\)[\s\S]*if \(!await recordPermission\.ensure\(wx\)\)[\s\S]*this\._beginAsrSession\(\)/)
 })
 
