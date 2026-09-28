@@ -15,7 +15,7 @@ test('audio detail keeps its standard back tap outside a dedicated vertical scro
   assert.match(back, /bindtap="goBack"/)
   assert.equal(config.disableScroll, true)
   assert.ok(scroller > toolbarEnd)
-  assert.match(wxml.slice(scroller), /<scroll-view class="detail-scroll" scroll-y enhanced bounces="\{\{true\}\}" show-scrollbar="\{\{false\}\}">/)
+  assert.match(wxml.slice(scroller), /<scroll-view class="detail-scroll" scroll-y enhanced bounces="\{\{true\}\}" show-scrollbar="\{\{false\}\}"[^>]*>/)
 })
 
 test('audio detail loading state shows a spinner above the text', () => {
@@ -240,7 +240,7 @@ test('detail page exposes inline paragraph editing from the text longpress menu'
   assert.match(wxml, /<textarea[^>]*class="inline-paragraph-editor"[^>]*height:\s*\{\{inlineEditHeightPx\}\}px;/)
   assert.doesNotMatch(wxml, /class="inline-paragraph-editor"[^>]*auto-height/)
   assert.match(wxml, /<view class="edit-dock" wx:if="\{\{!inlineEditing\}\}">/)
-  assert.match(css, /\.inline-paragraph-editor\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*0;[^}]*padding:\s*0 8rpx;[^}]*font-size:\s*35rpx;[^}]*line-height:\s*1\.72;/s)
+  assert.match(css, /\.inline-paragraph-editor\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*0;[^}]*padding:\s*0;[^}]*font-size:\s*35rpx;[^}]*line-height:\s*normal;/s)
 
   const page = freshDetailPage()
   const ctx = Object.assign({}, page, {
@@ -256,6 +256,85 @@ test('detail page exposes inline paragraph editing from the text longpress menu'
     { id: 'copy', label: '拷贝' },
     { id: 'edit', label: '编辑' }
   ])
+})
+
+test('detail inline editor keeps its bottom above the keyboard when editing earlier lines', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/detail/index.wxml'), 'utf8')
+  const editor = wxml.match(/<textarea[^>]*class="inline-paragraph-editor"[^>]*\/>/)[0]
+
+  assert.match(editor, /adjust-position="\{\{false\}\}"/)
+  assert.match(editor, /bindlinechange="onInlineEditLineChange"/)
+  assert.match(editor, /disable-default-padding="\{\{true\}\}"/)
+  assert.match(editor, /show-confirm-bar="\{\{false\}\}"/)
+  assert.match(editor, /bindkeyboardheightchange="onInlineKeyboardHeightChange"/)
+  assert.match(wxml, /scroll-top="\{\{detailScrollTop\}\}"/)
+  assert.match(wxml, /height: calc\(100% - \{\{inlineKeyboardHeightPx\}\}px\)/)
+  const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
+  assert.match(css, /\.inline-paragraph-field\s*\{[^}]*padding:\s*8rpx;[^}]*border:\s*2rpx/s)
+})
+
+test('inline keyboard scrolls the complete editor border above the keyboard and resets on close', () => {
+  let finishQuery
+  const query = {
+    in() { return this }, select() { return this },
+    boundingClientRect() { return this }, scrollOffset() { return this },
+    exec(callback) { finishQuery = callback }
+  }
+  const page = freshDetailPage(null, {
+    getWindowInfo: () => ({ windowHeight: 800, windowWidth: 375 }),
+    createSelectorQuery: () => query
+  })
+  const ctx = Object.assign({}, page, {
+    data: Object.assign({}, page.data, { inlineEditing: true, toolbarTop: 44, toolbarHeight: 32 }),
+    setData(update, callback) { Object.assign(this.data, update); if (callback) callback() }
+  })
+  ctx.onInlineKeyboardHeightChange({ detail: { height: 300 } })
+  assert.equal(ctx.data.inlineKeyboardHeightPx, 300)
+  assert.ok(ctx.data.inlineEditMaxHeightPx < 500 - 76)
+  finishQuery([{ bottom: 500 }, { bottom: 550 }, { scrollTop: 200 }])
+  assert.equal(ctx.data.detailScrollTop, 254)
+  // A keyboard resize must measure again, using the actual scroll offset.
+  ctx.onInlineKeyboardHeightChange({ detail: { height: 350 } })
+  finishQuery([{ bottom: 450 }, { bottom: 488 }, { scrollTop: 254 }])
+  assert.equal(ctx.data.detailScrollTop, 296)
+  ctx.onInlineKeyboardHeightChange({ detail: { height: 300 } })
+  finishQuery([{ bottom: 500 }, { bottom: 400 }, { scrollTop: 296 }])
+  assert.equal(ctx.data.detailScrollTop, 296, 'an already visible field should not jump')
+  ctx.onInlineKeyboardHeightChange({ detail: { height: 350 } })
+  ctx.cancelInlineEdit()
+  finishQuery([{ bottom: 450 }, { bottom: 900 }, { scrollTop: 296 }])
+  assert.equal(ctx.data.detailScrollTop, 296, 'cancel invalidates a pending layout measurement')
+  assert.equal(ctx.data.inlineKeyboardHeightPx, 0)
+  assert.equal(ctx.data.inlineEditMaxHeightPx, 0)
+  ctx.onInlineKeyboardHeightChange({ detail: { height: 0 } })
+  assert.equal(ctx.data.inlineKeyboardHeightPx, 0)
+  assert.equal(ctx.data.inlineEditMaxHeightPx, 0)
+  finishQuery([{ bottom: 450 }, { bottom: 900 }, { scrollTop: 296 }])
+  assert.equal(ctx.data.detailScrollTop, 296)
+})
+
+test('inline editor follows native content height instead of retaining reading paragraph whitespace', () => {
+  const page = freshDetailPage()
+  const keyboardEvents = []
+  const ctx = Object.assign({}, page, {
+    data: { inlineEditing: true, inlineEditHeightPx: 34, inlineKeyboardHeightPx: 300 },
+    setData(update, callback) { Object.assign(this.data, update); if (callback) callback() },
+    onInlineKeyboardHeightChange(event) { keyboardEvents.push(event.detail.height) }
+  })
+  ctx.onInlineEditLineChange({ detail: { height: 23.5, lineCount: 1 } })
+  assert.equal(ctx.data.inlineEditHeightPx, 24)
+  assert.deepEqual(keyboardEvents, [300])
+  ctx.onInlineEditLineChange({ detail: { height: 23.5, lineCount: 1 } })
+  assert.equal(keyboardEvents.length, 1, 'unchanged layout must not trigger an update loop')
+  ctx.onInlineEditLineChange({ detail: { height: 70.5, lineCount: 3 } })
+  assert.equal(ctx.data.inlineEditHeightPx, 71)
+  ctx.onInlineEditLineChange({ detail: { height: 23.5, lineCount: 1 } })
+  assert.equal(ctx.data.inlineEditHeightPx, 24, 'deleting text removes unused bottom space')
+  ctx.onInlineEditLineChange({ detail: { height: 0 } })
+  assert.equal(ctx.data.inlineEditHeightPx, 24)
+  ctx.data.inlineEditing = false
+  ctx.onInlineEditLineChange({ detail: { height: 100 } })
+  assert.equal(ctx.data.inlineEditHeightPx, 24)
 })
 
 test('detail inline editor starts with the measured paragraph height', () => {

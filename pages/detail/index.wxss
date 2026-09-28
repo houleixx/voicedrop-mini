@@ -723,18 +723,26 @@
 .markdown-quote .paragraph { color: #8a8175; }
 .markdown-divider { height: 2rpx; margin: 16rpx 0; background: #ece3d5; }
 
+.inline-paragraph-field {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8rpx;
+  border: 2rpx solid rgba(216, 89, 59, 0.52);
+  border-radius: 14rpx;
+  background: #fffdf9;
+}
+
 .inline-paragraph-editor {
   display: block;
   width: 100%;
   min-height: 0;
-  box-sizing: border-box;
-  padding: 0 8rpx;
-  border: 2rpx solid rgba(216, 89, 59, 0.52);
-  border-radius: 14rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
   color: #514b44;
-  background: #fffdf9;
+  background: transparent;
   font-size: 35rpx;
-  line-height: 1.72;
+  line-height: normal;
 }
 
 .paragraph-locator {

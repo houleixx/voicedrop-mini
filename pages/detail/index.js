@@ -358,6 +358,9 @@ Page({
     inlineEditOriginal: '',
     inlineEditLineNo: 0,
     inlineEditHeightPx: 0,
+    inlineKeyboardHeightPx: 0,
+    inlineEditMaxHeightPx: 0,
+    detailScrollTop: 0,
     inlineEditArticleIndex: 0,
     history: null,
     historyOpen: false,
@@ -471,6 +474,7 @@ Page({
 
   onUnload() {
     audioConsentFlow.dispose(this)
+    this.inlineKeyboardQuerySeq = (this.inlineKeyboardQuerySeq || 0) + 1
     this.photoLoadSeq = (this.photoLoadSeq || 0) + 1
     this.longpressQuerySeq = (this.longpressQuerySeq || 0) + 1
     if (this.finishImageLongpress) this.finishImageLongpress()
@@ -2151,6 +2155,8 @@ Page({
       }
     }
     this.pendingInlineEditDoc = null
+    this.inlineKeyboardQuerySeq = (this.inlineKeyboardQuerySeq || 0) + 1
+    this.inlineEditWindowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
     this.setData({
       inlineEditing: true,
       inlineEditSaving: false,
@@ -2171,6 +2177,52 @@ Page({
     this.setData({ inlineEditText: event && event.detail ? event.detail.value : '' })
   },
 
+  onInlineEditLineChange(event) {
+    if (!this.data.inlineEditing) return
+    const height = Number(event && event.detail && event.detail.height)
+    if (!Number.isFinite(height) || height <= 0) return
+    const contentHeight = Math.ceil(height)
+    if (contentHeight === this.data.inlineEditHeightPx) return
+    // Native textarea metrics differ from the reading view, particularly on iOS.
+    // Padding and border belong to the wrapper and must not enter this height.
+    this.setData({ inlineEditHeightPx: contentHeight }, () => {
+      if (this.data.inlineEditing && this.data.inlineKeyboardHeightPx > 0) {
+        this.onInlineKeyboardHeightChange({ detail: { height: this.data.inlineKeyboardHeightPx } })
+      }
+    })
+  },
+
+  onDetailScroll(event) {
+    // Keep the binding in sync so a later keyboard adjustment can reuse a target.
+    this.setData({ detailScrollTop: Math.max(0, Number(event.detail.scrollTop) || 0) })
+  },
+
+  onInlineKeyboardHeightChange(event) {
+    const seq = this.inlineKeyboardQuerySeq = (this.inlineKeyboardQuerySeq || 0) + 1
+    if (!this.data.inlineEditing) return
+    const height = Math.max(0, Number(event && event.detail && event.detail.height) || 0)
+    const sys = this.inlineEditWindowInfo || (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync())
+    const toolbarBottom = (Number(this.data.toolbarTop) || 0) + (Number(this.data.toolbarHeight) || 0)
+      + 26 * (Number(sys.windowWidth) || 375) / 750
+    // Reserve toolbar, field padding/border, 12px above and 4px below.
+    const maxHeight = height ? Math.max(1, (Number(sys.windowHeight) || 667) - height - toolbarBottom
+      - 20 * (Number(sys.windowWidth) || 375) / 750 - 16) : 0
+    this.setData({ inlineKeyboardHeightPx: height, inlineEditMaxHeightPx: maxHeight }, () => {
+      if (!height || !this.data.inlineEditing || seq !== this.inlineKeyboardQuerySeq || !wx.createSelectorQuery) return
+      const query = wx.createSelectorQuery().in(this)
+      query.select('.detail-scroll').boundingClientRect()
+      query.select('.inline-paragraph-field').boundingClientRect()
+      query.select('.detail-scroll').scrollOffset()
+      query.exec((rects) => {
+        if (!this.data.inlineEditing || seq !== this.inlineKeyboardQuerySeq) return
+        const [viewport, field, offset] = rects || []
+        if (!viewport || !field || !offset) return
+        const overlap = field.bottom + 4 - viewport.bottom
+        if (overlap > 0) this.setData({ detailScrollTop: Math.max(0, offset.scrollTop + overlap) })
+      })
+    })
+  },
+
   cancelInlineEdit() {
     if (this.data.inlineEditSaving) return
     const pending = this.pendingInlineEditDoc
@@ -2180,7 +2232,9 @@ Page({
       inlineEditText: '',
       inlineEditOriginal: '',
       inlineEditLineNo: 0,
-      inlineEditHeightPx: 0
+      inlineEditHeightPx: 0,
+      inlineKeyboardHeightPx: 0,
+      inlineEditMaxHeightPx: 0
     })
     if (pending) this.applyDoc(pending)
   },
@@ -2215,7 +2269,9 @@ Page({
         inlineEditText: '',
         inlineEditOriginal: '',
         inlineEditLineNo: 0,
-        inlineEditHeightPx: 0
+        inlineEditHeightPx: 0,
+        inlineKeyboardHeightPx: 0,
+        inlineEditMaxHeightPx: 0
       })
       this.applyDoc(saved)
       await this.refreshVersionNav()

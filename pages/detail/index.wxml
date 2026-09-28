@@ -32,7 +32,7 @@
     </view>
   </view>
 
-  <scroll-view class="detail-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}">
+  <scroll-view class="detail-scroll" scroll-y enhanced bounces="{{true}}" show-scrollbar="{{false}}" style="height: calc(100% - {{inlineKeyboardHeightPx}}px);" scroll-top="{{detailScrollTop}}" bindscroll="onDetailScroll">
     <view class="detail-scroll-content">
       <view wx:if="{{loading}}" class="loading-state">
         <view class="loading-spinner" aria-hidden="true"></view>
@@ -66,7 +66,9 @@
       <block wx:for="{{blocks}}" wx:key="index">
         <view wx:if="{{item.type === 'paragraph'}}" id="article-paragraph-{{index}}" class="paragraph-row markdown-{{item.markdownKind || 'plain'}}" data-index="{{index}}" bindlongpress="longpressBlock">
           <text class="paragraph-locator" wx:if="{{holdEditLocatorsVisible}}">{{item.lineNo}}</text>
-          <textarea wx:if="{{inlineEditing && inlineEditLineNo === item.lineNo}}" class="inline-paragraph-editor" style="height: {{inlineEditHeightPx}}px;" value="{{inlineEditText}}" auto-focus maxlength="-1" bindinput="onInlineEditInput" />
+          <view wx:if="{{inlineEditing && inlineEditLineNo === item.lineNo}}" class="inline-paragraph-field">
+            <textarea class="inline-paragraph-editor" style="height: {{inlineEditHeightPx}}px; max-height: {{inlineEditMaxHeightPx || 10000}}px;" value="{{inlineEditText}}" auto-focus disable-default-padding="{{true}}" adjust-position="{{false}}" show-confirm-bar="{{false}}" bindfocus="onInlineKeyboardHeightChange" bindkeyboardheightchange="onInlineKeyboardHeightChange" maxlength="-1" bindinput="onInlineEditInput" bindlinechange="onInlineEditLineChange" />
+          </view>
           <view wx:elif="{{item.markdownKind === 'divider'}}" class="markdown-divider"></view>
           <text wx:else class="paragraph"><text wx:if="{{item.marker}}" class="markdown-marker">{{item.marker}} </text><text>{{item.markdownKind ? item.displayText : item.text}}</text></text>
         </view>
