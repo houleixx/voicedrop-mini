@@ -1,3 +1,4 @@
+const readingFont = require('../../utils/reading-font')
 const community = require('../../services/community')
 const library = require('../../services/library')
 const audio = require('../../services/audio')
@@ -32,6 +33,7 @@ function waitForPendingCommunityLike() {
 
 Page({
   data: {
+    ...readingFont.data(),
     shareId: '',
     post: null,
     article: null,
@@ -54,6 +56,16 @@ Page({
     replyWaveBars: REPLY_WAVE_PATTERN.map(() => 10),
     audioConsentVisible: false,
     capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX
+  },
+
+  onShow() { this.setData(readingFont.data()) },
+
+  onReadingFontChange() { this.setData(readingFont.data()) },
+
+  chooseReadingFont() {
+    if (this.data.post && this.data.post.isPrompt) return
+    this.setData({ moreMenuOpen: false })
+    readingFont.choose(this)
   },
 
   onLoad(options) {

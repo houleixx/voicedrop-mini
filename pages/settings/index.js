@@ -1,3 +1,4 @@
+const readingFont = require('../../utils/reading-font')
 const settings = require('../../services/settings')
 const auth = require('../../services/auth')
 const library = require('../../services/library')
@@ -9,6 +10,7 @@ const i18n = require('../../utils/i18n')
 
 Page({
   data: {
+    ...readingFont.data(),
     style: '',
     stylePreview: '',
     profileName: '',
@@ -36,6 +38,7 @@ Page({
   },
 
   onShow() {
+    this.setData(readingFont.data())
     this._settingsVisible = true
     this._settingsLifecycleGeneration = (this._settingsLifecycleGeneration || 0) + 1
     this.setData({ cacheClearing: false })
@@ -111,6 +114,10 @@ Page({
       wx.showToast({ title: '加载失败', icon: 'error' })
     }
   },
+
+  onReadingFontChange() { this.setData(readingFont.data()) },
+
+  chooseReadingFont() { readingFont.choose(this) },
 
   toggleAutoShare(event) {
     const autoShareCommunity = event.detail.value

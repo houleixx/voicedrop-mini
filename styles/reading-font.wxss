@@ -1,0 +1,10 @@
+/* Only reading content opts in; controls, photos and prompt posts keep their layout. */
+.reading-font .article-title { font-size: var(--reading-title-size, 48rpx); }
+.reading-font .section-title { font-size: var(--reading-section-size, 38rpx); }
+.reading-font .paragraph { font-size: var(--reading-body-size, 35rpx); }
+.reading-font .markdown-h1 .paragraph { font-size: var(--reading-h1-size, 44rpx); }
+.reading-font .markdown-h2 .paragraph { font-size: var(--reading-h2-size, 38rpx); }
+.reading-font .markdown-h3 .paragraph { font-size: var(--reading-h3-size, 34rpx); }
+.reading-font .article-title,
+.reading-font .section-title,
+.reading-font .paragraph { overflow-wrap: break-word; }

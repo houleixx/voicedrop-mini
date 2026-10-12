@@ -1,4 +1,4 @@
-<view class="screen community-detail-screen">
+<view class="screen community-detail-screen reading-font" style="{{readingFontStyle}}">
   <view class="detail-toolbar" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx;">
     <view class="tool-button back-button" bindtap="goBack" aria-label="{{i18n['返回']}}"><text class="back-icon ri-arrow-left-s-line"></text></view>
     <view class="toolbar-actions" style="padding-right: {{capsuleSafeRightPx}}px;">
@@ -28,6 +28,10 @@
   </view>
   <view class="more-menu-layer" wx:if="{{moreMenuOpen}}" bindtap="closeMoreMenu">
     <view class="more-menu-card" style="top: {{toolbarTop + toolbarHeight + 20}}px;" catchtap="noop">
+      <view class="more-menu-row" bindtap="chooseReadingFont" role="button" aria-label="{{i18n['字号']}}">
+        <text class="more-menu-label">{{i18n["字号"]}}</text>
+        <text class="more-menu-icon ri-font-size"></text>
+      </view>
       <view class="more-menu-row more-menu-share-row">
         <text class="more-menu-label">{{i18n["分享"]}}</text><text class="more-menu-icon ri-share-box-line"></text>
         <button class="more-menu-share-button" open-type="share" bindtap="closeMoreMenu" aria-label="{{i18n['分享']}}"></button>
@@ -35,3 +39,4 @@
     </view>
   </view>
 </view>
+<reading-font-sheet id="reading-font-sheet" bind:change="onReadingFontChange" />

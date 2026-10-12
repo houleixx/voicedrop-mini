@@ -1,3 +1,4 @@
+const readingFont = require('../../utils/reading-font')
 const publicShare = require('../../services/public-share')
 const library = require('../../services/library')
 const articleUtil = require('../../utils/article')
@@ -10,9 +11,19 @@ function clampSection(value, articles) {
 
 Page({
   data: {
+    ...readingFont.data(),
     shareId: '', article: null, blocks: [], loading: true, error: '', section: 0,
     moreMenuOpen: false, toolbarTop: 0, toolbarHeight: 64,
     capsuleSafeRightPx: capsuleLayout.FALLBACK_SAFE_RIGHT_PX
+  },
+
+  onShow() { this.setData(readingFont.data()) },
+
+  onReadingFontChange() { this.setData(readingFont.data()) },
+
+  chooseReadingFont() {
+    this.setData({ moreMenuOpen: false })
+    readingFont.choose(this)
   },
 
   onLoad(options) {

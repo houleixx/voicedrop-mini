@@ -1,1 +1,7 @@
-{"navigationBarTitleText":"","navigationStyle":"custom"}
+{
+  "navigationBarTitleText": "",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "reading-font-sheet": "/components/reading-font-sheet/index"
+  }
+}

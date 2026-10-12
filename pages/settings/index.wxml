@@ -151,6 +151,19 @@
         </view>
       </view>
 
+      <!-- 阅读字号：当前适用于社区和分享文章，书籍后续接入 -->
+      <view class="menu-item" bindtap="chooseReadingFont" role="button" aria-label="{{i18n['阅读字号']}}">
+        <view class="menu-icon icon-beige"><text class="menu-icon-text ri-font-size"></text></view>
+        <view class="menu-content">
+          <text class="menu-title">{{i18n["阅读字号"]}}</text>
+          <text class="menu-subtitle">{{i18n["社区和分享文章的正文大小"]}}</text>
+        </view>
+        <view class="menu-right">
+          <text class="menu-status">{{i18n[readingFontLabel]}}</text>
+          <text class="menu-arrow ri-arrow-right-s-line"></text>
+        </view>
+      </view>
+
       <!-- 清除缓存 -->
       <view class="menu-item" bindtap="clearCache">
         <view class="menu-icon icon-pink">
@@ -215,3 +228,4 @@
   </view>
 
 </view>
+<reading-font-sheet id="reading-font-sheet" bind:change="onReadingFontChange" />

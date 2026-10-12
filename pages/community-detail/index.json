@@ -3,6 +3,7 @@
   "navigationStyle": "custom",
   "disableScroll": true,
   "usingComponents": {
-    "audio-consent-dialog": "/components/audio-consent-dialog/index"
+    "audio-consent-dialog": "/components/audio-consent-dialog/index",
+    "reading-font-sheet": "/components/reading-font-sheet/index"
   }
 }

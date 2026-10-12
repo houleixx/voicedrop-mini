@@ -4,6 +4,7 @@
   "disableScroll": true,
   "usingComponents": {
     "page-header": "../../components/page-header/index",
-    "cell": "plugin://materialPlugin/cell"
+    "cell": "plugin://materialPlugin/cell",
+    "reading-font-sheet": "/components/reading-font-sheet/index"
   }
 }

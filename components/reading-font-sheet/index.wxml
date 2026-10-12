@@ -1,0 +1,16 @@
+<view wx:if="{{visible}}" class="font-sheet-layer {{closing ? 'closing' : ''}}" bindtap="close" catchtouchmove="noop">
+  <view class="font-sheet-panel" catchtap="noop" role="dialog" aria-label="{{i18n['阅读字号']}}">
+    <view class="font-sheet-head">
+      <text class="font-sheet-title">{{i18n['阅读字号']}}</text>
+      <view role="button" class="font-sheet-close" bindtap="close" aria-label="{{i18n['关闭']}}">
+        <view class="font-sheet-close-icon" aria-hidden="true"></view>
+      </view>
+    </view>
+    <scroll-view class="font-sheet-list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view wx:for="{{levels}}" wx:key="scale" class="font-sheet-row" data-index="{{index}}" bindtap="choose" aria-label="{{item.label}}" aria-checked="{{item.scale === readingFontScale}}" role="radio">
+        <text>{{item.label}}</text>
+        <view wx:if="{{item.scale === readingFontScale}}" class="font-sheet-check" aria-hidden="true"></view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

@@ -1,3 +1,4 @@
+@import "../../styles/reading-font.wxss";
 @import '../../styles/remixicon.wxss';
 
 .community-detail-screen {
