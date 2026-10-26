@@ -6,6 +6,7 @@ Source: the VoiceDrop Android client implementation.
 
 | Android feature | Mini Program status | Evidence |
 |---|---|---|
+| Book creation author and visibility | Author prefilled from profile; changed/cleared names save successfully before the paid request; unknown blank profiles are retried and failures keep the form without submitting. Optional `author` and boolean `hidden`; hidden only removes public listing, existing links remain readable. Old pipeline explanation removed. | `pages/book-writing`, `services/books`, `tests/book-writing-author.test.js` |
 | Networking platform header | Implemented with `X-VD-Platform: miniapp` across request, upload, download, and WebSocket entry points | `services/request`, `services/audio`, `services/library`, `services/article-edit`, `services/library-command`, `services/status-session` |
 | Record audio as `VoiceDrop-*.m4a` | Implemented with `wx.getRecorderManager()` and Android-compatible duration, weekday, and time-period naming boundaries | `pages/recordings`, `services/audio`, `utils/recording` |
 | Realtime AI interviewer during recording | Implemented with 16 kHz framed PCM capture, Android-compatible PCMU uplink, `/realtime/relay?fmt=pcmu`, ordered 24 kHz WebAudio playback, half-duplex mute, and six-step exponential reconnect; relay failure never stops the primary recording | `pages/record`, `services/realtime-session`, `services/realtime-interviewer`, `services/realtime-audio-player`, `utils/mu-law`, `utils/wav` |
@@ -96,3 +97,9 @@ Required before claiming full parity:
 - Test image upload and inline rendering.
 - Test WeChat login with the real Mini Program AppID and backend auth configuration.
 - Test official account draft publish against real credentials.
+
+## 2026-10-26 book creation follow-up
+
+The writing form now matches the updated iOS author/hidden options, with stronger failure handling: no paid POST follows a failed profile read for a blank author or a failed name write. Late profile reads do not overwrite edited or cleared drafts. Hidden is a public-listing option, not private access control. The existing 401/402/202/queued contract, article seed and price/referral flows remain in use. No new bookshelf `video` field is needed; animation pages are provided by the server HTML.
+
+Device verification: load an existing/empty author profile, edit and clear it, simulate read/write failure and retry, confirm no book was submitted on failure, create hidden/public books and inspect shelf visibility, then verify name synchronization in Settings. Check both app languages and input keyboard/switch behavior in WeChat Developer Tools and on a real device.

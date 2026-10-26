@@ -33,6 +33,14 @@ const ENGLISH_UI = {
 // Do not put article bodies, transcripts, titles, comments, or server errors
 // here: those are user content and must remain in their original language.
 const ENGLISH_COPY = {
+  '账户已切换，请重新打开写书页；尚未提交写书。': 'Your account changed. Reopen this page. Your book has not been submitted.',
+  '作者': 'Author', '留空则不署名': 'Leave blank for no byline',
+  '修改作者也会同步修改设置中的名字。': 'Changing the author also updates your name in Settings.',
+  '正在读取作者名字…': 'Loading your author name…',
+  '名字未能加载，提交前会重试；也可以填写作者。': 'Could not load your name. We will retry before submitting, or you can enter an author.',
+  '不上公开书架，已有链接仍可阅读；以后可在书页菜单修改。': 'Hide from the public shelf. Existing links still work. You can change this in the book menu later.',
+  '作者名字保存失败，请重试；尚未提交写书。': 'Could not save the author name. Please retry. Your book has not been submitted.',
+  '作者名字读取失败，请重试或填写作者；尚未提交写书。': 'Could not read the author name. Retry or enter an author. Your book has not been submitted.',
   '阅读字号': 'Reading font size', '字号': 'Font size',
   '社区和分享文章的正文大小': 'Text size in community and shared articles',
   '小': 'Small', '标准': 'Standard', '大': 'Large', '特大': 'Extra large', '超大': 'Largest',

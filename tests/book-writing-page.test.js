@@ -43,7 +43,7 @@ test('book writing footer hint aligns with the body content', () => {
   assert.match(css, /\.bottom-hint\s*\{[^}]*margin:\s*18rpx 24rpx 0;[^}]*text-align:\s*left;/s)
 })
 
-function loadWritingPage(start) {
+function loadWritingPage(start, extraBooks = {}) {
   const events = []
   let definition
   const app = { globalData: {} }
@@ -60,7 +60,8 @@ function loadWritingPage(start) {
     start,
     result(response) { return { accepted: Boolean(response && response.statusCode === 202), message: '开始写了' } },
     formatBalance(value) { return String(value) },
-    shortfall() { return 0 }
+    shortfall() { return 0 },
+    ...extraBooks
   } }
   global.Page = (value) => { definition = value }
   delete require.cache[pagePath]
@@ -124,4 +125,56 @@ test('article seed combines optional instructions and clips the single server se
   assert.equal(seed.length, 20000)
   assert.match(seed, /^写书要求：写成科普书/)
   assert.match(seed, /以下这篇文章是种子素材，把它扩展成一本完整的书：/)
+})
+
+
+test('late profile load preserves an edited or explicitly cleared author draft', async () => {
+  for (const draft of ['新名字', '']) {
+    let resolve
+    const { page } = loadWritingPage(async () => ({ statusCode: 202 }), { writingAuthor: () => new Promise((done) => { resolve = done }) })
+    const loading = page.loadAuthor()
+    page.onAuthorInput({ detail: { value: draft } })
+    resolve('旧名字')
+    await loading
+    assert.equal(page.data.author, draft)
+    assert.equal(page.data.loadedName, '旧名字')
+  }
+})
+
+test('known empty profile pre-fills an untouched author and distinguishes failed reads', async () => {
+  const { page } = loadWritingPage(async () => ({ statusCode: 202 }), { writingAuthor: async () => '' })
+  await page.loadAuthor()
+  assert.equal(page.data.loadedName, '')
+  assert.equal(page.data.author, '')
+  assert.equal(page.data.authorLoading, false)
+})
+
+test('submission carries author and hidden state, and ignores later profile prefill', async () => {
+  let options
+  let finish
+  const { page } = loadWritingPage(async (seed, opts) => { options = opts; return new Promise((resolve) => { finish = resolve }) }, { writingAuthor: async () => '旧名字' })
+  page.data.author = '新名字'
+  page.data.loadedName = '旧名字'
+  page.onHiddenChange({ detail: { value: true } })
+  const submission = page.start()
+  await page.loadAuthor()
+  assert.equal(page.data.author, '新名字')
+  assert.deepEqual(options, { author: '新名字', loadedName: '旧名字', hidden: true, authorEdited: false })
+  finish({ statusCode: 202 })
+  await submission
+})
+
+test('author failures keep form data, display a retry message and always hide loading', async () => {
+  for (const code of ['AUTHOR_LOAD_FAILED', 'AUTHOR_SAVE_FAILED']) {
+    const { page, events } = loadWritingPage(async () => { const error = new Error(code); error.code = code; throw error })
+    page.data.author = '新名字'
+    page.data.hidden = true
+    await page.start()
+    assert.equal(page.data.author, '新名字')
+    assert.equal(page.data.hidden, true)
+    assert.equal(page.data.submitted, false)
+    assert.equal(page.data.sending, false)
+    assert.match(page.data.message, /尚未提交写书/)
+    assert.equal(events.filter(([name]) => name === 'hideLoading').length, 1)
+  }
 })

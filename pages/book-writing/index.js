@@ -1,5 +1,6 @@
 const books = require('../../services/books')
 const articleUtil = require('../../utils/article')
+const i18n = require('../../utils/i18n')
 
 const app = getApp()
 
@@ -7,9 +8,11 @@ const IDEA_PLACEHOLDER = '比如：为什么一切都在变乱？\n或：钱不�
 const ARTICLE_PLACEHOLDER = '比如：写成给孩子的绘本。（可留空）'
 
 Page({
-  data: { seed: '', seedArticle: null, seedPlaceholderKey: IDEA_PLACEHOLDER, seedTitleKey: '中心思想', sending: false, submitted: false, message: '', error: false,
+  data: { author: '', loadedName: null, authorLoading: true, hidden: false, seed: '', seedArticle: null, seedPlaceholderKey: IDEA_PLACEHOLDER, seedTitleKey: '中心思想', sending: false, submitted: false, message: '', error: false,
     price: books.BOOK_SUANLI, balance: null, balanceDisplay: '', invite: {}, shortfall: 0, feedTimes: '—', invitePeople: '—', canSubmit: false },
   async onLoad() {
+    this.authorEdited = false
+    const authorTask = this.loadAuthor()
     const candidate = app.globalData.bookSeedArticle
     app.globalData.bookSeedArticle = null
     const seedArticle = candidate && typeof candidate === 'object'
@@ -26,7 +29,21 @@ Page({
       feedTimes: invite.suanliFeedAuthor ? Math.ceil(shortfall / invite.suanliFeedAuthor) : '—',
       invitePeople: invite.suanliInviter ? Math.ceil(shortfall / invite.suanliInviter) : '—' })
     this.updateSubmit()
+    await authorTask
   },
+  async loadAuthor() {
+    this.setData({ authorLoading: true })
+    const name = await books.writingAuthor()
+    if (this.data.sending || this.data.submitted) { this.setData({ authorLoading: false }); return }
+    const patch = { loadedName: name, authorLoading: false }
+    if (name !== null && !this.authorEdited) patch.author = name
+    this.setData(patch)
+  },
+  onAuthorInput(event) {
+    this.authorEdited = true
+    this.setData({ author: String(event.detail.value || ''), message: '', error: false })
+  },
+  onHiddenChange(event) { this.setData({ hidden: event.detail.value === true }) },
   onInput(event) { this.setData({ seed: String(event.detail.value || '').slice(0, 20000), message: '', error: false }); this.updateSubmit() },
   openShelf() { wx.navigateTo({ url: `/pages/web/index?url=${encodeURIComponent(books.shelfWebUrl())}&title=${encodeURIComponent('公开书架')}` }) },
   done() { wx.navigateBack() },
@@ -57,7 +74,16 @@ Page({
     this.setData({ sending: true, message: '', error: false }); this.updateSubmit()
     this.showSubmitLoading()
     let response
-    try { response = await books.start(seed) } catch (_) {} finally { this.hideSubmitLoading() }
+    try {
+      response = await books.start(seed, { author: this.data.author, loadedName: this.data.loadedName, hidden: this.data.hidden, authorEdited: this.authorEdited === true })
+    } catch (error) {
+      if (error && (error.code === 'AUTHOR_SAVE_FAILED' || error.code === 'AUTHOR_LOAD_FAILED' || error.code === 'AUTHOR_IDENTITY_CHANGED')) {
+        this.setData({ sending: false, error: true, message: i18n.ui(error.code === 'AUTHOR_IDENTITY_CHANGED' ? '账户已切换，请重新打开写书页；尚未提交写书。' : error.code === 'AUTHOR_SAVE_FAILED'
+          ? '作者名字保存失败，请重试；尚未提交写书。' : '作者名字读取失败，请重试或填写作者；尚未提交写书。') })
+        this.updateSubmit()
+        return
+      }
+    } finally { this.hideSubmitLoading() }
     const result = books.result(response)
     const balance = response && response.statusCode === 402 && Number(response.data && response.data.suanli)
     const next = { sending: false, submitted: result.accepted, message: result.message, error: !result.accepted }

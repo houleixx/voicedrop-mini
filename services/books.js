@@ -1,4 +1,5 @@
 const auth = require('./auth')
+const api = require('./api')
 const http = require('./request')
 const route = require('./api-route')
 const i18n = require('../utils/i18n')
@@ -43,8 +44,60 @@ function cacheKeyFor(identity) {
   return `${CACHE_KEY}.${(hash >>> 0).toString(16).padStart(8, '0')}`
 }
 
-async function start(seed) {
-  return http.postJson(API, auth.bearer(), { seed: String(seed || '').trim().slice(0, 20000) }, { timeout: 30000 })
+function authorToSave(draft, loadedName) {
+  const author = String(draft || '').trim()
+  if (loadedName == null) return author ? author : null
+  return author === String(loadedName) ? null : author
+}
+
+// null means the profile could not be read; '' means it was read and has no name.
+async function writingAuthor(token = auth.bearer()) {
+  try {
+    const res = await http.get(`${api.filesBase()}/style`, token)
+    if (!res || !(res.statusCode >= 200 && res.statusCode < 300)) return null
+    const body = res.data
+    if (!body || typeof body !== 'object' || Array.isArray(body) || (body.name !== undefined && typeof body.name !== 'string')) return null
+    if (auth.bearer() !== token) return null
+    return body.name || ''
+  } catch (_) { return null }
+}
+
+function authorError(code) {
+  const error = new Error(code)
+  error.code = code
+  return error
+}
+
+async function start(seed, options) {
+  const seedText = String(seed || '').trim().slice(0, 20000)
+  if (!seedText) return { statusCode: 400, data: { error: 'empty seed' } }
+  const opts = options || {}
+  let author = String(opts.author || '').trim()
+  const token = auth.bearer()
+  const checkIdentity = () => { if (auth.bearer() !== token) throw authorError('AUTHOR_IDENTITY_CHANGED') }
+  let loadedName = opts.loadedName == null ? null : String(opts.loadedName)
+  // A blank draft is only an explicit no-byline choice once the profile is known.
+  // Re-read before choosing the byline; an unavailable profile must never start a paid job.
+  if (!author && loadedName == null) {
+    loadedName = await writingAuthor(token)
+    checkIdentity()
+    if (loadedName == null) throw authorError('AUTHOR_LOAD_FAILED')
+    if (opts.authorEdited !== true) author = loadedName.trim()
+  }
+  checkIdentity()
+  const name = authorToSave(author, loadedName)
+  if (name !== null) {
+    let saved = false
+    try {
+      const res = await http.putJson(`${api.filesBase()}/style`, token, { name })
+      saved = Boolean(res && res.statusCode >= 200 && res.statusCode < 300)
+    } catch (_) {}
+    checkIdentity()
+    if (!saved) throw authorError('AUTHOR_SAVE_FAILED')
+  }
+  const body = { seed: seedText, hidden: opts.hidden === true }
+  if (author) body.author = author
+  return http.postJson(API, token, body, { timeout: 30000 })
 }
 
 async function history(slug) {
@@ -363,5 +416,5 @@ module.exports = {
   start, history, revise, shelf, shelfRequestUrl, cachedShelf, normalizeIndex, refreshCoverUrls,
   ownership, setHidden, searchIndex,
   normalizeThread, formatThreadStamp, reviseMessage, readerUrl, coverUrl,
-  shareTitle, readerPageUrl, writingContext, formatBalance, shortfall, message, result
+  shareTitle, readerPageUrl, writingContext, writingAuthor, authorToSave, formatBalance, shortfall, message, result
 }
