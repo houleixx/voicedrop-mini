@@ -46,3 +46,7 @@
 .book-search-status, .book-search-scope { padding: 8rpx 18rpx 16rpx; color: #8a8175; font-size: 24rpx; }
 .book-meta.book-chapter-hit { display: block; color: #a44b34; font-size: 23rpx; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .book-shelf-empty { padding: 40rpx 24rpx; text-align: center; color: #8a8175; font-size: 28rpx; }
+
+/* Decorative video badge: book taps continue to the existing reader action. */
+.book-video-mark { position: absolute; z-index: 3; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; box-sizing: border-box; width: 80rpx; height: 80rpx; align-items: center; justify-content: center; border: 2rpx solid rgba(255,255,255,.6); border-radius: 50%; background: rgba(0,0,0,.18); pointer-events: none; }
+.book-video-triangle { width: 0; height: 0; margin-left: 6rpx; border-top: 13rpx solid transparent; border-bottom: 13rpx solid transparent; border-left: 22rpx solid rgba(255,255,255,.85); pointer-events: none; }

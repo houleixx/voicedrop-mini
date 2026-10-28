@@ -176,6 +176,7 @@
                 <view class="book-cover cloth" style="background: radial-gradient(circle at 25% 15%, rgba(255,255,255,.10), rgba(255,255,255,0) 64%), linear-gradient(145deg, {{cell.c}}, {{cell.c2}});">
                   <text class="cover-main">{{cell.main}}</text><view class="cover-rule"></view><text wx:if="{{cell.sub}}" class="cover-sub">{{cell.sub}}</text>
                   <image wx:if="{{cell.coverDisplayUrl}}" class="cover-image" src="{{cell.coverDisplayUrl}}" mode="aspectFill" data-slug="{{cell.slug}}" binderror="onBookCoverError" />
+                  <view wx:if="{{cell.video}}" class="book-video-mark" aria-hidden="true"><view class="book-video-triangle"></view></view>
                   <text wx:if="{{cell.hidden}}" class="book-hidden-badge">{{i18n["隐藏"]}}</text>
                 </view>
                 <view class="book-caption-stack"><text class="book-caption">{{cell.main}}</text><text class="book-meta {{cell.chapterHit ? 'book-chapter-hit' : ''}}">{{cell.chapterHit || cell.shelfMeta || ' '}}</text></view>

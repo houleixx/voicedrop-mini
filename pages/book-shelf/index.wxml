@@ -18,6 +18,7 @@
         <view class="book-cover cloth" style="background: linear-gradient(145deg, {{item.c}}, {{item.c2}});">
           <text class="cover-main">{{item.main}}</text><view class="cover-rule"></view><text class="cover-sub">{{item.sub}}</text>
           <image wx:if="{{item.coverDisplayUrl}}" class="cover-image" src="{{item.coverDisplayUrl}}" mode="aspectFill" data-slug="{{item.slug}}" binderror="onBookCoverError" />
+          <view wx:if="{{item.video}}" class="book-video-mark" aria-hidden="true"><view class="book-video-triangle"></view></view>
           <text wx:if="{{item.hidden}}" class="book-hidden-badge">{{i18n["隐藏"]}}</text>
         </view>
         <text class="book-caption">{{item.main}}</text>

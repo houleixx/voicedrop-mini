@@ -187,6 +187,7 @@ function normalizeBook(item) {
     chapters: Math.max(0, Number(book.chapters) || 0),
     author: String(book.author || ''), createdAt: Math.max(0, Number(book.createdAt) || 0),
     hidden: book.hidden === true,
+    video: book.video === true,
     category: typeof book.category === 'string' ? book.category : '',
     mine: book.mine === true
   }

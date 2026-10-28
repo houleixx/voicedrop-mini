@@ -45,7 +45,7 @@ const ENGLISH_COPY = {
   '社区和分享文章的正文大小': 'Text size in community and shared articles',
   '小': 'Small', '标准': 'Standard', '大': 'Large', '特大': 'Extra large', '超大': 'Largest',
   '字号保存失败，请重试': 'Could not save font size. Please retry.',
-  '全部': 'All', '我的': 'Mine', '搜索书架': 'Search bookshelf',
+  '全部': 'All', '我的': 'Mine', '视频': 'Video', '搜索书架': 'Search bookshelf',
   '商业': 'Business', '投资': 'Investing', 'AI': 'AI', '科学': 'Science',
   '人文': 'Humanities', '身心': 'Wellness', '生活': 'Lifestyle', '故事': 'Stories',
   '搜书名、作者、章节': 'Title, author or chapter', '当前筛选': 'Filter',

@@ -19,7 +19,7 @@ function hit(book, query, entry) {
 
 function project(items, filter, query, index) {
   return (items || []).filter((book) => filter === 'all' ||
-    (filter === 'mine' ? book.mine === true : book.category === filter))
+    (filter === 'mine' ? book.mine === true : filter === 'video' ? book.video === true : book.category === filter))
     .map((book) => ({ book, match: hit(book, query, index && index[book.slug]) }))
     .filter(({ match }) => match !== null)
     .map(({ book, match }) => Object.assign({}, book, {
@@ -76,8 +76,9 @@ function pageMethods(service, itemsKey, rowsFor) {
       const session = this.ensureBookSearch()
       const items = this.data[itemsKey] || []
       const present = CATEGORY_ORDER.filter((category) => items.some((book) => book.category === category))
+      const hasVideo = items.some((book) => book.video === true)
       const selected = this.data.bookFilter || 'all'
-      const filter = selected === 'all' || selected === 'mine' || present.includes(selected) ? selected : 'all'
+      const filter = selected === 'all' || selected === 'mine' || (selected === 'video' && hasVideo) || present.includes(selected) ? selected : 'all'
       const query = this.data.bookQuery || ''
       const hasQuery = Boolean(query.trim())
       const visibleBooks = project(items, filter, query, session.state.index)
@@ -89,6 +90,7 @@ function pageMethods(service, itemsKey, rowsFor) {
       const patch = {
         bookFilter: filter, visibleBooks, bookHasQuery: hasQuery,
         bookFilters: [{ key: 'all', label: i18n.ui('全部') }, { key: 'mine', label: i18n.ui('我的') }]
+          .concat(hasVideo ? [{ key: 'video', label: i18n.ui('视频') }] : [])
           .concat(present.map((category) => ({ key: category, label: i18n.ui(category) }))),
         bookSearchLoading: session.state.loading, bookSearchError: session.state.error,
         bookEmptyText: empty

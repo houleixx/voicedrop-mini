@@ -158,3 +158,34 @@ test('opening a shelf book preserves its full title for WeChat sharing', () => {
   assert.equal(payload.title, '《主标题：完整副标题》 — 作者')
   assert.equal(payload.imageUrl, 'https://voicedrop.cn/books/sample-book/cover.jpg')
 })
+
+
+test('reader keeps loading until the web-view reports completion, even beyond eight seconds', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { page } = loadReaderPage()
+  page.onLoad({ slug: 'sample-book' })
+  page.onReady()
+  t.mock.timers.tick(100)
+  assert.equal(page.data.loading, true)
+  t.mock.timers.tick(60000)
+  assert.equal(page.data.loading, true)
+  // Keep the native web-view mounted so a slow book can still finish loading.
+  assert.equal(page.data.url, 'https://voicedrop.cn/books/sample-book/')
+  page.onWebLoad()
+  assert.equal(page.data.loading, false)
+  page.onUnload()
+})
+
+test('reader cancels pending loading updates when leaving before web load', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { page } = loadReaderPage()
+  page.onLoad({ slug: 'sample-book' })
+  page.onReady()
+  t.mock.timers.tick(100)
+  assert.equal(page.data.loading, true)
+  page.onUnload()
+  let updates = 0
+  page.setData = () => { updates += 1 }
+  t.mock.timers.tick(10000)
+  assert.equal(updates, 0)
+})
