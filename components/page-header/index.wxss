@@ -121,3 +121,5 @@
   flex-shrink: 0;
   min-width: 64rpx;
 }
+
+.page-header-in-flow { position: relative; box-sizing: border-box; }

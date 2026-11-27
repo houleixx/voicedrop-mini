@@ -14,6 +14,7 @@ const homeFilterLayout = require('../../utils/home-filter-layout')
 const { layoutOffsets } = homeFilterLayout
 const filterTabLayout = require('../../utils/filter-tab-layout')
 const bookCoverCache = require('../../services/book-cover-cache')
+const bookDownloadBadges = require('../../utils/book-download-badges')
 const blockStore = require('../../utils/block-store')
 const pendingReplies = require('../../utils/pending-replies')
 const prefs = require('../../utils/prefs')
@@ -145,6 +146,8 @@ Page({
 
   onShow() {
     this.showPendingRecordingUploads()
+    bookDownloadBadges.observe(this, 'bookItems')
+    this._bookCoverSession?.resume?.()
     this._recordPageHidden = false
     this.drainPendingRecordingUploads()
     this.resetAccountSessionsIfNeeded()
@@ -242,6 +245,8 @@ Page({
   },
 
   onHide() {
+    bookDownloadBadges.disconnect(this)
+    this._bookCoverSession?.pause?.()
     this.cancelRecordLaunch()
     if (this.statusSession) this.statusSession.close()
     if (this.commandSession) this.commandSession.close()
@@ -249,6 +254,7 @@ Page({
 
   onUnload() {
     audioConsentFlow.dispose(this)
+    bookDownloadBadges.disconnect(this)
     this.cancelRecordLaunch()
     this._pageUnloaded = true
     this._bookLoadRequestId = (this._bookLoadRequestId || 0) + 1
@@ -326,6 +332,7 @@ Page({
     this._recordLaunch = null
     const key = event.detail && event.detail.key
     if (!key || key === this.data.currentHomeTab) return
+    const returningToRecordings = this.data.activeTab !== 'recordings'
     if (key.startsWith('tag:')) {
       const tag = event.detail.tab && event.detail.tab.tag || key.slice(4)
       this.setData({
@@ -337,6 +344,7 @@ Page({
         refreshing: this.isTabRefreshing('recordings'),
         records: this.commandRecordsFor(this.data.allRecords, tag)
       })
+      if (returningToRecordings) this.loadRecordingCovers(this.data.records, this.recordCoverLoadId)
       if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
       return
     }
@@ -358,6 +366,9 @@ Page({
     if (activeTab === 'books') {
       const restored = this.data.booksLoaded || this.restoreCachedBooks()
       this.loadBooks(restored ? { silent: true, keepDataOnError: true } : undefined)
+    }
+    if (returningToRecordings && activeTab === 'recordings') {
+      this.loadRecordingCovers(this.data.records, this.recordCoverLoadId)
     }
     if (this.commandSession) this.commandSession.setRefs(this.currentCommandRefs())
   },
@@ -441,7 +452,7 @@ Page({
 
   prepareBookItems(items) {
     const routed = books.refreshCoverUrls(items)
-    return this.ensureBookCoverSession().decorate(routed)
+    return bookDownloadBadges.decorate(this.ensureBookCoverSession().decorate(routed))
   },
 
   onBookCoverError(event) {
@@ -497,7 +508,7 @@ Page({
     const book = this.data.bookItems.find((item) => item.slug === slug)
     if (!book) return
     wx.navigateTo({
-      url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author || '')}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}&mine=${book.mine ? '1' : '0'}&hidden=${book.hidden ? '1' : '0'}`,
+      url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author || '')}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}&mine=${book.mine ? '1' : '0'}&hidden=${book.hidden ? '1' : '0'}&details=1`,
       events: { bookHiddenChanged: () => this.loadBooks({ silent: true, keepDataOnError: true, forceRefresh: true }) }
     })
   },
@@ -783,6 +794,9 @@ Page({
   },
 
   async loadRecordingCovers(records, loadId) {
+    const isCurrent = () => loadId === this.recordCoverLoadId && !this._recordPageHidden &&
+      !this._pageUnloaded && this.data?.activeTab !== 'books' && this.data?.activeTab !== 'community'
+    if (!isCurrent()) return
     const candidates = (records || []).filter((rec) => rec && (
       (!(rec.coverPhotoUrl && rec.coverPhotoIsBook) && rec.hasArticles &&
         recordingUtil.coverKeyForStem(rec.stem || rec.audioName)) ||
@@ -794,14 +808,14 @@ Page({
     } catch (_) {
       return
     }
-    if (!scope || loadId !== this.recordCoverLoadId) return
+    if (!scope || !isCurrent()) return
     await Promise.all(candidates.map(async (rec) => {
       const dedicatedKey = rec.hasArticles ? recordingUtil.coverKeyForStem(rec.stem || rec.audioName) : ''
       // A timeout or a cover still being generated must not suppress future refreshes.
       if (dedicatedKey) {
         try {
           const dedicatedUrl = await library.downloadPhotoTemp(dedicatedKey, scope, { preferThumb: true })
-          if (dedicatedUrl && loadId === this.recordCoverLoadId) {
+          if (dedicatedUrl && isCurrent()) {
             // Keep the square waveform visible until the mini-program image
             // component has actually decoded the dedicated portrait cover.
             this.updateRecordingCover(rec.stem, dedicatedUrl, true, false)
@@ -809,10 +823,10 @@ Page({
           }
         } catch (_) {}
       }
-      if (loadId !== this.recordCoverLoadId || rec.coverPhotoUrl || !rec.coverPhotoKey) return
+      if (!isCurrent() || rec.coverPhotoUrl || !rec.coverPhotoKey) return
       try {
         const fallbackUrl = await library.downloadPhotoTemp(rec.coverPhotoKey, scope, { preferThumb: true })
-        if (!fallbackUrl || loadId !== this.recordCoverLoadId) return
+        if (!fallbackUrl || !isCurrent()) return
         this.updateRecordingCover(rec.stem, fallbackUrl, false, true)
       } catch (_) {}
     }))

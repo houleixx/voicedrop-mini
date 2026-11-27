@@ -1,4 +1,6 @@
 const books = require('../../services/books')
+const offline = require('../../services/book-offline')
+const apiRoute = require('../../services/api-route')
 
 const LOADING_LAYOUT_DELAY_MS = 100
 
@@ -7,7 +9,9 @@ function decoded(value) {
 }
 
 Page({
-  data: { url: '', loading: false, title: '', author: '', cover: false, mine: false, hidden: false, moreMenuOpen: false },
+  data: { url: '', readerReady: false, loading: false, title: '', author: '', cover: false, mine: false, hidden: false, moreMenuOpen: false,
+    offline: false, chapterLoading: false, offlineAvailable: false, offlineProgress: -1, chapters: [], chapterIndex: 0, chapterScrollTarget: '',
+    blocks: [], pageIndex: null, pageMeta: '', audioPath: '', missingChapterAudio: false, playing: false, audioTime: 0, audioDuration: 0, videoPath: '', hasAnimation: false },
   onLoad(options) {
     const slug = String(options.slug || '').replace(/[^A-Za-z0-9_-]/g, '')
     const book = {
@@ -22,12 +26,34 @@ Page({
     }
     this.book = book
     this.bookUrl = books.readerPageUrl(book, decoded(options.page))
-    this._webFinished = false
-    this.setData({ url: this.bookUrl, title: book.main, author: book.author, cover: book.cover, mine: book.mine, hidden: book.hidden })
+    const forceOnline = String(options.online || '') === '1'
+    this.localBook = offline.get(slug)
+    const useLocal = Boolean(this.localBook) && !forceOnline
+    this._webFinished = useLocal
+    this.initialOfflineUrl = useLocal ? this.bookUrl : ''
+    this.setData({ url: useLocal ? '' : this.bookUrl, offline: useLocal, chapterLoading: useLocal, title: book.main, author: book.author, cover: book.cover,
+      mine: book.mine, hidden: book.hidden, offlineAvailable: Boolean(this.localBook),
+      offlineProgress: offline.downloadProgress(slug) })
+    this.stopDownloadUpdates = offline.subscribeDownloads((changedSlug, progress) => {
+      if (changedSlug !== slug || this.book !== book) return
+      if (progress >= 0) {
+        this.setData({ offlineProgress: progress })
+        return
+      }
+      this.localBook = offline.get(slug)
+      this.setData({ offlineProgress: -1, offlineAvailable: Boolean(this.localBook) })
+    })
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
-    this.loadOwnership()
   },
   onReady() {
+    if (!this.book) return
+    this.setData({ readerReady: true })
+    this.loadOwnership()
+    if (this.initialOfflineUrl) {
+      const url = this.initialOfflineUrl
+      this.initialOfflineUrl = ''
+      return this.openOffline(url)
+    }
     if (this._webFinished) return
     this.cancelLoadingTimer()
     this._loadingTimer = setTimeout(() => {
@@ -67,7 +93,7 @@ Page({
     }
   },
   openActions() {
-    if (!this.data.mine || this._changingHidden) return
+    if (!this.book || this._changingHidden) return
     this.setData({ moreMenuOpen: true })
   },
   closeMoreMenu() {
@@ -77,11 +103,165 @@ Page({
   runMoreMenuAction(event) {
     const action = event && event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.action
     this.closeMoreMenu()
+    if (action === 'offline-download') { this.downloadOffline(); return }
+    if (action === 'offline-toggle') {
+      if (this.data.offline) this.openOnlineBook()
+      else this.readLocalCopy()
+      return
+    }
+    if (action === 'offline-remove') { this.confirmRemoveOffline(); return }
+    if (!this.data.mine) return
     if (action === 'revise') {
       wx.navigateTo({ url: `/pages/book-revise/index?slug=${encodeURIComponent(this.book.slug)}&title=${encodeURIComponent(this.book.main || this.book.title || '')}` })
       return
     }
     if (action === 'visibility') this.confirmSetHidden(!this.data.hidden)
+  },
+  async downloadOffline() {
+    if (!this.book || offline.downloadProgress(this.book.slug) >= 0 || this.data.offlineProgress >= 0) return
+    const book = this.book
+    const root = `${apiRoute.publicWebBase()}/books/${encodeURIComponent(book.slug)}/`
+    this.setData({ offlineProgress: 0 })
+    try {
+      const local = await offline.download(book.slug, root, (progress) => {
+        if (this.book === book) this.setData({ offlineProgress: progress })
+      })
+      if (this.book !== book) return
+      this.localBook = local
+      this.setData({ offlineAvailable: true })
+      if (this.data.offline) this.openOffline(this.bookUrl)
+      const missingMedia = local.missingAudio || (local.missingFiles || []).some((path) => /\.(?:png|jpe?g|gif|webp|svg|mp4)$/i.test(path))
+      wx.showToast({ title: missingMedia ? '书籍已下载，部分媒体未下载' : '已下载到本地', icon: 'none' })
+    } catch (_) {
+      if (this.book === book) wx.showToast({ title: '下载失败，请检查网络或存储空间', icon: 'none' })
+    } finally {
+      if (this.book === book) this.setData({ offlineProgress: -1 })
+    }
+  },
+  readLocalCopy() { if (this.localBook) this.openOffline(this.bookUrl) },
+  async openOffline(url) {
+    const root = books.readerUrl(this.book)
+    try {
+      const chapters = offline.chapters(this.localBook)
+      if (chapters.length === 0) throw new Error('No chapters')
+      const current = decodeURIComponent(books.readerPageUrl(this.book, url).slice(root.length).split(/[?#]/)[0])
+      this.finishLoading()
+      this.setData({ url: '', offline: true, offlineAvailable: true, chapters,
+        hasAnimation: Boolean(this.localBook.hasAnimation),
+        videoPath: this.localBook.video ? this.localBook.root + '/' + this.localBook.video : '' })
+      await this.showOfflineChapter(Math.max(0, chapters.findIndex(({ path }) => path === current)), true)
+    } catch (_) {
+      wx.showToast({ title: '本地副本无法读取，请重新下载', icon: 'none' })
+      this.openOnlineBook()
+    }
+  },
+  async showOfflineChapter(index, opening = false) {
+    const chapter = this.data.chapters[index]
+    if (!chapter || !this.localBook) return
+    this.stopOfflineAudio()
+    const root = books.readerUrl(this.book)
+    const request = {}
+    this.chapterRequest = request
+    this.setData({ chapterLoading: true })
+    let result
+    try {
+      result = await offline.loadLocalPage(this.localBook, chapter.path, root)
+    } catch (error) {
+      if (this.chapterRequest !== request) return
+      this.setData({ chapterLoading: false })
+      if (opening) throw error
+      wx.showToast({ title: '本地章节无法读取', icon: 'none' })
+      return
+    }
+    if (this.chapterRequest !== request) return
+    const stem = chapter.path.replace(/\.html?$/i, '')
+    this.bookUrl = chapter.path === 'index.html' ? root : root + encodeURIComponent(chapter.path)
+    const audioPath = this.localBook.audio.includes(stem) ? `${this.localBook.root}/audio/${stem}.mp3` : ''
+    const expected = this.localBook.audioExpected || []
+    const missingChapterAudio = !audioPath && (expected.includes(stem) ||
+      (!expected.length && this.localBook.missingAudio > 0 && !/^(index|intro)$/.test(stem)))
+    const chapters = this.data.chapters.slice()
+    if (index > 0 && result.title) chapters[index] = { ...chapter, title: result.title }
+    this.setData({ chapterLoading: false, chapters, ...this.presentation(result, chapters), chapterIndex: index, audioPath, missingChapterAudio, audioTime: 0, audioDuration: 0, playing: false, chapterScrollTarget: '' }, () => {
+      if (this.chapterRequest === request && this.data.offline) {
+        this.setData({ chapterScrollTarget: 'reader-chapter-start' })
+      }
+    })
+  },
+  presentation(result, chapters) {
+    const index = result.index
+    if (!index) return { blocks: result.blocks, pageIndex: null, pageMeta: result.meta || '' }
+    const rows = new Map(index.rows.map((row) => [row.path, row]))
+    const entries = chapters.map((chapter, position) => {
+      const row = rows.get(chapter.path)
+      return { ...chapter, ...(row || {}), position, number: chapter.path.replace(/\.html?$/i, '') }
+    })
+    return { blocks: result.blocks, pageMeta: '', pageIndex: {
+      ...index, introPosition: entries.findIndex((chapter) => chapter.path === 'intro.html'),
+      entries: entries.filter(({ path }) => path !== 'index.html' && path !== 'intro.html')
+    } }
+  },
+  selectChapter(index) {
+    this.showOfflineChapter(index)
+  },
+  openChapter(event) { this.selectChapter(Number(event.currentTarget.dataset.index)) },
+  pickOfflineChapter(event) { this.selectChapter(Number(event.detail.value)) },
+  stepOfflineChapter(event) {
+    this.selectChapter(this.data.chapterIndex + Number(event.currentTarget.dataset.step))
+  },
+  openOnlineBook() {
+    if (!this.book) return
+    this.stopOfflineAudio()
+    this._webFinished = false
+    this.initialOfflineUrl = ''
+    this.chapterRequest = null
+    this.setData({ url: this.bookUrl, offline: false, chapterLoading: false, blocks: [], audioPath: '', playing: false })
+  },
+  goBack() { wx.navigateBack() },
+  toggleOfflineAudio() {
+    if (!this.data.audioPath) return
+    if (!this.offlineAudio) {
+      const audio = wx.createInnerAudioContext()
+      audio.src = this.data.audioPath
+      audio.onPlay(() => this.setData({ playing: true }))
+      audio.onPause(() => this.setData({ playing: false }))
+      audio.onEnded(() => this.setData({ playing: false, audioTime: 0 }))
+      audio.onTimeUpdate(() => this.setData({ audioTime: audio.currentTime, audioDuration: audio.duration }))
+      audio.onError(() => {
+        this.stopOfflineAudio()
+        this.setData({ playing: false })
+        wx.showToast({ title: '本地音频无法播放', icon: 'none' })
+      })
+      this.offlineAudio = audio
+    }
+    if (this.data.playing) this.offlineAudio.pause()
+    else this.offlineAudio.play()
+  },
+  seekOfflineAudio(event) {
+    if (this.offlineAudio) this.offlineAudio.seek(Number(event.detail.value))
+  },
+  stopOfflineAudio() {
+    if (!this.offlineAudio) return
+    const audio = this.offlineAudio
+    this.offlineAudio = null
+    audio.destroy()
+  },
+  confirmRemoveOffline() {
+    if (!this.localBook || this.data.offlineProgress >= 0) return
+    const book = this.book
+    wx.showModal({
+      title: '删除本地副本？', confirmText: '删除',
+      success: ({ confirm }) => {
+        if (!confirm || this.book !== book) return
+        try {
+          this.stopOfflineAudio()
+          offline.remove(book.slug)
+          this.localBook = null
+          this.setData({ offlineAvailable: false })
+          if (this.data.offline) this.openOnlineBook()
+        } catch (_) { wx.showToast({ title: '删除失败', icon: 'none' }) }
+      }
+    })
   },
   confirmSetHidden(hidden) {
     wx.showModal({
@@ -115,6 +295,7 @@ Page({
       path: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug || '')}&title=${encodeURIComponent(book.title || '')}&main=${encodeURIComponent(book.main || book.title || '')}&author=${encodeURIComponent(book.author || '')}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}`
     }
     const root = books.readerUrl(book)
+    payload.path += '&details=1'
     if (this.bookUrl && this.bookUrl !== root) payload.path += `&page=${encodeURIComponent(this.bookUrl)}`
     if (book.cover) payload.imageUrl = books.coverUrl(book)
     return payload
@@ -125,8 +306,11 @@ Page({
     return { title: payload.title, query: payload.path.split('?')[1] || '', imageUrl: payload.imageUrl }
   },
   onUnload() {
+    this.chapterRequest = null
+    if (this.stopDownloadUpdates) this.stopDownloadUpdates()
     this._webFinished = true
     this.cancelLoadingTimer()
+    this.stopOfflineAudio()
     this.bookUrl = ''
     this.book = null
   }

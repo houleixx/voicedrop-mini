@@ -1,6 +1,8 @@
 const STORAGE_KEY = 'voicedrop.books.cover-files.v1'
 const RETRY_DELAYS_MS = [2000, 4000, 8000]
 const MAX_ATTEMPTS = RETRY_DELAYS_MS.length + 1
+const MAX_IN_FLIGHT = 4
+const MISSING_COVER_TTL_MS = 5 * 60 * 1000
 
 function cacheKey(book) {
   const slug = String(book && book.slug || '')
@@ -54,12 +56,23 @@ function createSession(runtime, onReady) {
   const tasks = new Set()
   const timers = new Set()
   const attemptsByKey = new Map()
+  const missingUntil = new Map()
+  const queued = new Map()
+  const active = new Set()
+  let draining = false
+  let paused = false
+  let booksToLoad = []
 
   function persistManifest() {
     try { api.setStorageSync(STORAGE_KEY, manifest) } catch (_) {}
   }
 
   function cancelWork() {
+    queued.clear()
+    for (const key of active) {
+      attemptsByKey.set(key, Math.max(0, (attemptsByKey.get(key) || 0) - 1))
+    }
+    active.clear()
     for (const timer of timers) {
       try { api.clearTimeout(timer) } catch (_) {}
     }
@@ -134,59 +147,95 @@ function createSession(runtime, onReady) {
     })
   }
 
-  function attempt(book, expectedGeneration) {
-    if (disposed || generation !== expectedGeneration || typeof api.downloadFile !== 'function') return
+  function drain() {
+    if (draining || disposed || paused) return
+    draining = true
+    try {
+      while (active.size < MAX_IN_FLIGHT && queued.size) {
+        const [key, book] = queued.entries().next().value
+        queued.delete(key)
+        attempt(book, key, generation)
+      }
+    } finally {
+      draining = false
+    }
+  }
+
+  function enqueue(book) {
+    if (disposed || paused || typeof api.downloadFile !== 'function') return
     const key = cacheKey(book)
+    if (active.has(key) || (missingUntil.get(key) || 0) > Date.now()) return
+    if (missingUntil.delete(key)) attemptsByKey.delete(key)
+    if ((attemptsByKey.get(key) || 0) >= MAX_ATTEMPTS) return
+    queued.set(key, book)
+    drain()
+  }
+
+  function attempt(book, key, expectedGeneration) {
     const number = (attemptsByKey.get(key) || 0) + 1
-    if (number > MAX_ATTEMPTS) return
     attemptsByKey.set(key, number)
+    active.add(key)
     let settled = false
     let task
-    const failed = () => {
+    const finish = (statusCode, temporaryPath) => {
       if (settled) return
       settled = true
       if (task) tasks.delete(task)
-      if (disposed || generation !== expectedGeneration || number >= MAX_ATTEMPTS) return
-      const timer = api.setTimeout(() => {
-        timers.delete(timer)
-        attempt(book, expectedGeneration)
-      }, RETRY_DELAYS_MS[number - 1])
-      timers.add(timer)
+      if (disposed || generation !== expectedGeneration) return
+      active.delete(key)
+      if (statusCode >= 200 && statusCode < 300 && temporaryPath) {
+        save(book, temporaryPath, expectedGeneration)
+      } else if (statusCode === 404 || statusCode === 410) {
+        missingUntil.set(key, Date.now() + MISSING_COVER_TTL_MS)
+      } else if (number < MAX_ATTEMPTS) {
+        const timer = api.setTimeout(() => {
+          timers.delete(timer)
+          if (generation === expectedGeneration) enqueue(book)
+        }, RETRY_DELAYS_MS[number - 1])
+        timers.add(timer)
+      }
+      drain()
     }
     try {
       task = api.downloadFile({
         url: book.coverUrl,
         success(result) {
-          if (settled) return
-          const statusCode = Number(result && result.statusCode) || 0
-          const temporaryPath = String(result && result.tempFilePath || '')
-          if (statusCode < 200 || statusCode >= 300 || !temporaryPath) return failed()
-          settled = true
-          if (task) tasks.delete(task)
-          if (disposed || generation !== expectedGeneration) return
-          save(book, temporaryPath, expectedGeneration)
+          finish(Number(result && result.statusCode) || 0, String(result && result.tempFilePath || ''))
         },
-        fail: failed
+        fail() { finish(0, '') }
       })
       if (task && !settled) tasks.add(task)
     } catch (_) {
-      failed()
+      finish(0, '')
     }
   }
 
   function load(items) {
+    booksToLoad = items || []
+    if (paused || disposed) return
     generation += 1
     cancelWork()
-    const expectedGeneration = generation
-    for (const book of items || []) {
-      if (book && book.cover && book.coverUrl && !cachedPath(book)) attempt(book, expectedGeneration)
+    for (const book of booksToLoad) {
+      if (book && book.cover && book.coverUrl && !cachedPath(book)) enqueue(book)
     }
+  }
+
+  function pause() {
+    paused = true
+    generation += 1
+    cancelWork()
+  }
+
+  function resume() {
+    if (!paused) return
+    paused = false
+    load(booksToLoad)
   }
 
   function retry(book) {
     if (disposed || !(book && book.cover && book.coverUrl)) return
     invalidate(book)
-    attempt(book, generation)
+    enqueue(book)
   }
 
   function decorate(items) {
@@ -202,7 +251,7 @@ function createSession(runtime, onReady) {
     cancelWork()
   }
 
-  return { cachedPath, decorate, load, retry, invalidate, dispose }
+  return { cachedPath, decorate, load, pause, resume, retry, invalidate, dispose }
 }
 
 module.exports = { STORAGE_KEY, RETRY_DELAYS_MS, MAX_ATTEMPTS, cacheKey, createSession }

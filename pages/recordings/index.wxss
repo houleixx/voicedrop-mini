@@ -127,7 +127,7 @@
   padding-bottom: 230rpx;
 }
 
-.shelf-rows { width: auto; margin: 0 8rpx; padding: 16rpx 0 40rpx; }
+.shelf-rows { width: auto; margin: 0 8rpx; padding: 24rpx 0 40rpx; }
 .shelf-row-group { width: 100%; }
 .shelf-row { display: flex; width: 100%; align-items: flex-start; gap: 44rpx; }
 .shelf-cell { min-width: 0; flex: 1; }

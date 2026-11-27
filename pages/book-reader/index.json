@@ -1,5 +1,8 @@
 {
   "navigationStyle": "custom",
   "navigationBarBackgroundColor": "#fcf6eb",
-  "backgroundColor": "#fcf6eb"
+  "backgroundColor": "#fcf6eb",
+  "usingComponents": {
+    "page-header": "../../components/page-header/index"
+  }
 }

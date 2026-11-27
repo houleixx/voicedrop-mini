@@ -11,6 +11,7 @@ Component({
     textColor: { type: String, value: '#2a2521' },
     titleAlign: { type: String, value: 'center' },
     hideBack: { type: Boolean, value: false },
+    inFlow: { type: Boolean, value: false },
     safeRightAction: { type: Boolean, value: false },
     backToHome: { type: Boolean, value: false },
     languageRevision: { type: Number, value: 0 }

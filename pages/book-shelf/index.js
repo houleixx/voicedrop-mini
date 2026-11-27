@@ -3,6 +3,7 @@ const bookSearch = require('../../utils/book-shelf-search')
 const homeFilterLayout = require('../../utils/home-filter-layout')
 const filterTabLayout = require('../../utils/filter-tab-layout')
 const bookCoverCache = require('../../services/book-cover-cache')
+const bookDownloadBadges = require('../../utils/book-download-badges')
 const MIN_REFRESH_FEEDBACK_MS = 600
 
 function wait(milliseconds) {
@@ -61,6 +62,8 @@ Page({
   },
 
   onShow() {
+    bookDownloadBadges.observe(this, 'items')
+    this._bookCoverSession?.resume?.()
     const identity = books.cacheIdentity()
     if (identity !== this._shelfIdentity) {
       this._shelfIdentity = identity
@@ -116,7 +119,12 @@ Page({
       if (this._shelfActive !== false) this.setData({ refreshing: false })
     }
   },
+  onHide() {
+    bookDownloadBadges.disconnect(this)
+    this._bookCoverSession?.pause?.()
+  },
   onUnload() {
+    bookDownloadBadges.disconnect(this)
     this._shelfActive = false
     if (this._bookSearch) this._bookSearch.dispose()
     this._shelfRequestId = (this._shelfRequestId || 0) + 1
@@ -138,7 +146,7 @@ Page({
   },
   prepareBookItems(items) {
     const routed = books.refreshCoverUrls(items)
-    return this.ensureBookCoverSession().decorate(routed)
+    return bookDownloadBadges.decorate(this.ensureBookCoverSession().decorate(routed))
   },
   onBookCoverError(event) {
     const slug = event.currentTarget.dataset.slug
@@ -164,7 +172,7 @@ Page({
     const book = this.data.items.find((item) => item.slug === event.currentTarget.dataset.slug)
     if (!book) return
     wx.navigateTo({
-      url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.title)}&main=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author)}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}&mine=${book.mine ? '1' : '0'}&hidden=${book.hidden ? '1' : '0'}`,
+      url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.title)}&main=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author)}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}&mine=${book.mine ? '1' : '0'}&hidden=${book.hidden ? '1' : '0'}&details=1`,
       events: { bookHiddenChanged: () => this.load({ keepData: true, forceRefresh: true }) }
     })
   }

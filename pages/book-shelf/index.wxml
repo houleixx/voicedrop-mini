@@ -20,6 +20,10 @@
           <image wx:if="{{item.coverDisplayUrl}}" class="cover-image" src="{{item.coverDisplayUrl}}" mode="aspectFill" data-slug="{{item.slug}}" binderror="onBookCoverError" />
           <view wx:if="{{item.video}}" class="book-video-mark" aria-hidden="true"><view class="book-video-triangle"></view></view>
           <text wx:if="{{item.hidden}}" class="book-hidden-badge">{{i18n["隐藏"]}}</text>
+          <view wx:if="{{item.downloadState}}" class="book-download-badge" aria-label="{{item.downloadState === 'downloading' ? '正在下载' : '已下载'}}">
+            <view wx:if="{{item.downloadState === 'downloading'}}" class="book-download-spinner"></view>
+            <text wx:else class="ri-download-2-line"></text>
+          </view>
         </view>
         <text class="book-caption">{{item.main}}</text>
         <text class="book-meta {{item.chapterHit ? 'book-chapter-hit' : ''}}">{{item.chapterHit || item.shelfMeta}}</text>

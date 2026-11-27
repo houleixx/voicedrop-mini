@@ -121,14 +121,14 @@ test('book reader owns revise and hide actions after server ownership verificati
   const recordingsMarkup = fs.readFileSync(path.join(__dirname, '../pages/recordings/index.wxml'), 'utf8')
   const readerCss = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxss'), 'utf8')
 
-  assert.match(readerMarkup, /wx:if="\{\{mine\}\}"[^>]*class="reader-actions"[^>]*bindtap="openActions"/)
-  assert.match(readerMarkup, /class="reader-actions"[^>]*bindtap="openActions"[^>]*>⋯<\/cover-view>/)
-  assert.match(readerMarkup, /wx:if="\{\{mine && moreMenuOpen\}\}" class="reader-menu-layer" bindtap="closeMoreMenu"/)
+  assert.match(readerMarkup, /<view class="reader-actions"[^>]*bindtap="openActions"/)
+  assert.match(readerMarkup, /class="reader-actions"[^>]*bindtap="openActions"[^>]*>⋯<\/view>/)
+  assert.match(readerMarkup, /wx:if="\{\{!url && moreMenuOpen\}\}" class="reader-offline-menu"/)
   assert.match(readerMarkup, /data-action="revise" bindtap="runMoreMenuAction">修改这本书/)
-  assert.match(readerMarkup, /<cover-view class="reader-menu-separator"><\/cover-view>/)
+  assert.match(readerMarkup, /<view[^>]*class="reader-menu-separator"><\/view>/)
   assert.match(readerMarkup, /data-action="visibility" bindtap="runMoreMenuAction">\{\{hidden \? '取消隐藏本书' : '隐藏本书'\}\}/)
   assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.js'), 'utf8'), /showActionSheet/)
-  assert.match(readerCss, /\.reader-actions\s*\{[^}]*top:\s*5rpx;[^}]*right:\s*20rpx;[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;[^}]*font-size:\s*36rpx;[^}]*line-height:\s*64rpx;[^}]*text-align:\s*center;/s)
+  assert.match(readerCss, /\.reader-actions, \.reader-web-actions\s*\{[^}]*width: 64rpx;[^}]*border-radius: 32rpx;[^}]*background: rgba\(42, 37, 33, 0\.72\);[^}]*color: #fff;/s)
   assert.match(readerCss, /\.reader-menu-card\s*\{[^}]*width:\s*360rpx;/s)
   assert.match(readerCss, /\.reader-menu-separator\s*\{[^}]*height:\s*1rpx;[^}]*margin:\s*0 30rpx;/s)
   assert.doesNotMatch(shelfMarkup, /editableByAuthor|reviseBook/)
@@ -188,4 +188,169 @@ test('reader cancels pending loading updates when leaving before web load', (t) 
   page.setData = () => { updates += 1 }
   t.mock.timers.tick(10000)
   assert.equal(updates, 0)
+})
+
+test('both shelf lists open the reader without an inline download button', () => {
+  const { page, calls } = loadShelfPage([{ slug: 'sample-book', title: '一本书', main: '一本书' }])
+  page.openBook({ currentTarget: { dataset: { slug: 'sample-book' } } })
+  assert.match(calls[0][1].url, /&details=1$/)
+  for (const source of ['book-shelf', 'recordings']) {
+    const markup = fs.readFileSync(path.join(__dirname, `../pages/${source}/index.wxml`), 'utf8')
+    assert.doesNotMatch(markup, /book-offline-action|data-download=/)
+  }
+})
+
+test('the reader menu offers first download, re-download, and access to the local copy', (t) => {
+  const offline = require('../services/book-offline')
+  const originalGet = offline.get
+  t.after(() => { offline.get = originalGet })
+  for (const existing of [null, { root: 'local-book' }]) {
+    offline.get = () => existing
+    const { page } = loadReaderPage()
+    let starts = 0
+    let localReads = 0
+    page.openOffline = () => { localReads++ }
+    page.downloadOffline = () => { starts++ }
+    page.onLoad({ slug: 'sample-book', details: '1', online: '1' })
+    assert.equal(page.data.offlineAvailable, Boolean(existing))
+    assert.equal(page.data.offline, false)
+    assert.equal(page.data.url, 'https://voicedrop.cn/books/sample-book/')
+    page.openActions()
+    page.runMoreMenuAction({ currentTarget: { dataset: { action: 'offline-download' } } })
+    assert.equal(starts, 1)
+    assert.equal(page.data.moreMenuOpen, false)
+    assert.equal(localReads, 0)
+    if (existing) {
+      page.openActions()
+      page.runMoreMenuAction({ currentTarget: { dataset: { action: 'offline-toggle' } } })
+      assert.equal(localReads, 1)
+    }
+  }
+  const markup = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxml'), 'utf8')
+  assert.match(markup, /data-action="offline-download"[^>]*>.*offlineAvailable \? '重新下载' : '下载到本地'/)
+})
+
+test('opening a book from the shelf opens original WebView when the book is not downloaded', () => {
+  const { page, calls } = loadReaderPage()
+  page.onLoad({ slug: 'sample-book', details: '1' })
+  assert.equal(page.data.url, 'https://voicedrop.cn/books/sample-book/')
+  page.openActions()
+  assert.equal(page.data.moreMenuOpen, true)
+  assert.equal(calls.some(([name]) => name === 'navigateTo'), false)
+})
+
+test('offline chapter preview retains its layout with native title, directory and navigation', () => {
+  const markup = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxml'), 'utf8')
+  assert.match(markup, /offline\}\}"[^>]*class="offline-reader"/)
+  assert.match(markup, /class="offline-book-title">\{\{chapters\[chapterIndex\]\.title\}\}/)
+  assert.match(markup, /data-index="0" bindtap="openChapter">目录/)
+  const { page } = loadReaderPage()
+  page.data.offline = true
+  const opened = []
+  page.showOfflineChapter = (index) => opened.push(index)
+  page.openChapter({ currentTarget: { dataset: { index: '2' } } })
+  assert.deepEqual(opened, [2])
+})
+
+test('download updates both reader progress variants and hides the bar on completion', async (t) => {
+  const offline = require('../services/book-offline')
+  const originalDownload = offline.download
+  t.after(() => { offline.download = originalDownload })
+  const { page } = loadReaderPage()
+  page.onLoad({ slug: 'sample-book' })
+  let finish
+  let report
+  offline.download = (_slug, _root, progress) => {
+    report = progress
+    return new Promise((resolve) => { finish = resolve })
+  }
+  const pending = page.downloadOffline()
+  assert.equal(page.data.offlineProgress, 0)
+  report(46)
+  assert.equal(page.data.offlineProgress, 46)
+  finish({ missingAudio: 0 })
+  await pending
+  assert.equal(page.data.offlineProgress, -1)
+  const markup = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxml'), 'utf8')
+  assert.match(markup, /url && offlineProgress >= 0[^>]*class="reader-web-progress"/)
+  assert.match(markup, /class="reader-progress-slot"[\s\S]*offlineProgress >= 0[^>]*class="reader-progress-track"/)
+  assert.doesNotMatch(markup, /reader-web-progress-title/)
+  assert.match(markup, /class="reader-title-bar"[\s\S]*<page-header[^>]*in-flow[\s\S]*class="reader-progress-slot"/)
+  assert.equal((markup.match(/width: \{\{offlineProgress\}\}%/g) || []).length, 2)
+})
+
+test('web download progress is spans the full available edge below the native title bar', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxss'), 'utf8')
+  assert.match(css, /\.reader-web-progress\s*\{[^}]*position: fixed;[^}]*top: 0;[^}]*left: 0;[^}]*right: 0;/)
+})
+
+test('offline reader keeps its header and action attached to the top while scrolling', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxss'), 'utf8')
+  const markup = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxml'), 'utf8')
+  assert.match(css, /\.offline-reader\s*\{[^}]*position: fixed;[^}]*inset: 0;/)
+  assert.match(markup, /class="reader-title-bar"[\s\S]*<scroll-view class="reader-offline-scroll" scroll-y enhanced/)
+  assert.match(markup, /scroll-into-view="\{\{chapterScrollTarget\}\}"/)
+  assert.match(css, /\.reader-actions\s*\{[^}]*position: absolute;[^}]*top: calc\(100% - 19rpx\);[^}]*right: 20rpx;/)
+})
+
+test('reopening a downloading book shows the active progress and keeps receiving updates', (t) => {
+  const offline = require('../services/book-offline')
+  const original = { get: offline.get, downloadProgress: offline.downloadProgress, subscribeDownloads: offline.subscribeDownloads }
+  t.after(() => Object.assign(offline, original))
+  let local = null
+  let listener
+  let unsubscribed = false
+  offline.get = () => local
+  offline.downloadProgress = () => 36
+  offline.subscribeDownloads = (callback) => {
+    listener = callback
+    return () => { unsubscribed = true }
+  }
+  const { page } = loadReaderPage()
+  page.onLoad({ slug: 'sample-book' })
+  assert.equal(page.data.offlineProgress, 36)
+  listener('other-book', 50)
+  assert.equal(page.data.offlineProgress, 36)
+  listener('sample-book', 67)
+  assert.equal(page.data.offlineProgress, 67)
+  local = { root: 'local-book' }
+  listener('sample-book', -1)
+  assert.equal(page.data.offlineProgress, -1)
+  assert.equal(page.data.offlineAvailable, true)
+  page.onUnload()
+  assert.equal(unsubscribed, true)
+})
+
+test('the shelf reader mounts the WebView only once the destination is ready', () => {
+  const { page } = loadReaderPage()
+  const markup = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxml'), 'utf8')
+  page.onLoad({ slug: 'sample-book' })
+  assert.equal(page.data.readerReady, false)
+  assert.match(markup, /<web-view wx:if="\{\{readerReady && url\}\}"/)
+  page.onReady()
+  assert.equal(page.data.readerReady, true)
+  page.onUnload()
+})
+
+test('offline reader shows its shell before reading the first page', async (t) => {
+  const offline = require('../services/book-offline')
+  const original = { get: offline.get, loadLocalPage: offline.loadLocalPage }
+  t.after(() => Object.assign(offline, original))
+  offline.get = () => ({ files: ['index.html'], audio: [] })
+  let finish
+  offline.loadLocalPage = () => new Promise((resolve) => { finish = resolve })
+  const { page } = loadReaderPage()
+  page.onLoad({ slug: 'sample-book', title: 'Sample' })
+  assert.equal(page.data.title, 'Sample')
+  assert.equal(page.data.url, '')
+  assert.equal(page.data.offline, true)
+  assert.equal(page.data.chapterLoading, true)
+  assert.equal(finish, undefined)
+  const ready = page.onReady()
+  assert.equal(page.data.chapterLoading, true)
+  finish({ blocks: [{ type: 'paragraph', text: 'Local page' }] })
+  await ready
+  assert.equal(page.data.chapterLoading, false)
+  assert.equal(page.data.blocks[0].text, 'Local page')
+  page.onUnload()
 })

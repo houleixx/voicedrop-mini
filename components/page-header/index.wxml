@@ -1,4 +1,4 @@
-<view class="page-header" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx; background: {{bgColor}}; padding-left: {{paddingLeft}}rpx;">
+<view class="page-header {{inFlow ? 'page-header-in-flow' : ''}}" style="top: 0px; height: calc({{toolbarTop + toolbarHeight}}px + 26rpx); padding-top: {{toolbarTop}}px; padding-bottom: 26rpx; background: {{bgColor}}; padding-left: {{paddingLeft}}rpx;">
   <view class="header-back" wx:if="{{!hideBack}}" bindtap="goBack" aria-label="{{i18n['返回']}}">
     <view class="header-back-surface">
       <text class="header-back-icon header-back-icon-arrow"></text>

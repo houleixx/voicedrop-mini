@@ -1495,3 +1495,18 @@ for (const nextKey of ['', 'photos/new.jpg']) {
     assert.equal(result.coverPhotoLoaded, false)
   })
 }
+
+test('book and community tabs do not start recording photo cover requests', async () => {
+  const library = require('../services/library')
+  const original = library.ownerScope
+  let lookups = 0
+  library.ownerScope = async () => { lookups++; return '' }
+  try {
+    const { page } = freshRecordingsPage()
+    const record = { stem: 'VoiceDrop-2026-08-13-091500-3m20s', hasArticles: true, coverPhotoKey: 'photos/example/first.jpg' }
+    for (const activeTab of ['books', 'community']) {
+      await page.loadRecordingCovers.call({ data: { activeTab }, recordCoverLoadId: 1 }, [record], 1)
+    }
+    assert.equal(lookups, 0)
+  } finally { library.ownerScope = original }
+})

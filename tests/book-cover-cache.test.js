@@ -154,3 +154,45 @@ test('both book shelves keep cloth titles mounted beneath optional cached cover 
     assert.match(markup, /<image wx:if="\{\{(?:item|cell)\.coverDisplayUrl\}\}"/)
   }
 })
+
+test('a missing cover is not retried for the same cover version', async () => {
+  const cache = require('../services/book-cover-cache')
+  const h = harness([404, 200])
+  const session = cache.createSession(h.runtime)
+  const book = { slug: 'missing', cover: true, coverAt: 1, coverUrl: 'https://example.test/cover.jpg?v=1' }
+  session.load([book])
+  await new Promise(setImmediate)
+  assert.equal(h.timers.length, 0)
+  session.load([book])
+  assert.equal(h.downloads.length, 1)
+  session.load([{ ...book, coverAt: 2, coverUrl: 'https://example.test/cover.jpg?v=2' }])
+  assert.equal(h.downloads.length, 2)
+})
+
+test('the shelf starts at most four cover requests while downloads are outstanding', () => {
+  const cache = require('../services/book-cover-cache')
+  const h = harness(Array(9).fill('pending'))
+  const session = cache.createSession(h.runtime)
+  session.load(Array.from({ length: 9 }, (_, i) => ({
+    slug: `book-${i}`, cover: true, coverUrl: `https://example.test/${i}/cover.jpg`
+  })))
+  assert.equal(h.downloads.length, 4)
+  session.dispose()
+})
+
+test('leaving the shelf pauses prefetch and returning resumes pending covers', () => {
+  const { createSession } = require('../services/book-cover-cache')
+  const h = harness(Array(10).fill('pending'))
+  const session = createSession(h.runtime)
+  const books = Array.from({ length: 5 }, (_, i) => ({
+    slug: `book-${i}`, cover: true, coverUrl: `https://example.test/${i}/cover.jpg`
+  }))
+  session.load(books)
+  session.pause()
+  assert.equal(h.aborts(), 4)
+  session.load(books)
+  assert.equal(h.downloads.length, 4)
+  session.resume()
+  assert.equal(h.downloads.length, 8)
+  session.dispose()
+})

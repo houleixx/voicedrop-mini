@@ -50,3 +50,30 @@
 /* Decorative video badge: book taps continue to the existing reader action. */
 .book-video-mark { position: absolute; z-index: 3; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; box-sizing: border-box; width: 80rpx; height: 80rpx; align-items: center; justify-content: center; border: 2rpx solid rgba(255,255,255,.6); border-radius: 50%; background: rgba(0,0,0,.18); pointer-events: none; }
 .book-video-triangle { width: 0; height: 0; margin-left: 6rpx; border-top: 13rpx solid transparent; border-bottom: 13rpx solid transparent; border-left: 22rpx solid rgba(255,255,255,.85); pointer-events: none; }
+
+.book-download-badge {
+  position: absolute;
+  right: 12rpx;
+  bottom: 12rpx;
+  z-index: 2;
+  display: flex;
+  width: 44rpx;
+  height: 44rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(42, 37, 33, .58);
+  color: #fff;
+  font-size: 25rpx;
+  pointer-events: none;
+}
+.book-download-spinner {
+  box-sizing: border-box;
+  width: 25rpx;
+  height: 25rpx;
+  border: 3rpx solid rgba(255, 255, 255, .35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: book-download-spin .8s linear infinite;
+}
+@keyframes book-download-spin { to { transform: rotate(360deg); } }

@@ -8,10 +8,10 @@ const root = path.join(__dirname, '..')
 test('shared page header paints behind the status bar', () => {
   const wxml = fs.readFileSync(path.join(root, 'components/page-header/index.wxml'), 'utf8')
 
-  assert.match(wxml, /class="page-header"[^>]*top:\s*0px;/)
-  assert.match(wxml, /class="page-header"[^>]*height:\s*calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 26rpx\);/)
-  assert.match(wxml, /class="page-header"[^>]*padding-top:\s*\{\{toolbarTop\}\}px;/)
-  assert.match(wxml, /class="page-header"[^>]*padding-bottom:\s*26rpx;/)
+  assert.match(wxml, /class="page-header[^"]*"[^>]*top:\s*0px;/)
+  assert.match(wxml, /class="page-header[^"]*"[^>]*height:\s*calc\(\{\{toolbarTop \+ toolbarHeight\}\}px \+ 26rpx\);/)
+  assert.match(wxml, /class="page-header[^"]*"[^>]*padding-top:\s*\{\{toolbarTop\}\}px;/)
+  assert.match(wxml, /class="page-header[^"]*"[^>]*padding-bottom:\s*26rpx;/)
 })
 
 test('detail photo sheet top bar paints behind the status bar and leaves bottom room', () => {
