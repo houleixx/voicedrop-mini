@@ -2192,11 +2192,6 @@ Page({
     })
   },
 
-  onDetailScroll(event) {
-    // Keep the binding in sync so a later keyboard adjustment can reuse a target.
-    this.setData({ detailScrollTop: Math.max(0, Number(event.detail.scrollTop) || 0) })
-  },
-
   onInlineKeyboardHeightChange(event) {
     const seq = this.inlineKeyboardQuerySeq = (this.inlineKeyboardQuerySeq || 0) + 1
     if (!this.data.inlineEditing) return
@@ -2218,7 +2213,18 @@ Page({
         const [viewport, field, offset] = rects || []
         if (!viewport || !field || !offset) return
         const overlap = field.bottom + 4 - viewport.bottom
-        if (overlap > 0) this.setData({ detailScrollTop: Math.max(0, offset.scrollTop + overlap) })
+        if (overlap <= 0) return
+        const target = Math.max(0, offset.scrollTop + overlap)
+        if (target !== this.data.detailScrollTop) {
+          this.setData({ detailScrollTop: target })
+          return
+        }
+        // Reissue the same target after a manual scroll without feeding back every gesture.
+        this.setData({ detailScrollTop: Math.max(0, offset.scrollTop) }, () => {
+          if (this.data.inlineEditing && seq === this.inlineKeyboardQuerySeq) {
+            this.setData({ detailScrollTop: target })
+          }
+        })
       })
     })
   },

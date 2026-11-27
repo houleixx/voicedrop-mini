@@ -40,7 +40,7 @@ function createSession(handlers, runtime) {
       current.send({
         data: JSON.stringify({ type: 'ping' }),
         fail: () => {
-          if (!closed && socket === current) scheduleReconnect(current)
+          reconnectAfterError(current)
         }
       })
     }, HEARTBEAT_MS)
@@ -98,13 +98,19 @@ function createSession(handlers, runtime) {
       }
       return null
     })
-    current.onError(() => scheduleReconnect(current))
+    current.onError(() => reconnectAfterError(current))
     current.onClose(() => scheduleReconnect(current))
   }
 
+  function reconnectAfterError(current) {
+    if (closed || socket !== current) return
+    scheduleReconnect(current)
+    current.close({ code: 1000, reason: 'retry' })
+  }
+
   function scheduleReconnect(current) {
-    if (socket && socket !== current) return
-    if (socket === current) socket = null
+    if (socket !== current) return
+    socket = null
     clearHeartbeat()
     if (closed || retryTimer) return
     retryTimer = delay(() => {

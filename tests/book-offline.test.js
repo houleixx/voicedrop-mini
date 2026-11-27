@@ -2,6 +2,38 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { parseFileList, contentBlocks } = require('../services/book-offline')
 
+test('checking a large shelf scans the offline directory once and only reads existing copies', (t) => {
+  const { downloadStates } = require('../services/book-offline')
+  const originalWx = global.wx
+  t.after(() => { global.wx = originalWx })
+  let scans = 0
+  const reads = []
+  global.wx = {
+    env: { USER_DATA_PATH: '/sandbox' },
+    getFileSystemManager: () => ({
+      readdirSync(path) {
+        assert.equal(path, '/sandbox/offline-books')
+        scans += 1
+        return ['book-17', 'book-42.previous']
+      },
+      readFileSync(path) {
+        reads.push(path)
+        if (path.includes('book-42/')) throw new Error('Missing')
+        return '{}'
+      },
+      accessSync() {}
+    })
+  }
+  const states = downloadStates(Array.from({ length: 429 }, (_, index) => `book-${index}`))
+  assert.equal(scans, 1)
+  assert.deepEqual(reads, [
+    '/sandbox/offline-books/book-17/manifest.json',
+    '/sandbox/offline-books/book-42/manifest.json',
+    '/sandbox/offline-books/book-42.previous/manifest.json'
+  ])
+  assert.deepEqual(states.flatMap((state, index) => state === 'downloaded' ? [index] : []), [17, 42])
+})
+
 test('the offline manifest requires an index and sandbox-safe unique paths', () => {
   const list = { slug: 'sample', files: [{ path: 'index.html', size: 123 }, { path: 'images/i.jpg', size: 15 }], audio: ['01'] }
   assert.equal(parseFileList(list, 'sample'), list)

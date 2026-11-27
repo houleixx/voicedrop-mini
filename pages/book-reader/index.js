@@ -2,14 +2,14 @@ const books = require('../../services/books')
 const offline = require('../../services/book-offline')
 const apiRoute = require('../../services/api-route')
 
-const LOADING_LAYOUT_DELAY_MS = 100
+const LOADING_OVERLAY_DELAY_MS = 350
 
 function decoded(value) {
   try { return decodeURIComponent(String(value || '')) } catch (_) { return String(value || '') }
 }
 
 Page({
-  data: { url: '', readerReady: false, loading: false, title: '', author: '', cover: false, mine: false, hidden: false, moreMenuOpen: false,
+  data: { url: '', readerReady: false, webPending: false, loading: false, title: '', author: '', cover: false, mine: false, hidden: false, moreMenuOpen: false,
     offline: false, chapterLoading: false, offlineAvailable: false, offlineProgress: -1, chapters: [], chapterIndex: 0, chapterScrollTarget: '',
     blocks: [], pageIndex: null, pageMeta: '', audioPath: '', missingChapterAudio: false, playing: false, audioTime: 0, audioDuration: 0, videoPath: '', hasAnimation: false },
   onLoad(options) {
@@ -31,9 +31,10 @@ Page({
     const useLocal = Boolean(this.localBook) && !forceOnline
     this._webFinished = useLocal
     this.initialOfflineUrl = useLocal ? this.bookUrl : ''
-    this.setData({ url: useLocal ? '' : this.bookUrl, offline: useLocal, chapterLoading: useLocal, title: book.main, author: book.author, cover: book.cover,
+    this.setData({ url: useLocal ? '' : this.bookUrl, webPending: !useLocal, offline: useLocal, chapterLoading: useLocal, title: book.main, author: book.author, cover: book.cover,
       mine: book.mine, hidden: book.hidden, offlineAvailable: Boolean(this.localBook),
       offlineProgress: offline.downloadProgress(slug) })
+    this.scheduleLoadingOverlay()
     this.stopDownloadUpdates = offline.subscribeDownloads((changedSlug, progress) => {
       if (changedSlug !== slug || this.book !== book) return
       if (progress >= 0) {
@@ -54,12 +55,16 @@ Page({
       this.initialOfflineUrl = ''
       return this.openOffline(url)
     }
-    if (this._webFinished) return
+  },
+  scheduleLoadingOverlay() {
     this.cancelLoadingTimer()
+    if (this._webFinished) return
     this._loadingTimer = setTimeout(() => {
       this._loadingTimer = null
-      if (!this._webFinished) this.setData({ loading: true })
-    }, LOADING_LAYOUT_DELAY_MS)
+      if (!this._webFinished) {
+        this.setData({ loading: true })
+      }
+    }, LOADING_OVERLAY_DELAY_MS)
   },
   cancelLoadingTimer() {
     if (!this._loadingTimer) return
@@ -69,8 +74,8 @@ Page({
   finishLoading() {
     this._webFinished = true
     this.cancelLoadingTimer()
-    if (!this.data.loading) return
-    this.setData({ loading: false })
+    if (!this.data.webPending && !this.data.loading) return
+    this.setData({ webPending: false, loading: false })
   },
   onWebLoad(event) {
     const source = event && event.detail && event.detail.src
@@ -215,7 +220,8 @@ Page({
     this._webFinished = false
     this.initialOfflineUrl = ''
     this.chapterRequest = null
-    this.setData({ url: this.bookUrl, offline: false, chapterLoading: false, blocks: [], audioPath: '', playing: false })
+    this.setData({ url: this.bookUrl, webPending: true, offline: false, chapterLoading: false, blocks: [], audioPath: '', playing: false })
+    this.scheduleLoadingOverlay()
   },
   goBack() { wx.navigateBack() },
   toggleOfflineAudio() {

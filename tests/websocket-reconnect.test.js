@@ -24,7 +24,10 @@ function socketHarness(storage) {
         onError(cb) { callbacks.error = cb },
         onClose(cb) { callbacks.close = cb },
         send(message) { sent.push(message) },
-        close() { if (callbacks.close) callbacks.close({ code: 1000 }) }
+        close() {
+          this.closeCalls = (this.closeCalls || 0) + 1
+          if (callbacks.close) callbacks.close({ code: 1000 })
+        }
       }
       sockets.push(socket)
       return socket
@@ -128,11 +131,15 @@ test('status socket retries silently after the iOS-compatible delay', () => {
   session.connect()
   socket.sockets[0].callbacks.error({ errMsg: 'Connection refused' })
 
+  assert.equal(socket.sockets[0].closeCalls, 1)
   assert.deepEqual(errors, [])
   assert.equal(timer.timers.length, 1)
   assert.equal(timer.timers[0].delay, 3000)
   timer.timers[0].callback()
   assert.equal(socket.sockets.length, 2)
+  socket.sockets[0].callbacks.error({ errMsg: 'Late error' })
+  assert.equal(socket.sockets[0].closeCalls, 1)
+  assert.equal(timer.timers.length, 1)
 })
 
 test('status socket close cancels a pending retry', () => {

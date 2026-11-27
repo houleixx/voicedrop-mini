@@ -75,6 +75,8 @@
     bindrefresherrefresh="onRefresherRefresh"
     scroll-top="{{scrollTop}}"
     bindscroll="onScroll"
+    lower-threshold="180"
+    bindscrolltolower="loadMoreBooks"
     style="top: {{activeTab === 'recordings' ? scrollContentTop : filteredScrollContentTop}}px;"
     bindtouchstart="onScreenTouchStart"
   >
@@ -172,7 +174,7 @@
                 <view class="book-cover write-cover"><view class="write-plus">＋</view><text class="write-label">{{i18n["写书"]}}</text></view>
                 <view class="book-caption-stack"><text class="book-caption">{{i18n["写一本新书"]}}</text><text class="book-meta"> </text></view>
               </view>
-              <view wx:else class="shelf-cell" data-slug="{{cell.slug}}" bindtap="openBook">
+              <view wx:else class="shelf-cell" data-slug="{{cell.slug}}" hover-class="shelf-cell-pressed" hover-start-time="0" hover-stay-time="180" bindtap="openBook">
                 <view class="book-cover cloth" style="background: radial-gradient(circle at 25% 15%, rgba(255,255,255,.10), rgba(255,255,255,0) 64%), linear-gradient(145deg, {{cell.c}}, {{cell.c2}});">
                   <text class="cover-main">{{cell.main}}</text><view class="cover-rule"></view><text wx:if="{{cell.sub}}" class="cover-sub">{{cell.sub}}</text>
                   <image wx:if="{{cell.coverDisplayUrl}}" class="cover-image" src="{{cell.coverDisplayUrl}}" mode="aspectFill" data-slug="{{cell.slug}}" binderror="onBookCoverError" />

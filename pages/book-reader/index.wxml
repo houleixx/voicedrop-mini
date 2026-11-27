@@ -1,5 +1,9 @@
-<web-view wx:if="{{readerReady && url}}" src="{{url}}" bindload="onWebLoad" binderror="onWebError"></web-view>
-<cover-view wx:if="{{readerReady && url && !loading}}" class="reader-web-actions" bindtap="openActions" aria-label="{{i18n['书籍操作']}}">⋯</cover-view>
+<view wx:if="{{webPending}}" class="reader-opening" role="status">
+  <text wx:if="{{title}}" class="reader-opening-title">{{title}}</text>
+  <text>{{i18n["加载中…"]}}</text>
+</view>
+<web-view wx:if="{{url}}" src="{{url}}" bindload="onWebLoad" binderror="onWebError"></web-view>
+<cover-view wx:if="{{readerReady && url && !webPending}}" class="reader-web-actions" bindtap="openActions" aria-label="{{i18n['书籍操作']}}">⋯</cover-view>
 <cover-view wx:if="{{url && offlineProgress >= 0}}" class="reader-web-progress" aria-label="下载进度 {{offlineProgress}}%">
   <cover-view class="reader-progress-track">
     <cover-view class="reader-progress-fill" style="width: {{offlineProgress}}%;"></cover-view>

@@ -268,7 +268,8 @@ test('detail inline editor keeps its bottom above the keyboard when editing earl
   assert.match(editor, /show-confirm-bar="\{\{false\}\}"/)
   assert.match(editor, /bindkeyboardheightchange="onInlineKeyboardHeightChange"/)
   assert.match(wxml, /scroll-top="\{\{detailScrollTop\}\}"/)
-  assert.match(wxml, /height: calc\(100% - \{\{inlineKeyboardHeightPx\}\}px\)/)
+  assert.doesNotMatch(wxml.match(/<scroll-view class="detail-scroll"[^>]*>/)[0], /bindscroll=/)
+  assert.match(wxml, /inlineKeyboardHeightPx \? 'height: calc\(100% - ' \+ inlineKeyboardHeightPx/)
   const css = fs.readFileSync(path.join(root, 'pages/detail/index.wxss'), 'utf8')
   assert.match(css, /\.inline-paragraph-field\s*\{[^}]*padding:\s*8rpx;[^}]*border:\s*2rpx/s)
 })
@@ -297,6 +298,16 @@ test('inline keyboard scrolls the complete editor border above the keyboard and 
   ctx.onInlineKeyboardHeightChange({ detail: { height: 350 } })
   finishQuery([{ bottom: 450 }, { bottom: 488 }, { scrollTop: 254 }])
   assert.equal(ctx.data.detailScrollTop, 296)
+  // A manual scroll can move away from the last programmatic target.
+  const updates = []
+  const setData = ctx.setData
+  ctx.setData = function (update, callback) {
+    updates.push(update)
+    setData.call(this, update, callback)
+  }
+  ctx.onInlineKeyboardHeightChange({ detail: { height: 350 } })
+  finishQuery([{ bottom: 450 }, { bottom: 492 }, { scrollTop: 250 }])
+  assert.deepEqual(updates.slice(1), [{ detailScrollTop: 250 }, { detailScrollTop: 296 }])
   ctx.onInlineKeyboardHeightChange({ detail: { height: 300 } })
   finishQuery([{ bottom: 500 }, { bottom: 400 }, { scrollTop: 296 }])
   assert.equal(ctx.data.detailScrollTop, 296, 'an already visible field should not jump')

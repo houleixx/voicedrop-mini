@@ -254,6 +254,7 @@ Page({
 
   onUnload() {
     audioConsentFlow.dispose(this)
+    this.cancelBookCoverUpdates()
     bookDownloadBadges.disconnect(this)
     this.cancelRecordLaunch()
     this._pageUnloaded = true
@@ -431,7 +432,6 @@ Page({
     const bookItems = this.prepareBookItems(items)
     this.setData({ bookItems, booksLoading: false, booksError: '', booksLoaded: true })
     this.resumeBookSearch()
-    this._bookCoverSession.load(bookItems)
     return true
   },
 
@@ -439,13 +439,7 @@ Page({
     if (this._bookCoverSession) return this._bookCoverSession
     this._bookCoverSession = bookCoverCache.createSession(null, (slug, key, filePath) => {
       if (this._pageUnloaded) return
-      let changed = false
-      const bookItems = this.data.bookItems.map((book) => {
-        if (book.slug !== slug || book.coverCacheKey !== key) return book
-        changed = true
-        return Object.assign({}, book, { coverDisplayUrl: filePath })
-      })
-      if (changed) { this.setData({ bookItems }); this.refreshBookSearch() }
+      this.queueBookCover(slug, key, filePath)
     })
     return this._bookCoverSession
   },
@@ -459,11 +453,7 @@ Page({
     const slug = event.currentTarget.dataset.slug
     const book = this.data.bookItems.find((item) => item.slug === slug)
     if (!book) return
-    const bookItems = this.data.bookItems.map((item) => item.slug === slug
-      ? Object.assign({}, item, { coverDisplayUrl: '' })
-      : item)
-    this.setData({ bookItems })
-    this.refreshBookSearch()
+    this.queueBookCover(slug, book.coverCacheKey, '')
     this.ensureBookCoverSession().retry(book)
   },
 
@@ -478,12 +468,15 @@ Page({
     try {
       const items = await books.shelf({ forceRefresh })
       if (this._pageUnloaded || this._bookLoadRequestId !== requestId) return true
+      const current = this.data.bookItems
+      if (silent && !forceRefresh && this.data.booksLoaded && !this.data.booksError &&
+          items.length === current.length && items.every((item, index) =>
+            Object.keys(item).every((key) => item[key] === current[index][key]))) return true
       const bookItems = this.prepareBookItems(items)
       // Only the search projection publishes rows; unfiltered rows would remount
       // covers before the selected category is restored on return from a book.
       this.setData({ bookItems, booksError: '', booksLoaded: true })
       this.resumeBookSearch()
-      this._bookCoverSession.load(bookItems)
       return true
     } catch (_) {
       if (this._pageUnloaded || this._bookLoadRequestId !== requestId) return true
@@ -492,9 +485,8 @@ Page({
       }
       return false
     } finally {
-      if (!this._pageUnloaded && this._bookLoadRequestId === requestId) {
+      if (!this._pageUnloaded && this._bookLoadRequestId === requestId && this.data.booksLoading) {
         this.setData({ booksLoading: false })
-        this.resumeBookSearch()
       }
     }
   },
@@ -1109,7 +1101,6 @@ Page({
     this._socketBearer = currentBearer
     this._bookLoadRequestId = (this._bookLoadRequestId || 0) + 1
     this.setData({ bookFilter: 'all', bookQuery: '', bookSearching: false })
-    this.invalidateBookSearch()
     const cachedBooks = books.cachedShelf()
     const bookItems = this.prepareBookItems(cachedBooks)
     if (this.statusSession) this.statusSession.close()
@@ -1125,8 +1116,8 @@ Page({
       booksLoaded: cachedBooks.length > 0,
       booksError: ''
     })
+    this.invalidateBookSearch()
     this.resumeBookSearch()
-    this._bookCoverSession.load(bookItems)
     this.createStatusSession()
     this.deviceLinkApproval = this.createDeviceLinkApproval()
     return true
@@ -1605,7 +1596,7 @@ Page({
   DELETE_WIDTH_PX: 80,
 
   onScreenTouchStart() {
-    this.closeAllSwipeRows()
+    if (this.data.activeTab === 'recordings') this.closeAllSwipeRows()
   },
 
   onRowTouchStart(event) {

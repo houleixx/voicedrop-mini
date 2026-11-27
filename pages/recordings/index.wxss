@@ -133,6 +133,7 @@
 .shelf-cell { min-width: 0; flex: 1; }
 .shelf-cell-placeholder { visibility: hidden; }
 .book-cover { position: relative; overflow: hidden; width: 100%; aspect-ratio: 0.7; border-radius: 4rpx 10rpx 10rpx 4rpx; }
+.shelf-cell-pressed .book-cover { opacity: 0.8; transform: scale(0.98); }
 .book-cover::before { content: ''; position: absolute; z-index: 2; inset: 0 auto 0 0; width: 26rpx; background: linear-gradient(90deg, rgba(0,0,0,.36), rgba(0,0,0,.10) 55%, rgba(255,255,255,.12)); pointer-events: none; }
 .book-cover::after { content: ''; position: absolute; z-index: 2; inset: 0 0 0 auto; width: 6rpx; background: repeating-linear-gradient(180deg, rgba(255,255,255,.85) 0, rgba(255,255,255,.85) 2rpx, rgba(214,202,180,.9) 2rpx, rgba(214,202,180,.9) 4rpx); pointer-events: none; }
 .write-cover { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18rpx; box-sizing:border-box; color:#6f685d; background:#f3ece0; border:3rpx dashed #cfc0a6; }

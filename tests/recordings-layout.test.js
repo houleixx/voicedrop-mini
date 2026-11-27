@@ -32,6 +32,20 @@ function ruleBody(css, selector) {
   return match ? match[1] : ''
 }
 
+test('shared scroll touches only close recording swipe rows on the recordings tab', () => {
+  const { page } = freshRecordingsPage()
+  let calls = 0
+  const ctx = { data: { activeTab: 'books' }, closeAllSwipeRows() { calls += 1 } }
+  for (const activeTab of ['books', 'community']) {
+    ctx.data.activeTab = activeTab
+    page.onScreenTouchStart.call(ctx)
+  }
+  assert.equal(calls, 0)
+  ctx.data.activeTab = 'recordings'
+  page.onScreenTouchStart.call(ctx)
+  assert.equal(calls, 1)
+})
+
 test('home loading states show a spinner above the loading text', () => {
   const wxml = fs.readFileSync(path.join(root, 'pages/recordings/index.wxml'), 'utf8')
   const css = fs.readFileSync(path.join(root, 'pages/recordings/index.wxss'), 'utf8')

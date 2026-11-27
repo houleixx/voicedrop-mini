@@ -36,7 +36,6 @@ Page({
     const items = this.prepareBookItems(cached)
     this.setData({ items, loading: cached.length === 0 })
     this.refreshBookSearch()
-    this._bookCoverSession.load(items)
     this.load({ keepData: true })
   },
 
@@ -68,13 +67,11 @@ Page({
     if (identity !== this._shelfIdentity) {
       this._shelfIdentity = identity
       this.setData({ bookFilter: 'all', bookQuery: '', bookSearching: false })
-      this.invalidateBookSearch()
       this._shelfRequestId = (this._shelfRequestId || 0) + 1
       const cached = books.cachedShelf()
       const items = this.prepareBookItems(cached)
       this.setData({ items, loading: cached.length === 0, error: '' })
-      this.refreshBookSearch()
-      this._bookCoverSession.load(items)
+      this.invalidateBookSearch()
       this.load({ keepData: cached.length > 0 })
       return
     }
@@ -91,7 +88,6 @@ Page({
       const prepared = this.prepareBookItems(items)
       this.setData({ items: prepared, error: '' })
       this.resumeBookSearch()
-      this._bookCoverSession.load(prepared)
     } catch (_) {
       if (this._shelfRequestId !== requestId) return
       if (!(options && options.keepData) || this.data.items.length === 0) {
@@ -124,6 +120,7 @@ Page({
     this._bookCoverSession?.pause?.()
   },
   onUnload() {
+    this.cancelBookCoverUpdates()
     bookDownloadBadges.disconnect(this)
     this._shelfActive = false
     if (this._bookSearch) this._bookSearch.dispose()
@@ -134,13 +131,7 @@ Page({
     if (this._bookCoverSession) return this._bookCoverSession
     this._bookCoverSession = bookCoverCache.createSession(null, (slug, key, filePath) => {
       if (this._shelfActive === false) return
-      let changed = false
-      const items = this.data.items.map((book) => {
-        if (book.slug !== slug || book.coverCacheKey !== key) return book
-        changed = true
-        return Object.assign({}, book, { coverDisplayUrl: filePath })
-      })
-      if (changed) { this.setData({ items }); this.refreshBookSearch() }
+      this.queueBookCover(slug, key, filePath)
     })
     return this._bookCoverSession
   },
@@ -152,10 +143,7 @@ Page({
     const slug = event.currentTarget.dataset.slug
     const book = this.data.items.find((item) => item.slug === slug)
     if (!book) return
-    this.setData({ items: this.data.items.map((item) => item.slug === slug
-      ? Object.assign({}, item, { coverDisplayUrl: '' })
-      : item) })
-    this.refreshBookSearch()
+    this.queueBookCover(slug, book.coverCacheKey, '')
     this.ensureBookCoverSession().retry(book)
   },
   switchTab(event) {
@@ -169,7 +157,8 @@ Page({
   },
   writeBook() { wx.navigateTo({ url: '/pages/book-writing/index' }) },
   openBook(event) {
-    const book = this.data.items.find((item) => item.slug === event.currentTarget.dataset.slug)
+    const slug = event.currentTarget.dataset.slug
+    const book = this.data.items.find((item) => item.slug === slug)
     if (!book) return
     wx.navigateTo({
       url: `/pages/book-reader/index?slug=${encodeURIComponent(book.slug)}&title=${encodeURIComponent(book.title)}&main=${encodeURIComponent(book.main)}&author=${encodeURIComponent(book.author)}&cover=${book.cover ? '1' : '0'}&coverAt=${encodeURIComponent(String(book.coverAt || 0))}&mine=${book.mine ? '1' : '0'}&hidden=${book.hidden ? '1' : '0'}&details=1`,

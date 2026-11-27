@@ -47,32 +47,37 @@ function loadShelfPage(items) {
   return { page, calls }
 }
 
-test('book reader lets the native web-view viewport settle before showing its centered loading overlay', async () => {
+test('book reader shows its opening state and starts the overlay timer before page ready', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
   const { page, calls } = loadReaderPage()
   page.onLoad({ slug: 'sample-book' })
   assert.equal(calls.some(([name]) => name === 'showLoading'), false)
   assert.equal(page.data.url, 'https://voicedrop.cn/books/sample-book/')
+  assert.equal(page.data.webPending, true)
   assert.equal(page.data.loading, false)
 
-  page.onReady()
-  assert.equal(calls.some(([name]) => name === 'showLoading'), false)
+  t.mock.timers.tick(349)
   assert.equal(page.data.loading, false)
-
-  await new Promise((resolve) => setTimeout(resolve, 120))
+  t.mock.timers.tick(1)
   assert.equal(page.data.loading, true)
 
   page.onWebLoad()
+  assert.equal(page.data.webPending, false)
   assert.equal(page.data.loading, false)
 })
 
-test('book reader does not reopen loading when the web-view finishes before page ready', async () => {
+test('fast web loads skip the overlay even when page ready arrives later', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
   const { page } = loadReaderPage()
   page.onLoad({ slug: 'sample-book' })
 
+  t.mock.timers.tick(300)
+  assert.equal(page.data.loading, false)
   page.onWebLoad()
   page.onReady()
-  await new Promise((resolve) => setTimeout(resolve, 120))
+  t.mock.timers.tick(1000)
 
+  assert.equal(page.data.webPending, false)
   assert.equal(page.data.loading, false)
 })
 
@@ -165,7 +170,7 @@ test('reader keeps loading until the web-view reports completion, even beyond ei
   const { page } = loadReaderPage()
   page.onLoad({ slug: 'sample-book' })
   page.onReady()
-  t.mock.timers.tick(100)
+  t.mock.timers.tick(350)
   assert.equal(page.data.loading, true)
   t.mock.timers.tick(60000)
   assert.equal(page.data.loading, true)
@@ -182,7 +187,7 @@ test('reader cancels pending loading updates when leaving before web load', (t) 
   page.onLoad({ slug: 'sample-book' })
   page.onReady()
   t.mock.timers.tick(100)
-  assert.equal(page.data.loading, true)
+  assert.equal(page.data.loading, false)
   page.onUnload()
   let updates = 0
   page.setData = () => { updates += 1 }
@@ -321,12 +326,15 @@ test('reopening a downloading book shows the active progress and keeps receiving
   assert.equal(unsubscribed, true)
 })
 
-test('the shelf reader mounts the WebView only once the destination is ready', () => {
+test('the online reader can mount the WebView before the destination is ready', () => {
   const { page } = loadReaderPage()
   const markup = fs.readFileSync(path.join(__dirname, '../pages/book-reader/index.wxml'), 'utf8')
   page.onLoad({ slug: 'sample-book' })
   assert.equal(page.data.readerReady, false)
-  assert.match(markup, /<web-view wx:if="\{\{readerReady && url\}\}"/)
+  assert.equal(page.data.url, 'https://voicedrop.cn/books/sample-book/')
+  assert.match(markup, /<web-view wx:if="\{\{url\}\}"/)
+  assert.match(markup, /<view wx:if="\{\{webPending\}\}" class="reader-opening"/)
+  assert.match(markup, /<cover-view wx:if="\{\{readerReady && url && !webPending\}\}"/)
   page.onReady()
   assert.equal(page.data.readerReady, true)
   page.onUnload()

@@ -9,6 +9,44 @@ const fixtures = [
 const index = { old: { sub: '回忆', intro: '童年介绍', toc: [{ t: '第一章', b: '机器学习' }, { t: '', b: '无题章节' }] } }
 function deferred() { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b }); return { promise, resolve, reject } }
 
+test('both shelf variants load books and covers in batches while searching the full list', () => {
+  const items = Array.from({ length: 127 }, (_, index) => ({
+    slug: `book-${index}`, title: `Book ${index}`, coverUrl: `/cover-${index}`,
+    category: index < 24 ? 'AI' : '科学'
+  }))
+  for (const rowsFor of [undefined, (books) => books.map((book) => [book])]) {
+    const coverBatches = []
+    const page = {
+      ...pageMethods({ cacheIdentity: () => 'account' }, 'items', rowsFor),
+      data: { ...initialData, items, activeTab: 'books' },
+      _bookCoverSession: { load(books) { coverBatches.push(books.length) } },
+      setData(patch, callback) { Object.assign(this.data, patch); callback?.() }
+    }
+    page.refreshBookSearch()
+    assert.equal(page.data.visibleBooks.length, 49)
+    assert.equal(page.data.bookHasQuery, false)
+    page.loadMoreBooks()
+    assert.equal(page.data.visibleBooks.length, 99)
+    page.refreshBookSearch()
+    assert.equal(page.data.visibleBooks.length, 99)
+    page.loadMoreBooks()
+    page.loadMoreBooks()
+    assert.equal(page.data.visibleBooks.length, 127)
+    page.selectBookFilter({ currentTarget: { dataset: { filter: '科学' } } })
+    assert.equal(page.data.visibleBooks.length, 49)
+    page.setData({ bookQuery: 'Book' })
+    page.refreshBookSearch()
+    assert.equal(page.data.bookHasQuery, true)
+    assert.equal(page.data.visibleBooks.length, 50)
+    page.loadMoreBooks()
+    assert.equal(page.data.visibleBooks.length, 100)
+    page.setData({ bookQuery: 'Book 126' })
+    page.refreshBookSearch()
+    assert.deepEqual(page.data.visibleBooks.map((book) => book.slug), ['book-126'])
+    assert.deepEqual(coverBatches, [49, 99, 127, 49, 50, 100, 1])
+  }
+})
+
 test('filters and search intersect, mine is strict, uncategorized books remain in all', () => {
   assert.deepEqual(project(fixtures, 'all', '', null).map(b => b.slug), ['business', 'ai', 'old'])
   assert.deepEqual(project(fixtures, 'mine', '', null).map(b => b.slug), ['business'])

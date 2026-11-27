@@ -1,5 +1,6 @@
 const i18n = require('./i18n')
 const CATEGORY_ORDER = ['商业', '投资', 'AI', '科学', '人文', '身心', '生活', '故事']
+const BOOK_BATCH_SIZE = 50
 const initialData = {
   bookFilter: 'all', bookSearching: false, bookQuery: '', bookHasQuery: false,
   bookFilters: [{ key: 'all', label: '全部' }, { key: 'mine', label: '我的' }],
@@ -67,6 +68,47 @@ function createSession(service, changed) {
 
 function pageMethods(service, itemsKey, rowsFor) {
   return {
+    queueBookCover(slug, key, url) {
+      if (!this._pendingBookCovers) {
+        this._pendingBookCovers = new Map()
+        this._bookCoverUpdateTimer = setTimeout(() => this.flushBookCovers(), 16)
+      }
+      this._pendingBookCovers.set(key, { slug, url })
+    },
+    cancelBookCoverUpdates() {
+      clearTimeout(this._bookCoverUpdateTimer)
+      this._bookCoverUpdateTimer = null
+      this._pendingBookCovers = null
+    },
+    flushBookCovers() {
+      const pending = this._pendingBookCovers
+      this.cancelBookCoverUpdates()
+      if (!pending) return
+      const patch = {}
+      const current = new Set()
+      const update = (book, path) => {
+        const cover = pending.get(book.coverCacheKey)
+        if (!cover || cover.slug !== book.slug || cover.url === book.coverDisplayUrl) return
+        patch[`${path}.coverDisplayUrl`] = cover.url
+      }
+      this.data[itemsKey].forEach((book, index) => {
+        const cover = pending.get(book.coverCacheKey)
+        if (!cover || cover.slug !== book.slug) return
+        current.add(book.coverCacheKey)
+        update(book, `${itemsKey}[${index}]`)
+      })
+      this.data.visibleBooks.forEach((book, index) => {
+        if (current.has(book.coverCacheKey)) update(book, `visibleBooks[${index}]`)
+      })
+      if (rowsFor) {
+        this.data.bookRows.forEach((row, rowIndex) => {
+          row.forEach((book, index) => {
+            if (current.has(book.coverCacheKey)) update(book, `bookRows[${rowIndex}][${index}]`)
+          })
+        })
+      }
+      if (Object.keys(patch).length) this.setData(patch)
+    },
     ensureBookSearch() {
       if (!this._bookSearch) this._bookSearch = createSession(service, () => this.refreshBookSearch())
       this._bookSearch.syncIdentity()
@@ -81,7 +123,15 @@ function pageMethods(service, itemsKey, rowsFor) {
       const filter = selected === 'all' || selected === 'mine' || (selected === 'video' && hasVideo) || present.includes(selected) ? selected : 'all'
       const query = this.data.bookQuery || ''
       const hasQuery = Boolean(query.trim())
-      const visibleBooks = project(items, filter, query, session.state.index)
+      const scope = JSON.stringify([service.cacheIdentity(), filter, query])
+      if (this._bookPageScope !== scope) {
+        this._bookPageScope = scope
+        // The write entry occupies one cell in the first batch.
+        this._bookDisplayLimit = hasQuery ? BOOK_BATCH_SIZE : BOOK_BATCH_SIZE - 1
+      }
+      const matchingBooks = project(items, filter, query, session.state.index)
+      const visibleBooks = matchingBooks.slice(0, this._bookDisplayLimit)
+      this._hasMoreBooks = matchingBooks.length > visibleBooks.length
       let empty = ''
       if (!visibleBooks.length) {
         if (hasQuery) empty = session.state.loading ? i18n.ui('正在翻章节…') : i18n.ui('没有找到匹配的书')
@@ -97,6 +147,18 @@ function pageMethods(service, itemsKey, rowsFor) {
       }
       if (rowsFor) patch.bookRows = rowsFor(visibleBooks, !hasQuery)
       this.setData(patch, afterRender)
+      if (this._bookCoverSession) {
+        const coverScope = JSON.stringify([service.cacheIdentity(), visibleBooks.map((book) => [book.coverCacheKey, book.coverUrl])])
+        if (coverScope !== this._bookCoverScope) {
+          this._bookCoverScope = coverScope
+          this._bookCoverSession.load(visibleBooks)
+        }
+      }
+    },
+    loadMoreBooks() {
+      if ((rowsFor && this.data.activeTab !== 'books') || !this._hasMoreBooks) return
+      this._bookDisplayLimit += BOOK_BATCH_SIZE
+      this.refreshBookSearch()
     },
     invalidateBookSearch() { this.ensureBookSearch().invalidate(); this.refreshBookSearch() },
     resumeBookSearch() {

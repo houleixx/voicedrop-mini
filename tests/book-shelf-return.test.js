@@ -14,7 +14,7 @@ const fixtures = [
 
 function harness() {
   let definition, pending
-  const updates = [], navigations = [], downloads = [], scrollWrites = []
+  const updates = [], patches = [], navigations = [], downloads = [], scrollWrites = []
   const books = {
     cacheIdentity: () => 'same-account',
     cachedShelf: () => fixtures,
@@ -47,7 +47,12 @@ function harness() {
     data: { ...definition.data, activeTab: 'books', booksLoaded: true },
     initialLoadStarted: true, topLevelUiRendered: true,
     setData(patch, afterRender) {
-      Object.assign(this.data, patch)
+      patches.push(patch)
+      for (const [path, value] of Object.entries(patch)) {
+        const keys = path.match(/[^.[\]]+/g)
+        const parent = keys.slice(0, -1).reduce((object, key) => object[key], this.data)
+        parent[keys.at(-1)] = value
+      }
       // Check every view update, not just the final state after filtering recovers.
       updates.push(JSON.parse(JSON.stringify(this.data.bookRows)))
       if (Object.hasOwn(patch, 'scrollTop')) scrollWrites.push(patch.scrollTop)
@@ -62,7 +67,7 @@ function harness() {
   }
   page.restoreCachedBooks()
   updates.length = 0
-  return { page, updates, navigations, downloads, scrollWrites, settle: () => pending }
+  return { page, updates, patches, navigations, downloads, scrollWrites, settle: () => pending }
 }
 
 function cells(rows) { return rows.flat().map(cell => cell.key) }
@@ -77,11 +82,12 @@ test('returning from a book preserves filtered rows and cached covers through ev
     h.page.openBook({ currentTarget: { dataset: { slug: 'ai' } } })
     assert.match(h.navigations[0].url, /book-reader\/index\?slug=ai&/)
     h.updates.length = 0
+    h.patches.length = 0
 
     h.page.onShow()
     await h.settle()
 
-    assert.ok(h.updates.length > 0)
+    assert.equal(h.patches.some((patch) => 'bookItems' in patch || 'bookRows' in patch), false)
     for (const rows of h.updates) assert.deepEqual(rows, expected, `return under ${filter}`)
     assert.deepEqual(h.downloads, [])
     assert.deepEqual(h.scrollWrites, [])
@@ -125,9 +131,33 @@ test('a cover error retries only that cover without exposing books outside the c
   h.updates.length = 0
 
   h.page.onBookCoverError({ currentTarget: { dataset: { slug: 'ai' } } })
+  h.page.flushBookCovers()
 
   for (const rows of h.updates) assert.deepEqual(cells(rows), ['write', 'book:ai'])
   assert.equal(h.page.data.bookRows[0][1].coverDisplayUrl, '')
   assert.deepEqual(h.downloads, ['https://example.test/ai.jpg'])
   h.page._bookCoverSession.dispose()
+})
+
+test('cover completions batch field updates against the latest shelf and filter', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { page, patches, navigations } = harness()
+  page.queueBookCover('business', 'business:1', '/new/business.jpg')
+  page.setData({ 'bookItems[1].coverCacheKey': 'ai:2' })
+  page.queueBookCover('ai', 'ai:2', '/new/ai.jpg')
+  page.queueBookCover('ai', 'ai:1', '/old/ai.jpg')
+  page.selectBookFilter({ currentTarget: { dataset: { filter: 'AI' } } })
+  patches.length = 0
+
+  page.openBook({ currentTarget: { dataset: { slug: 'ai' } } })
+  assert.equal(navigations.length, 1)
+  assert.equal(patches.length, 0)
+  t.mock.timers.runAll()
+  assert.deepEqual(patches, [{
+    'bookItems[0].coverDisplayUrl': '/new/business.jpg',
+    'bookItems[1].coverDisplayUrl': '/new/ai.jpg',
+    'visibleBooks[0].coverDisplayUrl': '/new/ai.jpg',
+    'bookRows[0][1].coverDisplayUrl': '/new/ai.jpg'
+  }])
+  page._bookCoverSession.dispose()
 })

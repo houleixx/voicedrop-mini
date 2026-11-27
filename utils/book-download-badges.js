@@ -1,7 +1,8 @@
 const offline = require('../services/book-offline')
 
 function decorate(items) {
-  return items.map((item) => ({ ...item, downloadState: offline.downloadState(item.slug) }))
+  const states = offline.downloadStates(items.map((item) => item.slug))
+  return items.map((item, index) => ({ ...item, downloadState: states[index] }))
 }
 
 function observe(page, field) {
@@ -9,9 +10,11 @@ function observe(page, field) {
   const refresh = (slug, progress) => {
     if (progress > 0) return
     let changed = false
-    const items = (page.data[field] || []).map((item) => {
+    const current = page.data[field] || []
+    const states = slug ? null : offline.downloadStates(current.map((item) => item.slug))
+    const items = current.map((item, index) => {
       if (slug && item.slug !== slug) return item
-      const downloadState = offline.downloadState(item.slug)
+      const downloadState = states ? states[index] : offline.downloadState(item.slug)
       if (downloadState === (item.downloadState || '')) return item
       changed = true
       return { ...item, downloadState }

@@ -16,6 +16,21 @@ function downloadState(slug) {
   return activeDownloads.has(slug) ? 'downloading' : get(slug) ? 'downloaded' : ''
 }
 
+function downloadStates(slugs) {
+  if (!slugs.length) return []
+  const fs = fsForBook()
+  if (fs && typeof fs.readdirSync !== 'function') return slugs.map(downloadState)
+  let directories = new Set()
+  if (fs) {
+    try { directories = new Set(fs.readdirSync(offlineBooksRoot())) } catch (_) {}
+  }
+  return slugs.map((slug) => {
+    if (activeDownloads.has(slug)) return 'downloading'
+    if (!directories.has(slug) && !directories.has(slug + '.previous')) return ''
+    return get(slug) ? 'downloaded' : ''
+  })
+}
+
 function subscribeDownloads(listener) {
   downloadListeners.add(listener)
   return () => downloadListeners.delete(listener)
@@ -60,8 +75,12 @@ function removeDir(fs, path) {
   if (exists(fs, path)) fs.rmdirSync(path, true)
 }
 
+function offlineBooksRoot() {
+  return `${wx.env.USER_DATA_PATH}/offline-books`
+}
+
 function rootFor(slug) {
-  return `${wx.env.USER_DATA_PATH}/offline-books/${slug}`
+  return `${offlineBooksRoot()}/${slug}`
 }
 
 function readManifest(fs, root) {
@@ -323,4 +342,4 @@ function readPage(book, path, url) {
   return localPage(book, path, url).blocks
 }
 
-module.exports = { get, remove, download, chapters, readPage, parseFileList, contentBlocks, localPage, loadLocalPage, pagePresentation, downloadState, downloadProgress, subscribeDownloads }
+module.exports = { get, remove, download, chapters, readPage, parseFileList, contentBlocks, localPage, loadLocalPage, pagePresentation, downloadState, downloadStates, downloadProgress, subscribeDownloads }
