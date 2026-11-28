@@ -1,5 +1,6 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const { readFileSync } = require('node:fs')
 const { project, pageMethods, initialData } = require('../utils/book-shelf-search')
 const books = require('../services/books')
 
@@ -61,5 +62,12 @@ test('both shelf surfaces show video after mine only when available and safely r
   } finally {
     if (previousWx === undefined) delete global.wx
     else global.wx = previousWx
+  }
+})
+
+test('both shelf templates omit the play icon on book covers', () => {
+  for (const page of ['recordings', 'book-shelf']) {
+    const template = readFileSync(require.resolve(`../pages/${page}/index.wxml`), 'utf8')
+    assert.doesNotMatch(template, /book-video-mark/)
   }
 })
